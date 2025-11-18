@@ -21,6 +21,7 @@ internal class Program
         appContext.AddService(new UserService());
         appContext.AddService(new DataService());
         appContext.AddService(new RomService());
+        appContext.AddService(new NdsToolService());
 
         // Initialiser le contexte
         appContext.Initialize();

@@ -78,6 +78,11 @@ public class RomService : IApplicationService
         _currentRom = null;
     }
 
+    public void Dispose()
+    {
+        _currentRom = null;
+    }
+
     /// <summary>
     /// Charge une ROM depuis un dossier extrait.
     /// </summary>
