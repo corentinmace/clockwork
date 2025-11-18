@@ -450,21 +450,21 @@ public class MainWindow : GameWindow
         ImGui.Text("Statistiques rapides:");
         ImGui.Columns(3, "stats", false);
 
-        ImGui.BeginChild("stat1", new System.Numerics.Vector2(0, 80), true);
+        ImGui.BeginChild("stat1", new System.Numerics.Vector2(0, 80), ImGuiChildFlags.Border);
         ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f), "Utilisateurs");
         ImGui.Text("1,234");
         ImGui.EndChild();
 
         ImGui.NextColumn();
 
-        ImGui.BeginChild("stat2", new System.Numerics.Vector2(0, 80), true);
+        ImGui.BeginChild("stat2", new System.Numerics.Vector2(0, 80), ImGuiChildFlags.Border);
         ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Projets");
         ImGui.Text("42");
         ImGui.EndChild();
 
         ImGui.NextColumn();
 
-        ImGui.BeginChild("stat3", new System.Numerics.Vector2(0, 80), true);
+        ImGui.BeginChild("stat3", new System.Numerics.Vector2(0, 80), ImGuiChildFlags.Border);
         ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f), "Tâches");
         ImGui.Text("789");
         ImGui.EndChild();
@@ -588,7 +588,7 @@ public class MainWindow : GameWindow
         ImGui.Spacing();
 
         // Données
-        ImGui.BeginChild("DataContent", new System.Numerics.Vector2(0, -30), true);
+        ImGui.BeginChild("DataContent", new System.Numerics.Vector2(0, -30), ImGuiChildFlags.Border);
 
         for (int i = 0; i < 20; i++)
         {
