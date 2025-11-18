@@ -157,11 +157,11 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// </summary>
 		public void RenderModel(string file2, object ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, object ca, RenderMode r, bool anim, bool anim2, int selectedanim, float X, float Y, float dist, float elev, float ang, bool licht, object p, NSBMD nsb) {
 			file = file2;
-			int light = GL.IsEnabled(GL.GL_LIGHTING);
+			bool light = GL.IsEnabled(GL.GL_LIGHTING);
 			GL.Disable(GL.GL_LIGHTING);
 			GL.LineWidth(2.0F);
 
-			if (light == 1) {
+			if (light) {
 				GL.Enable(GL.GL_LIGHTING);
 			}
 			GL.LineWidth(1.0F);
@@ -2980,16 +2980,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						num6 = 8;
 						continue;
 					Label_0ED1:
-						group.Add(new object(PolygonType.Triangle, list2.ToArray(), list3.ToArray(), list.ToArray()));
+						group.Add(new Polygon(PolygonType.Triangle, list2.ToArray(), list3.ToArray(), list.ToArray()));
 						goto Label_0F67;
 					Label_0EF6:
-						group.Add(new object(PolygonType.Quad, list2.ToArray(), list3.ToArray(), list.ToArray()));
+						group.Add(new Polygon(PolygonType.Quad, list2.ToArray(), list3.ToArray(), list.ToArray()));
 						goto Label_0F67;
 					Label_0F1B:
-						group.Add(new object(PolygonType.TriangleStrip, list2.ToArray(), list3.ToArray(), list.ToArray()));
+						group.Add(new Polygon(PolygonType.TriangleStrip, list2.ToArray(), list3.ToArray(), list.ToArray()));
 						goto Label_0F67;
 					Label_0F40:
-						group.Add(new object(PolygonType.QuadStrip, list2.ToArray(), list3.ToArray(), list.ToArray()));
+						group.Add(new Polygon(PolygonType.QuadStrip, list2.ToArray(), list3.ToArray(), list.ToArray()));
 					Label_0F67:
 						list2.Clear();
 						list.Clear();
