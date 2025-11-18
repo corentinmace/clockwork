@@ -4,6 +4,9 @@
 using System;
 using System.Collections.Generic;
 
+using Point3D = Clockwork.Core.Formats.NDS.NSBMD.Point3D;
+using Vector3D = Clockwork.Core.Formats.NDS.NSBMD.Vector3D;
+
 namespace Clockwork.Core.Formats.NDS.NSBMD
 {
     // Stub for WPF DependencyProperty
@@ -200,8 +203,7 @@ namespace System.Windows.Media
     }
 
     // Re-export types
-    using Point3D = Clockwork.Core.Formats.NDS.NSBMD.Point3D;
-    using Vector3D = Clockwork.Core.Formats.NDS.NSBMD.Vector3D;
+
 
     namespace Media3D
     {
