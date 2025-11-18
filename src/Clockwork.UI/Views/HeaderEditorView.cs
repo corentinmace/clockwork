@@ -12,13 +12,12 @@ public class HeaderEditorView : IView
 {
     private readonly ApplicationContext _appContext;
     private RomService? _romService;
-    private DialogService? _dialogService;
+    private HeaderService? _headerService;
 
     private MapHeader? _currentHeader;
-    private int _currentHeaderID = 0;
-    private string _headerFilePath = string.Empty;
     private string _statusMessage = string.Empty;
     private System.Numerics.Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
+    private string _searchFilter = string.Empty;
 
     public bool IsVisible { get; set; } = false;
 
@@ -26,7 +25,7 @@ public class HeaderEditorView : IView
     {
         _appContext = appContext;
         _romService = _appContext.GetService<RomService>();
-        _dialogService = _appContext.GetService<DialogService>();
+        _headerService = _appContext.GetService<HeaderService>();
     }
 
     public void Draw()
@@ -34,46 +33,58 @@ public class HeaderEditorView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(900, 600), ImGuiCond.FirstUseEver);
         ImGui.Begin("Header Editor", ref isVisible);
 
-        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Map Header Editor");
-        ImGui.Separator();
-        ImGui.Spacing();
+        // Check if ROM is loaded
+        bool romLoaded = _romService?.CurrentRom != null;
+        bool headersLoaded = _headerService?.IsLoaded ?? false;
 
-        // Load header section
-        ImGui.Text("Header File:");
-        ImGui.SetNextItemWidth(-80);
-        ImGui.InputText("##headerpath", ref _headerFilePath, 500);
-        ImGui.SameLine();
-        if (ImGui.Button("Browse##header", new System.Numerics.Vector2(70, 0)))
+        if (!romLoaded)
         {
-            string? selectedFile = _dialogService?.OpenFileDialog("All Files|*.*", "Select Header File");
-            if (selectedFile != null)
-            {
-                _headerFilePath = selectedFile;
-                LoadHeader();
-            }
-        }
-
-        ImGui.SameLine();
-        if (ImGui.Button("Load", new System.Numerics.Vector2(80, 0)))
-        {
-            LoadHeader();
-        }
-
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        // Only show editor if header is loaded
-        if (_currentHeader != null)
-        {
-            DrawHeaderEditor();
+            ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
+                "No ROM loaded. Please load a ROM first (ROM > Open ROM...)");
         }
         else
         {
-            ImGui.TextColored(new System.Numerics.Vector4(0.7f, 0.7f, 0.7f, 1.0f),
-                "No header loaded. Please load a header file.");
+            // Load headers button
+            if (!headersLoaded)
+            {
+                if (ImGui.Button("Load Headers from ROM", new System.Numerics.Vector2(-1, 40)))
+                {
+                    LoadHeadersFromRom();
+                }
+            }
+            else
+            {
+                // Two-column layout: header list on left, editor on right
+                if (ImGui.BeginTable("HeaderEditorTable", 2, ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV))
+                {
+                    ImGui.TableSetupColumn("Headers", ImGuiTableColumnFlags.WidthFixed, 300);
+                    ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
+
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+
+                    // Left column: Header list
+                    DrawHeaderList();
+
+                    ImGui.TableSetColumnIndex(1);
+
+                    // Right column: Header editor
+                    if (_currentHeader != null)
+                    {
+                        DrawHeaderEditor();
+                    }
+                    else
+                    {
+                        ImGui.TextColored(new System.Numerics.Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                            "Select a header from the list to edit.");
+                    }
+
+                    ImGui.EndTable();
+                }
+            }
         }
 
         // Status message
@@ -89,26 +100,61 @@ public class HeaderEditorView : IView
         IsVisible = isVisible;
     }
 
-    private void LoadHeader()
+    private void LoadHeadersFromRom()
     {
-        if (string.IsNullOrWhiteSpace(_headerFilePath))
-        {
-            _statusMessage = "Error: Please specify a header file path";
-            _statusColor = new System.Numerics.Vector4(1.0f, 0.4f, 0.4f, 1.0f);
-            return;
-        }
+        if (_headerService == null) return;
 
-        _currentHeader = MapHeader.ReadFromFile(_headerFilePath);
-        if (_currentHeader != null)
+        if (_headerService.LoadHeadersFromRom())
         {
-            _statusMessage = $"Header loaded successfully from: {Path.GetFileName(_headerFilePath)}";
+            _statusMessage = $"Loaded {_headerService.Headers.Count} headers from ROM";
             _statusColor = new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f);
         }
         else
         {
-            _statusMessage = "Error: Failed to load header file";
+            _statusMessage = "Error: Failed to load headers from ROM";
             _statusColor = new System.Numerics.Vector4(1.0f, 0.4f, 0.4f, 1.0f);
         }
+    }
+
+    private void DrawHeaderList()
+    {
+        if (_headerService == null) return;
+
+        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Map Headers");
+        ImGui.Spacing();
+
+        // Search filter
+        ImGui.SetNextItemWidth(-1);
+        ImGui.InputTextWithHint("##search", "Search...", ref _searchFilter, 256);
+        ImGui.Spacing();
+
+        // Header list
+        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(0, 0), true);
+
+        var headers = _headerService.Headers;
+        foreach (var header in headers)
+        {
+            // Apply search filter
+            if (!string.IsNullOrWhiteSpace(_searchFilter))
+            {
+                bool matchesID = header.HeaderID.ToString().Contains(_searchFilter, StringComparison.OrdinalIgnoreCase);
+                bool matchesName = header.InternalName.Contains(_searchFilter, StringComparison.OrdinalIgnoreCase);
+                if (!matchesID && !matchesName)
+                    continue;
+            }
+
+            bool isSelected = _currentHeader != null && _currentHeader.HeaderID == header.HeaderID;
+            string label = $"{header.HeaderID:D3}: {header.InternalName}";
+
+            if (ImGui.Selectable(label, isSelected))
+            {
+                _currentHeader = header;
+                _statusMessage = $"Selected header {header.HeaderID}: {header.InternalName}";
+                _statusColor = new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f);
+            }
+        }
+
+        ImGui.EndChild();
     }
 
     private void DrawHeaderEditor()
@@ -237,7 +283,15 @@ public class HeaderEditorView : IView
             int wildPokemon = _currentHeader.WildPokemon;
             if (ImGui.InputInt("##wildpokemon", ref wildPokemon, 1, 10))
             {
-                _currentHeader.WildPokemon = (ushort)Math.Clamp(wildPokemon, 0, ushort.MaxValue);
+                _currentHeader.WildPokemon = (byte)Math.Clamp(wildPokemon, 0, byte.MaxValue);
+            }
+
+            ImGui.Text("Time ID:");
+            ImGui.SameLine(150);
+            int timeID = _currentHeader.TimeID;
+            if (ImGui.InputInt("##timeid", ref timeID, 1, 10))
+            {
+                _currentHeader.TimeID = (byte)Math.Clamp(timeID, 0, byte.MaxValue);
             }
         }
 
@@ -284,11 +338,15 @@ public class HeaderEditorView : IView
         ImGui.Spacing();
 
         // Save button
+        ImGui.PushStyleColor(ImGuiCol.Button, new System.Numerics.Vector4(0.25f, 0.55f, 0.25f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.35f, 0.65f, 0.35f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(0.20f, 0.50f, 0.20f, 1.0f));
+
         if (ImGui.Button("Save Header", new System.Numerics.Vector2(-1, 40)))
         {
-            if (_currentHeader.WriteToFile(_headerFilePath))
+            if (_headerService != null && _headerService.SaveHeader(_currentHeader))
             {
-                _statusMessage = "Header saved successfully!";
+                _statusMessage = $"Header {_currentHeader.HeaderID} saved successfully!";
                 _statusColor = new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f);
             }
             else
@@ -297,5 +355,7 @@ public class HeaderEditorView : IView
                 _statusColor = new System.Numerics.Vector4(1.0f, 0.4f, 0.4f, 1.0f);
             }
         }
+
+        ImGui.PopStyleColor(3);
     }
 }
