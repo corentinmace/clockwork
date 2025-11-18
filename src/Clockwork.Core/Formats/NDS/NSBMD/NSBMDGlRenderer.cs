@@ -8,6 +8,7 @@ using OpenTK.Graphics.OpenGL;
 using System.IO;
 using OpenTK.Mathematics;
 using Clockwork.Core.Formats.NDS.Utils;
+using static Clockwork.Core.Formats.NDS.NSBMD.GLLegacy;
 
 namespace Clockwork.Core.Formats.NDS.NSBMD {
 	/// <summary>
@@ -159,12 +160,12 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// </summary>
 		public void RenderModel(string file2, object ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, object ca, RenderMode r, bool anim, bool anim2, int selectedanim, float X, float Y, float dist, float elev, float ang, bool licht, object p, NSBMD nsb) {
 			file = file2;
-			bool light = GL.IsEnabled(GL.GL_LIGHTING);
-			GL.Disable(GL.GL_LIGHTING);
+			bool light = GL.IsEnabled(GL_LIGHTING);
+			GL.Disable(GL_LIGHTING);
 			GL.LineWidth(2.0F);
 
 			if (light) {
-				GL.Enable(GL.GL_LIGHTING);
+				GL.Enable(GL_LIGHTING);
 			}
 			GL.LineWidth(1.0F);
 
@@ -176,7 +177,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 
 
 				if (obj.RestoreID != -1) {
-                    GL.LoadMatrixf(MatrixStack[obj.RestoreID].Floats);
+                    LoadMatrixf(MatrixStack[obj.RestoreID].Floats);
                 }
 
                 if (obj.StackID != -1) {
@@ -184,7 +185,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
                         GL.Translatef(m_trans[0], m_trans[1], m_trans[2]);
                     }
 
-                    GL.GetFloatv(GL.GL_MODELVIEW_MATRIX, MatrixStack[obj.StackID].Floats);
+                    GetFloatv(GL_MODELVIEW_MATRIX, MatrixStack[obj.StackID].Floats);
 					stackID = obj.StackID; // save the last stackID
 				}
 			}
@@ -201,7 +202,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				if (gOptTexture && !gOptWireFrame && g_mat) {
 					int matid = poly.MatId;
 					if (matid == -1) {
-						GL.BindTexture(GL.GL_TEXTURE_2D, 0);
+						GL.BindTexture(GL_TEXTURE_2D, 0);
 						if (writevertex) {
 							mattt.Add(new ImageBrush());
 						}
@@ -218,10 +219,10 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
                             continue;
                         }
 
-                        GL.BindTexture(GL.GL_TEXTURE_2D, matid + 1 + matstart);
+                        GL.BindTexture(GL_TEXTURE_2D, matid + 1 + matstart);
 
 						// Convert pixel coords to normalised STs
-						GL.MatrixMode(GL.GL_TEXTURE);
+						GL.MatrixMode(GL_TEXTURE);
 						GL.LoadIdentity();
 						
                         if (p.Header.file_size != 0 ) { 
@@ -320,143 +321,143 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 									}
 								}
 								if (!mat.isEnvironmentMap) {
-									GL.Scalef(1.0f / mat.width, 1.0f / mat.height, 1.0f);
+									Scalef(1.0f / mat.width, 1.0f / mat.height, 1.0f);
 								}
 							} else {
 								if (!mat.isEnvironmentMap) {
 									if (mat.mtx is null) {
-										GL.Scalef(mat.scaleS / mat.width, mat.scaleT / mat.height, 1.0f);
-										GL.Rotatef(mat.rot, 0, 1, 0);
+										Scalef(mat.scaleS / mat.width, mat.scaleT / mat.height, 1.0f);
+										Rotatef(mat.rot, 0, 1, 0);
 										GL.Translatef(mat.transS, mat.transT, 0);
 									} else {
-										GL.Scalef(1.0f / mat.width, 1.0f / mat.height, 1.0f);
-										GL.MultMatrixf(mat.mtx);
+										Scalef(1.0f / mat.width, 1.0f / mat.height, 1.0f);
+										MultMatrixf(mat.mtx);
 									}
 								}
 							}
 						} catch {
 
 						}
-						GL.Enable(GL.GL_ALPHA_TEST);
-						GL.AlphaFunc(GL.GL_GREATER, 0f);
-						GL.Color4f(0xff, 0xff, 0xff, 0xff);
+						GL.Enable(GL_ALPHA_TEST);
+						GL.AlphaFunc(GL_GREATER, 0f);
+						Color4f(0xff, 0xff, 0xff, 0xff);
 
 						if (licht && (((mat.PolyAttrib >> 0) & 0x1) == 0 && ((mat.PolyAttrib >> 1) & 0x1) == 0 && ((mat.PolyAttrib >> 2) & 0x1) == 0 && ((mat.PolyAttrib >> 3) & 0x1) == 0) == false) {
-							//GL.Lightfv(GL.GL_LIGHT0, GL.GL_POSITION, new float[] { 1, 1, 1, 0 });
-							GL.Lightfv(GL.GL_LIGHT0, GL.GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT0, GL.GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT0, GL.GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT0, GL.GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
-							//GL.Lightfv(GL.GL_LIGHT1, GL.GL_POSITION, new float[] { 1, 1, 1, 0 });
-							GL.Lightfv(GL.GL_LIGHT1, GL.GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT1, GL.GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT1, GL.GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT1, GL.GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
-							//GL.Lightfv(GL.GL_LIGHT2, GL.GL_POSITION, new float[] { 1.0f, 1.0f, 1.0f, 0 });
-							GL.Lightfv(GL.GL_LIGHT2, GL.GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT2, GL.GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT2, GL.GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT2, GL.GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
-							//GL.Lightfv(GL.GL_LIGHT3, GL.GL_POSITION, new float[] { 1.0f, 1.0f, 1.0f, 0 });
-							GL.Lightfv(GL.GL_LIGHT3, GL.GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT3, GL.GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT3, GL.GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
-							GL.Lightfv(GL.GL_LIGHT3, GL.GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
+							//Lightfv(GL_LIGHT0, GL_POSITION, new float[] { 1, 1, 1, 0 });
+							Lightfv(GL_LIGHT0, GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
+							Lightfv(GL_LIGHT0, GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
+							Lightfv(GL_LIGHT0, GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
+							Lightfv(GL_LIGHT0, GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
+							//Lightfv(GL_LIGHT1, GL_POSITION, new float[] { 1, 1, 1, 0 });
+							Lightfv(GL_LIGHT1, GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
+							Lightfv(GL_LIGHT1, GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
+							Lightfv(GL_LIGHT1, GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
+							Lightfv(GL_LIGHT1, GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
+							//Lightfv(GL_LIGHT2, GL_POSITION, new float[] { 1.0f, 1.0f, 1.0f, 0 });
+							Lightfv(GL_LIGHT2, GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
+							Lightfv(GL_LIGHT2, GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
+							Lightfv(GL_LIGHT2, GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
+							Lightfv(GL_LIGHT2, GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
+							//Lightfv(GL_LIGHT3, GL_POSITION, new float[] { 1.0f, 1.0f, 1.0f, 0 });
+							Lightfv(GL_LIGHT3, GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
+							Lightfv(GL_LIGHT3, GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
+							Lightfv(GL_LIGHT3, GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
+							Lightfv(GL_LIGHT3, GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
 
-							GL.Enable(GL.GL_LIGHTING);
+							GL.Enable(GL_LIGHTING);
 							if (((mat.PolyAttrib >> 0) & 0x1) == 1) {
-								GL.Enable(GL.GL_LIGHT0);
+								GL.Enable(GL_LIGHT0);
 							} else {
-								GL.Disable(GL.GL_LIGHT0);
+								GL.Disable(GL_LIGHT0);
 							}
 
 							if (((mat.PolyAttrib >> 1) & 0x1) == 1) {
-								GL.Enable(GL.GL_LIGHT1);
+								GL.Enable(GL_LIGHT1);
 							} else {
-								GL.Disable(GL.GL_LIGHT1);
+								GL.Disable(GL_LIGHT1);
 							}
 							if (((mat.PolyAttrib >> 2) & 0x1) == 1) {
-								GL.Enable(GL.GL_LIGHT2);
+								GL.Enable(GL_LIGHT2);
 							} else {
-								GL.Disable(GL.GL_LIGHT2);
+								GL.Disable(GL_LIGHT2);
 							}
 
 							if (((mat.PolyAttrib >> 3) & 0x1) == 1) {
-								GL.Enable(GL.GL_LIGHT3);
+								GL.Enable(GL_LIGHT3);
 							} else {
-								GL.Disable(GL.GL_LIGHT3);
+								GL.Disable(GL_LIGHT3);
 							}
 
 							if (mat.diffuseColor) {
-								GL.Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
+								Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
 							}
 
 						} else {
-							GL.Disable(GL.GL_LIGHTING);
-							GL.Disable(GL.GL_LIGHT0);
-							GL.Disable(GL.GL_LIGHT1);
-							GL.Disable(GL.GL_LIGHT2);
-							GL.Disable(GL.GL_LIGHT3);
+							GL.Disable(GL_LIGHTING);
+							GL.Disable(GL_LIGHT0);
+							GL.Disable(GL_LIGHT1);
+							GL.Disable(GL_LIGHT2);
+							GL.Disable(GL_LIGHT3);
 
 							if (mat.diffuseColor) {
-								GL.Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
+								Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
 							}
 
 						}
-						GL.Enable(GL.GL_BLEND);
+						GL.Enable(GL_BLEND);
 						if (mat.isEnvironmentMap) {
-							GL.TexGeni(GL.GL_S, GL.GL_TEXTURE_GEN_MODE, GL.GL_SPHERE_MAP);
-							GL.TexGeni(GL.GL_T, GL.GL_TEXTURE_GEN_MODE, GL.GL_SPHERE_MAP);
-							GL.Enable(GL.GL_TEXTURE_GEN_S);
-							GL.Enable(GL.GL_TEXTURE_GEN_T);
+							TexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+							TexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+							GL.Enable(GL_TEXTURE_GEN_S);
+							GL.Enable(GL_TEXTURE_GEN_T);
 
 						} else {
-							GL.Disable(GL.GL_TEXTURE_GEN_S);
-							GL.Disable(GL.GL_TEXTURE_GEN_T);
-							GL.BlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+							GL.Disable(GL_TEXTURE_GEN_S);
+							GL.Disable(GL_TEXTURE_GEN_T);
+							GL.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 						}
 
 						int mode = -1;
 						switch ((mat.PolyAttrib >> 4) & 0x3) {
 							case 0:
-								mode = GL.GL_MODULATE;
+								mode = GL_MODULATE;
 								break;
 							case 1:
-								mode = GL.GL_DECAL;
+								mode = GL_DECAL;
 								break;
 							case 2:
-								mode = GL.GL_MODULATE;
+								mode = GL_MODULATE;
 								break;
 							case 3:
-								mode = GL.GL_MODULATE;
+								mode = GL_MODULATE;
 								break;
 						}
-						GL.TexEnvi(GL.GL_TEXTURE_ENV, GL.GL_TEXTURE_ENV_MODE, mode);
+						TexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode);
 						int cullmode = -1;
 
 						switch (mat.PolyAttrib >> 6 & 0x03) {
 							case 0x03:
-								cullmode = GL.GL_NONE;
+								cullmode = GL_NONE;
 								break;
 							case 0x02:
-								cullmode = GL.GL_BACK;
+								cullmode = GL_BACK;
 								break;
 							case 0x01:
-								cullmode = GL.GL_FRONT;
+								cullmode = GL_FRONT;
 								break;
 							case 0x00:
-								cullmode = GL.GL_FRONT_AND_BACK;
+								cullmode = GL_FRONT_AND_BACK;
 								break;
 						}
 						GL.CullFace(cullmode);
 					}
 
 				} else {
-					GL.BindTexture(GL.GL_TEXTURE_2D, 0);
+					GL.BindTexture(GL_TEXTURE_2D, 0);
 				}
 
 				if (!gOptColoring) {
-					GL.Color3f(1, 1, 1);
+					Color3f(1, 1, 1);
 				}
 				stackID = poly.StackID; // the first matrix used by this polygon
 
@@ -497,29 +498,29 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				var m_trans = obj.TransVect;
 				float[] f = loadIdentity();
 				if (obj.RestoreID != -1) {
-					GL.LoadMatrixf(MatrixStack[obj.RestoreID].Floats);
+					LoadMatrixf(MatrixStack[obj.RestoreID].Floats);
 				}
 				if (obj.StackID != -1) {
 
-					GL.MultMatrixf(obj.materix);
+					MultMatrixf(obj.materix);
 					if (obj.isBillboard) {
 						if (!obj.isYBillboard) {
-							GL.Rotatef(elev, 1, 0, 0);
+							Rotatef(elev, 1, 0, 0);
 						}
-						GL.Rotatef(-ang, 0, 1, 0);
+						Rotatef(-ang, 0, 1, 0);
 					}
-					GL.GetFloatv(GL.GL_MODELVIEW_MATRIX, MatrixStack[obj.StackID].Floats);
+					GetFloatv(GL_MODELVIEW_MATRIX, MatrixStack[obj.StackID].Floats);
 					stackID = obj.StackID; // save the last stackID
 				} else {
 
 				}
 				if (obj.visible) {
-					//light = GL.IsEnabled(GL.GL_LIGHTING);
-					//GL.Disable(GL.GL_LIGHTING);
+					//light = GL.IsEnabled(GL_LIGHTING);
+					//GL.Disable(GL_LIGHTING);
 					//drawJoint(0.1f);
 					//if (light == 1)
 					//{
-					//    GL.Enable(GL.GL_LIGHTING);
+					//    GL.Enable(GL_LIGHTING);
 					//}
 				}
 
@@ -535,7 +536,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				if (gOptTexture && !gOptWireFrame && g_mat) {
 					int matid = poly.MatId;
 					if (matid == -1) {
-						GL.BindTexture(GL.GL_TEXTURE_2D, 0);
+						GL.BindTexture(GL_TEXTURE_2D, 0);
 						if (writevertex) {
 							mattt.Add(new ImageBrush());
 						}
@@ -545,95 +546,95 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						}
 						var mat = Model.Materials[matid];
 
-						GL.BindTexture(GL.GL_TEXTURE_2D, 0);
+						GL.BindTexture(GL_TEXTURE_2D, 0);
 
 						// Convert pixel coords to normalised STs
-						GL.MatrixMode(GL.GL_TEXTURE);
+						GL.MatrixMode(GL_TEXTURE);
 						GL.LoadIdentity();
 
 						//scale
 						if (!mat.isEnvironmentMap) {
-							GL.Scalef((float)mat.scaleS / ((float)mat.width), (float)mat.scaleT / ((float)mat.height), 1.0f);
+							Scalef((float)mat.scaleS / ((float)mat.width), (float)mat.scaleT / ((float)mat.height), 1.0f);
 						}
 						//end
-						//GL.Color4f(1, 1, 0, 0);
-						GL.Enable(GL.GL_ALPHA_TEST);
-						GL.AlphaFunc(GL.GL_GREATER, 0f);
+						//Color4f(1, 1, 0, 0);
+						GL.Enable(GL_ALPHA_TEST);
+						GL.AlphaFunc(GL_GREATER, 0f);
 
 						if (((mat.PolyAttrib >> 0xf) & 0x1) == 1 && (((mat.PolyAttrib >> 0) & 0x1) == 0 && ((mat.PolyAttrib >> 1) & 0x1) == 0 && ((mat.PolyAttrib >> 2) & 0x1) == 0 && ((mat.PolyAttrib >> 2) & 0x1) == 0) == false) {
-							GL.Enable(GL.GL_LIGHTING);
-							if (((mat.PolyAttrib >> 0) & 0x1) == 1){ GL.Enable(GL.GL_LIGHT0); }
-							else GL.Disable(GL.GL_LIGHT0);
-							if (((mat.PolyAttrib >> 1) & 0x1) == 1){ GL.Enable(GL.GL_LIGHT1); }
-							else GL.Disable(GL.GL_LIGHT1);
-							if (((mat.PolyAttrib >> 2) & 0x1) == 1){ GL.Enable(GL.GL_LIGHT2); }
-							else GL.Disable(GL.GL_LIGHT2);
-							if (((mat.PolyAttrib >> 3) & 0x1) == 1){ GL.Enable(GL.GL_LIGHT3); }
-							else GL.Disable(GL.GL_LIGHT3);
+							GL.Enable(GL_LIGHTING);
+							if (((mat.PolyAttrib >> 0) & 0x1) == 1){ GL.Enable(GL_LIGHT0); }
+							else GL.Disable(GL_LIGHT0);
+							if (((mat.PolyAttrib >> 1) & 0x1) == 1){ GL.Enable(GL_LIGHT1); }
+							else GL.Disable(GL_LIGHT1);
+							if (((mat.PolyAttrib >> 2) & 0x1) == 1){ GL.Enable(GL_LIGHT2); }
+							else GL.Disable(GL_LIGHT2);
+							if (((mat.PolyAttrib >> 3) & 0x1) == 1){ GL.Enable(GL_LIGHT3); }
+							else GL.Disable(GL_LIGHT3);
 
-							GL.ColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_DIFFUSE);
-							GL.Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
-							GL.ColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_AMBIENT);
-							GL.Color4f((float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f);
-							GL.ColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_SPECULAR);
-							GL.Color4f((float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f);
-							GL.ColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_EMISSION);
-							GL.Color4f((float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f);
+							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
+							Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
+							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT);
+							Color4f((float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f);
+							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_SPECULAR);
+							Color4f((float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f);
+							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_EMISSION);
+							Color4f((float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f);
 
 
-							GL.Enable(GL.GL_COLOR_MATERIAL);
+							GL.Enable(GL_COLOR_MATERIAL);
 						} else {
-							GL.Disable(GL.GL_LIGHTING);
-							GL.ColorMaterial(GL.GL_FRONT_AND_BACK, GL.GL_DIFFUSE);
-							GL.Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
-							GL.Enable(GL.GL_COLOR_MATERIAL);
+							GL.Disable(GL_LIGHTING);
+							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
+							Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
+							GL.Enable(GL_COLOR_MATERIAL);
 						}
-						GL.Enable(GL.GL_BLEND);
+						GL.Enable(GL_BLEND);
 						if (mat.isEnvironmentMap) {
-							GL.TexGeni(GL.GL_S, GL.GL_TEXTURE_GEN_MODE, GL.GL_SPHERE_MAP);
-							GL.TexGeni(GL.GL_T, GL.GL_TEXTURE_GEN_MODE, GL.GL_SPHERE_MAP);
-							GL.Enable(GL.GL_TEXTURE_GEN_S);
-							GL.Enable(GL.GL_TEXTURE_GEN_T);
-							//GL.BlendFunc(GL.GL_ONE, GL.GL_ONE);
+							TexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+							TexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
+							GL.Enable(GL_TEXTURE_GEN_S);
+							GL.Enable(GL_TEXTURE_GEN_T);
+							//GL.BlendFunc(GL_ONE, GL_ONE);
 						} else {
-							GL.Disable(GL.GL_TEXTURE_GEN_S);
-							GL.Disable(GL.GL_TEXTURE_GEN_T);
-							GL.BlendFunc(GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA);
+							GL.Disable(GL_TEXTURE_GEN_S);
+							GL.Disable(GL_TEXTURE_GEN_T);
+							GL.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 						}
 
 						int mode = -1;
 						switch ((mat.PolyAttrib >> 4) & 0x3) {
 							case 0:
-								mode = GL.GL_MODULATE;
+								mode = GL_MODULATE;
 								break;
 							case 1:
-								mode = GL.GL_DECAL;
+								mode = GL_DECAL;
 								break;
 							case 2:
-								mode = GL.GL_MODULATE;
+								mode = GL_MODULATE;
 								break;
 							case 3:
-								mode = GL.GL_MODULATE;
+								mode = GL_MODULATE;
 								break;
 						}
-						GL.TexEnvi(GL.GL_TEXTURE_ENV, GL.GL_TEXTURE_ENV_MODE, mode);
+						TexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode);
 						int cullmode = -1;
-						//GL.Enable(GL.GL_CULL_FACE);
+						//GL.Enable(GL_CULL_FACE);
 						switch (mat.PolyAttrib >> 6 & 0x03) {
-							case 0x03: cullmode = GL.GL_NONE; break;
-							case 0x02: cullmode = GL.GL_BACK; break;
-							case 0x01: cullmode = GL.GL_FRONT; break;
-							case 0x00: cullmode = GL.GL_FRONT_AND_BACK; break;
+							case 0x03: cullmode = GL_NONE; break;
+							case 0x02: cullmode = GL_BACK; break;
+							case 0x01: cullmode = GL_FRONT; break;
+							case 0x00: cullmode = GL_FRONT_AND_BACK; break;
 						}
 						GL.CullFace(cullmode);
 					}
 
 				} else {
-					GL.BindTexture(GL.GL_TEXTURE_2D, 0);
+					GL.BindTexture(GL_TEXTURE_2D, 0);
 				}
 
 				if (!gOptColoring) {
-					//GL.Color3f(1, 1, 1);
+					//Color3f(1, 1, 1);
 				}
 				stackID = poly.StackID; // the first matrix used by this polygon
 				Process3DCommand(poly.PolyData, Model.Materials[poly.MatId], poly.JointID, false);
@@ -676,7 +677,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					{
 						//mt = scale(mt, ca.JAC[0].ObjInfo[i].scale[0][0][S2[i]], ca.JAC[0].ObjInfo[i].scale[0][1][S2[i]], ca.JAC[0].ObjInfo[i].scale[0][2][S2[i]]);
 						s = scale(s, ca.JAC[selectedanim].ObjInfo[i].scale[0][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[1][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[2][0][S2[i]]);
-						//GL.Scalef(ca.JAC[selectedanim].ObjInfo[i].scale[0][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[1][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[2][0][S2[i]]);
+						//Scalef(ca.JAC[selectedanim].ObjInfo[i].scale[0][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[1][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[2][0][S2[i]]);
 					}*/
 					try {
 						if (ca.JAC[selectedanim].ObjInfo[i].rotate.Count != 0) {
@@ -687,7 +688,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								a = Sign(a, 16);
 								b = Sign(b, 16);
 								//mt = multMatrix(mt, Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
-								//GL.MultMatrixf(Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
+								//MultMatrixf(Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
 								r = NSBMD.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f));//multMatrix(r, Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
 							} else {
 								int x = Utils.Read2BytesAsInt16(ca.JAC[selectedanim].RotationData, (((int)ca.JAC[selectedanim].ObjInfo[i].rotate[0]) & 0x7fff) * 10 + 2);
@@ -705,8 +706,8 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								full = full * Z;
 							}
 						} else if (ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0].Count != 0) {
-							//GL.MultMatrixf(Nsbmd.mtxPivot(new float[]{ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]],ca.JAC[0].ObjInfo[i].rotate_keyframes[0][R[i]]}, obj.Pivot, obj.Neg));
-							//GL.Rotatef(ca.JAC[0].ObjInfo[i].rotate_keyframes[0][R[i]], 0,(ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]] == 1 ? 1 : 0),(ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]] == 0 ? 1 : 0));
+							//MultMatrixf(Nsbmd.mtxPivot(new float[]{ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]],ca.JAC[0].ObjInfo[i].rotate_keyframes[0][R[i]]}, obj.Pivot, obj.Neg));
+							//Rotatef(ca.JAC[0].ObjInfo[i].rotate_keyframes[0][R[i]], 0,(ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]] == 1 ? 1 : 0),(ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]] == 0 ? 1 : 0));
 							if (ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[1][R[i]] == 1) {
 								int pvneg = ca.JAC[selectedanim].JointData[(int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 6];//Utils.Read2BytesAsInt16(ca.JAC[selectedanim].JointData, (int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 6 + 0);
 								int a = Utils.Read2BytesAsInt16(ca.JAC[selectedanim].JointData, (int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 6 + 2);
@@ -714,7 +715,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								a = Sign(a, 16);
 								b = Sign(b, 16);
 								//mt = multMatrix(mt, Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
-								//GL.MultMatrixf(Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
+								//MultMatrixf(Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
 								r = NSBMD.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f));//multMatrix(r, Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
 							} else {
 								float param = ca.JAC[selectedanim].RotationData[(int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 10];
@@ -738,16 +739,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								if ((y & 0x200) != 0){ y |= -256; }
 								int z = (param >> 16) & 0xFF;
 								if ((z & 0x200) != 0){ z |= -256; }*/
-								//GL.Rotatef((float)x / 32768F * 180F, 1, 0, 0);
-								//GL.Rotatef((float)y / 32768F * 180F, 0, 1, 0);
-								//GL.Rotatef((float)z / 32768F * 180F, 0, 0, 1);
+								//Rotatef((float)x / 32768F * 180F, 1, 0, 0);
+								//Rotatef((float)y / 32768F * 180F, 0, 1, 0);
+								//Rotatef((float)z / 32768F * 180F, 0, 0, 1);
 								//param /= 4096f;
 								//float un = 2048f;//(float)Utils.Read4BytesAsInt32(ca.JAC[selectedanim].RotationData, (int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 10 + 6) / 4096f;
-								//GL.Rotatef(x / un, 1, 0, 0);//((float)x * (float)Math.PI) / 180f, 1, 0, 0);
-								//GL.Rotatef(y / un, 0, 1, 0);//((float)y * (float)Math.PI) / 180f, 0, 1, 0);
-								//GL.Rotatef(z / un, 0, 0, 1);//((float)z * (float)Math.PI) / 180f, 0, 0, 1);
+								//Rotatef(x / un, 1, 0, 0);//((float)x * (float)Math.PI) / 180f, 1, 0, 0);
+								//Rotatef(y / un, 0, 1, 0);//((float)y * (float)Math.PI) / 180f, 0, 1, 0);
+								//Rotatef(z / un, 0, 0, 1);//((float)z * (float)Math.PI) / 180f, 0, 0, 1);
 								//mt = rotate(mt, x, y, z);
-								//GL.MultMatrixf(full.ToFloat());
+								//MultMatrixf(full.ToFloat());
 							}
 						} else {
 							//r = multMatrix(r,  Model.Objects[i].rotate_mtx);
@@ -787,7 +788,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					//    t = translate(t,ca.JAC[selectedanim].ObjInfo[i].translate[0][T2[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[1][T2[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[2][T2[i]] / Model.modelScale);
 					//}
 					float[] m = loadIdentity();
-					//GL.GetFloatv(GL.GL_MODELVIEW_MATRIX, m);
+					//GetFloatv(GL_MODELVIEW_MATRIX, m);
 					m = multMatrix(m, t);
 					//m = translate(m, Model.Objects[i].X, Model.Objects[i].Y, Model.Objects[i].Z);
 					//if (Model.Objects[i].IsRotated)
@@ -805,16 +806,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					//} 
 					m = multMatrix(m, s);
 					//m = scale(m, Model.Objects[i].scale[0], Model.Objects[i].scale[1], Model.Objects[i].scale[2]);
-					GL.MultMatrixf(m);
+					MultMatrixf(m);
 					//s = loadIdentity();
 					//r = loadIdentity();
 					//t = loadIdentity();
-					//GL.MultMatrixf(mt);
+					//MultMatrixf(mt);
 					//mt = loadIdentity();
 					//if(ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][0].Count != 0)
 					// {
 					//mt = scale(mt, ca.JAC[0].ObjInfo[i].scale_keyframes[0][0][S[i]], ca.JAC[0].ObjInfo[i].scale_keyframes[0][1][S[i]], ca.JAC[0].ObjInfo[i].scale_keyframes[0][2][S[i]]);
-					//GL.Scalef((ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][1][S[i]]));
+					//Scalef((ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][1][S[i]]));
 					//s = scale(s, (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][1][S[i]]));
 					//}
 
@@ -828,7 +829,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					//m = multMatrix(m, t);
 					//m = multMatrix(m, r);
 					//m = multMatrix(m, s);
-					//GL.MultMatrixf(m);
+					//MultMatrixf(m);
 					if (anim) {
 						if (Tx[i] == ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[0].Count - 1) {
 							Tx[i] = 0;
@@ -951,7 +952,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 			//    alpha = 0.2F;
 			//if(drawMode == 0 && !checkStack)
 			//    alpha = 0.0F;
-			GL.Color4f(color[0], color[1], color[2], alpha);
+			Color4f(color[0], color[1], color[2], alpha);
 		}
 
 		private float[] baseColor = {
@@ -1138,7 +1139,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// </summary>
 		/// <param name="mod">NSBMD Model</param>
 		private void MakeTexture(NSBMDModel mod) {
-			GL.MatrixMode(GL.GL_TEXTURE_MATRIX);
+			GL.MatrixMode(GL_TEXTURE_MATRIX);
 			GL.LoadIdentity();
 
 
@@ -1308,26 +1309,26 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					br.Opacity = (double)(((mat.Alpha + 1) * 8) - 1) / 1.0d;
 					matt.Add(br);
 					//ttt
-					GL.BindTexture(GL.GL_TEXTURE_2D, i + 1 + matstart);
-					GL.TexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, mat.width, mat.height, 0, GL.GL_RGBA,
-									GL.GL_UNSIGNED_BYTE,
+					GL.BindTexture(GL_TEXTURE_2D, i + 1 + matstart);
+					GL.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mat.width, mat.height, 0, GL_RGBA,
+									GL_UNSIGNED_BYTE,
 									imageBytes);
-					GL.TexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
-					GL.TexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
+					TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+					TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 					if (mat.flipS == 1 && mat.repeatS == 1) {
-						GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_MIRRORED_REPEAT);
+						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 					} else if (mat.repeatS == 1) {
-						GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT);
+						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 					} else {
-						GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP);
+						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 					}
 					if (mat.flipT == 1 && mat.repeatT == 1) {
-						GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_MIRRORED_REPEAT);
+						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 					} else if (mat.repeatT == 1) {
-						GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT);
+						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 					} else {
-						GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP);
+						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 					}
 				} catch {
 					matt.Add(new ImageBrush());
@@ -1461,26 +1462,26 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				var imageBytes = imageBytesList.ToArray();
 
 				//ttt
-				GL.BindTexture(GL.GL_TEXTURE_2D, i + 1 + matstart);
-				GL.TexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, mat.width, mat.height, 0, GL.GL_RGBA,
-								GL.GL_UNSIGNED_BYTE,
+				GL.BindTexture(GL_TEXTURE_2D, i + 1 + matstart);
+				GL.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mat.width, mat.height, 0, GL_RGBA,
+								GL_UNSIGNED_BYTE,
 								imageBytes);
-				GL.TexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MIN_FILTER, GL.GL_NEAREST);
-				GL.TexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_MAG_FILTER, GL.GL_NEAREST);
+				TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+				TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
 				if (mat.flipS == 1 && mat.repeatS == 1) {
-					GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_MIRRORED_REPEAT);
+					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
 				} else if (mat.repeatS == 1) {
-					GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_REPEAT);
+					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 				} else {
-					GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_S, GL.GL_CLAMP);
+					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
 				}
 				if (mat.flipT == 1 && mat.repeatT == 1) {
-					GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_MIRRORED_REPEAT);
+					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
 				} else if (mat.repeatT == 1) {
-					GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_REPEAT);
+					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 				} else {
-					GL.TexParameterf(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP);
+					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 				}
 			} catch {
 				//matt.Add(new System.Windows.Media.ImageBrush());
@@ -1521,7 +1522,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// </summary>
 		/// <param name="polydata">Data of specific polygon.</param>
 		private void Process3DCommand(byte[] polydata, NSBMDMaterial m, int jointID, bool color) {
-			GL.MatrixMode(GL.GL_MODELVIEW);
+			GL.MatrixMode(GL_MODELVIEW);
 			GL.LoadIdentity();
 			MaterialHelper.CreateMaterial(new ImageBrush());
 
@@ -1567,15 +1568,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								commandptr += 4;
 								switch (param) {
 									case 0:
-										// GL.MatrixMode(GL.GL_PROJECTION_MATRIX);
+										// GL.MatrixMode(GL_PROJECTION_MATRIX);
 										break;
 									case 1:
-										// GL.MatrixMode(GL.GL_MODELVIEW_MATRIX);
+										// GL.MatrixMode(GL_MODELVIEW_MATRIX);
 										break;
 									case 2:
 										break;
 									case 3:
-										// GL.MatrixMode(GL.GL_TEXTURE_MATRIX);
+										// GL.MatrixMode(GL_TEXTURE_MATRIX);
 										break;
 								}
 								break;
@@ -1698,7 +1699,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 									g = (rgb >> 5) & 0x1F;
 									b = (rgb >> 10) & 0x1F;
 									if (color) {
-										GL.Color4f(((float)r) / 31.0f, ((float)g) / 31.0f, ((float)b) / 31.0f, m.Alpha / 31.0f);
+										Color4f(((float)r) / 31.0f, ((float)g) / 31.0f, ((float)b) / 31.0f, m.Alpha / 31.0f);
 									}
 								}
 							}
@@ -1725,7 +1726,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								if ((y & 0x200) != 0){ y |= -1024; }
 								z = (xyz >> 20) & 0x3FF;
 								if ((z & 0x200) != 0){ z |= -1024; }
-								GL.Normal3f(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f);
+								Normal3f(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f);
 								if (writevertex) {
 									//normals.Add(new float[] { ((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f });
 									//mod.Normals.Add(new Vector3D(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f))
@@ -1751,7 +1752,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								if ((s & 0x8000) != 0){ s |= unchecked((int)0xFFFF0000); }//-65536;
 								t = (st >> 16) & 0xffff;
 								if ((t & 0x8000) != 0){ t |= unchecked((int)0xFFFF0000); }//-65536;
-								GL.TexCoord2f(((float)s) / 16.0f, ((float)t) / 16.0f);
+								TexCoord2f(((float)s) / 16.0f, ((float)t) / 16.0f);
 
 								if (writevertex) {
 									//mod.TextureCoordinates.Add(new System.Windows.Point((float)s/1024f,(float)t/1024f));
@@ -1788,7 +1789,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								vtx_state[2] = ((float)z) / SCALE_IV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									GL.Vertex3fv(vtx_trans);
+									Vertex3fv(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
 										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
@@ -1805,7 +1806,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										}
 									}
 								} else {
-									GL.Vertex3fv(vtx_state);
+									Vertex3fv(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
 										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
@@ -1853,7 +1854,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								vtx_state[2] = (float)z / 64.0f;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									GL.Vertex3fv(vtx_trans);
+									Vertex3fv(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
 										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
@@ -1870,7 +1871,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										}
 									}
 								} else {
-									GL.Vertex3fv(vtx_state);
+									Vertex3fv(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
 										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
@@ -1913,7 +1914,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								vtx_state[1] = ((float)y) / SCALE_IV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									GL.Vertex3fv(vtx_trans);
+									Vertex3fv(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
 										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
@@ -1930,7 +1931,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										}
 									}
 								} else {
-									GL.Vertex3fv(vtx_state);
+									Vertex3fv(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
 										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
@@ -1973,7 +1974,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								vtx_state[2] = ((float)z) / SCALE_IV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									GL.Vertex3fv(vtx_trans);
+									Vertex3fv(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
 										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
@@ -1990,7 +1991,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										}
 									}
 								} else {
-									GL.Vertex3fv(vtx_state);
+									Vertex3fv(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
 										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
@@ -2032,7 +2033,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								vtx_state[2] = ((float)z) / SCALE_IV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									GL.Vertex3fv(vtx_trans);
+									Vertex3fv(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
 										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
@@ -2049,7 +2050,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										}
 									}
 								} else {
-									GL.Vertex3fv(vtx_state);
+									Vertex3fv(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
 										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
@@ -2097,7 +2098,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								vtx_state[2] += ((float)z) / SCALE_IV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									GL.Vertex3fv(vtx_trans);
+									Vertex3fv(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
 										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
@@ -2114,7 +2115,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										}
 									}
 								} else {
-									GL.Vertex3fv(vtx_state);
+									Vertex3fv(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
 										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
@@ -2144,16 +2145,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								switch (polygonMode)
 								{
 									case 0:
-										mode = GL.GL_MODULATE;
+										mode = GL_MODULATE;
 										break;
 									case 1:
-										mode = GL.GL_DECAL;
+										mode = GL_DECAL;
 										break;
 									case 2:
-										mode = GL.GL_SHADOW_AMBIENT_SGIX;
+										mode = GL_SHADOW_AMBIENT_SGIX;
 										break;
 									case 3:
-										mode = GL.GL_QUAD_STRIP;
+										mode = GL_QUAD_STRIP;
 										break;
 									default:
 										//return ;// FALSE;
@@ -2183,27 +2184,27 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								typ = mode;
 								switch (mode) {
 									case 0:
-										mode = GL.GL_TRIANGLES;
+										mode = GL_TRIANGLES;
 										break;
 									case 1:
-										mode = GL.GL_QUADS;
+										mode = GL_QUADS;
 										break;
 									case 2:
-										mode = GL.GL_TRIANGLE_STRIP;
+										mode = GL_TRIANGLE_STRIP;
 										break;
 									case 3:
-										mode = GL.GL_QUAD_STRIP;
+										mode = GL_QUAD_STRIP;
 										break;
 									default:
 										//return ;// FALSE;
 										throw new Exception();
 								}
 
-								GL.Begin(mode);
+								Begin(mode);
 								break;
 							}
 						case 0x41:
-							GL.End();
+							End();
 
 							if (writevertex) {
 								switch (typ) {
