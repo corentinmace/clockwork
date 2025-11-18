@@ -18,6 +18,7 @@ public class HeaderEditorView : IView
     private string _statusMessage = string.Empty;
     private System.Numerics.Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
     private string _searchFilter = string.Empty;
+    private string? _lastLoadedRomPath;
 
     public bool IsVisible { get; set; } = false;
 
@@ -44,20 +45,23 @@ public class HeaderEditorView : IView
         {
             ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
                 "No ROM loaded. Please load a ROM first (ROM > Open ROM...)");
+            _lastLoadedRomPath = null;
         }
         else
         {
-            // Load headers button
-            if (!headersLoaded)
+            // Auto-load headers when ROM changes
+            string currentRomPath = _romService!.CurrentRom!.RomPath;
+            if (_lastLoadedRomPath != currentRomPath)
             {
-                if (ImGui.Button("Load Headers from ROM", new System.Numerics.Vector2(-1, 40)))
-                {
-                    LoadHeadersFromRom();
-                }
+                LoadHeadersFromRom();
+                _lastLoadedRomPath = currentRomPath;
             }
-            else
+
+            if (headersLoaded)
             {
                 // Two-column layout: header list on left, editor on right
+                float availableHeight = ImGui.GetContentRegionAvail().Y;
+
                 if (ImGui.BeginTable("HeaderEditorTable", 2, ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV))
                 {
                     ImGui.TableSetupColumn("Headers", ImGuiTableColumnFlags.WidthFixed, 300);
@@ -67,7 +71,7 @@ public class HeaderEditorView : IView
                     ImGui.TableSetColumnIndex(0);
 
                     // Left column: Header list
-                    DrawHeaderList();
+                    DrawHeaderList(availableHeight - 40); // Leave space for status message
 
                     ImGui.TableSetColumnIndex(1);
 
@@ -84,6 +88,11 @@ public class HeaderEditorView : IView
 
                     ImGui.EndTable();
                 }
+            }
+            else
+            {
+                ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
+                    "Loading headers...");
             }
         }
 
@@ -116,7 +125,7 @@ public class HeaderEditorView : IView
         }
     }
 
-    private void DrawHeaderList()
+    private void DrawHeaderList(float availableHeight)
     {
         if (_headerService == null) return;
 
@@ -128,8 +137,11 @@ public class HeaderEditorView : IView
         ImGui.InputTextWithHint("##search", "Search...", ref _searchFilter, 256);
         ImGui.Spacing();
 
-        // Header list
-        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(0, 0), ImGuiChildFlags.Border);
+        // Calculate list height (subtract title, spacing, and search box)
+        float listHeight = availableHeight - 60;
+
+        // Header list with scrolling
+        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, listHeight), ImGuiChildFlags.Border);
 
         var headers = _headerService.Headers;
         foreach (var header in headers)
@@ -160,6 +172,9 @@ public class HeaderEditorView : IView
     private void DrawHeaderEditor()
     {
         if (_currentHeader == null) return;
+
+        // Scrollable editor area
+        ImGui.BeginChild("HeaderEditorScroll", new System.Numerics.Vector2(0, 0), ImGuiChildFlags.None);
 
         // Map Structure section
         if (ImGui.CollapsingHeader("Map Structure", ImGuiTreeNodeFlags.DefaultOpen))
@@ -357,5 +372,7 @@ public class HeaderEditorView : IView
         }
 
         ImGui.PopStyleColor(3);
+
+        ImGui.EndChild(); // End HeaderEditorScroll
     }
 }
