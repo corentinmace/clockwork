@@ -7,7 +7,6 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>
@@ -19,7 +18,7 @@
     <ProjectReference Include="..\Clockwork.Core\Clockwork.Core.csproj" />
   </ItemGroup>
 
-  <!-- Copier le dossier Tools dans le répertoire de sortie -->
+  <!-- Copy Tools folder to output directory -->
   <ItemGroup>
     <None Include="..\..\Tools\**\*.*">
       <Link>Tools\%(RecursiveDir)%(Filename)%(Extension)</Link>
