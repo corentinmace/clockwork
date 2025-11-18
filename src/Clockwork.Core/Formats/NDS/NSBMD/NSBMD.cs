@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Clockwork.Core.Formats.NDS.NSBTX;
+using Clockwork.Core.Formats.NDS.Utils;
 
 
 namespace Clockwork.Core.Formats.NDS.NSBMD {
@@ -656,10 +657,10 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
                     int height = 8 << (texImageParam >> 7 & 7);
                     //int m_DifAmbColors = reader.ReadInt32();
                     //int m_SpeEmiColors = reader.ReadInt32();
-                    mod.Materials[j].DiffuseColor = SM64DSe.Helper.BGR15ToColor((ushort)(unknown1 & 0x7FFF));
-                    mod.Materials[j].AmbientColor = SM64DSe.Helper.BGR15ToColor((ushort)(unknown1 >> 16 & 0x7FFF));
-                    mod.Materials[j].SpecularColor = SM64DSe.Helper.BGR15ToColor((ushort)(unknown2 & 0x7FFF));
-                    mod.Materials[j].EmissionColor = SM64DSe.Helper.BGR15ToColor((ushort)(unknown2 >> 16 & 0x7FFF));
+                    mod.Materials[j].DiffuseColor = Utils.BGR15ToColor((ushort)(unknown1 & 0x7FFF));
+                    mod.Materials[j].AmbientColor = Utils.BGR15ToColor((ushort)(unknown1 >> 16 & 0x7FFF));
+                    mod.Materials[j].SpecularColor = Utils.BGR15ToColor((ushort)(unknown2 & 0x7FFF));
+                    mod.Materials[j].EmissionColor = Utils.BGR15ToColor((ushort)(unknown2 >> 16 & 0x7FFF));
                     int a = (int)((unknown3 >> 16) & 31);
                     mod.Materials[j].Alpha = a;//a * 2 + 1;//a * 2 + (a + 31) / 32;
                     mod.Materials[j].PolyAttrib = (uint)unknown3;

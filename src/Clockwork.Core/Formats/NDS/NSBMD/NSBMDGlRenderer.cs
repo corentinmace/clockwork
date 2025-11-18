@@ -7,6 +7,7 @@ using System.Linq;
 using OpenTK.Graphics.OpenGL;
 using System.IO;
 using OpenTK.Mathematics;
+using Clockwork.Core.Formats.NDS.Utils;
 
 namespace Clockwork.Core.Formats.NDS.NSBMD {
 	/// <summary>
@@ -1234,7 +1235,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								//image[j].G = (byte)(((p >> 5) & 0x1f) << 3);
 								//image[j].B = (byte)(((p >> 10) & 0x1f) << 3);
 								//image[j].A = (byte)(((p & 0x8000) != 0) ? 0xff : 0);
-								image[j] = RGBA.fromColor(Tinke.Convertir.BGR555ToColor(mat.texdata[j * 2], mat.texdata[j * 2 + 1]));
+								image[j] = RGBA.fromColor(Utils.BGR555ToColor(mat.texdata[j * 2], mat.texdata[j * 2 + 1]));
 								ushort p = (ushort)(mat.texdata[j * 2] + (mat.texdata[j * 2 + 1] << 8));
 								image[j].A = (byte)(((p & 0x8000) != 0) ? 0xff : 0);
 							}
