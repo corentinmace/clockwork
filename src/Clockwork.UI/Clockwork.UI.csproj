@@ -18,4 +18,12 @@
     <ProjectReference Include="..\Clockwork.Core\Clockwork.Core.csproj" />
   </ItemGroup>
 
+  <!-- Copier le dossier Tools dans le répertoire de sortie -->
+  <ItemGroup>
+    <None Include="..\..\Tools\**\*.*">
+      <Link>Tools\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

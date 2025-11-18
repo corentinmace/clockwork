@@ -12,11 +12,10 @@ public class NdsToolService : IApplicationService
     public void Initialize()
     {
         // Chercher ndstool.exe dans le dossier Tools
-        string projectRoot = AppDomain.CurrentDomain.BaseDirectory;
+        string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
-        // Remonter au dossier racine du projet (depuis bin/Debug/net8.0)
-        string toolsPath = Path.Combine(projectRoot, "..", "..", "..", "..", "Tools", "ndstool.exe");
-        toolsPath = Path.GetFullPath(toolsPath);
+        // Chemin principal: Tools/ dans le répertoire de l'exécutable (déployé)
+        string toolsPath = Path.Combine(baseDirectory, "Tools", "ndstool.exe");
 
         if (File.Exists(toolsPath))
         {
@@ -24,8 +23,11 @@ public class NdsToolService : IApplicationService
         }
         else
         {
-            // Essayer un chemin alternatif (au cas où on est dans un autre contexte)
-            toolsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tools", "ndstool.exe");
+            // Chemin alternatif: remonter au dossier racine du projet (développement)
+            // Depuis bin/Debug/net8.0 -> ../../../../Tools/ndstool.exe
+            toolsPath = Path.Combine(baseDirectory, "..", "..", "..", "..", "Tools", "ndstool.exe");
+            toolsPath = Path.GetFullPath(toolsPath);
+
             if (File.Exists(toolsPath))
             {
                 _ndsToolPath = toolsPath;
