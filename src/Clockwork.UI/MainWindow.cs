@@ -14,6 +14,9 @@ public class MainWindow : GameWindow
 {
     private ImGuiController? _imguiController;
     private ApplicationContext _appContext;
+    private bool _isDraggingWindow = false;
+    private System.Numerics.Vector2 _dragStartMousePos;
+    private OpenTK.Mathematics.Vector2i _dragStartWindowPos;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -147,6 +150,17 @@ public class MainWindow : GameWindow
         // Menu principal
         if (ImGui.BeginMenuBar())
         {
+            // Zone de drag invisible pour déplacer la fenêtre
+            var menuBarRect = ImGui.GetCurrentWindow().MenuBarRect();
+            bool isMenuBarHovered = ImGui.IsMouseHoveringRect(
+                menuBarRect.Min,
+                new System.Numerics.Vector2(menuBarRect.Max.X - 150, menuBarRect.Max.Y)
+            );
+
+            // Titre de l'application
+            ImGui.Text("Clockwork");
+            ImGui.Spacing();
+
             if (ImGui.BeginMenu("Fichier"))
             {
                 if (ImGui.MenuItem("Quitter", "Alt+F4"))
@@ -176,7 +190,77 @@ public class MainWindow : GameWindow
                 ImGui.EndMenu();
             }
 
+            // Contrôles de fenêtre à droite
+            float menuBarHeight = ImGui.GetFrameHeight();
+            float windowWidth = ImGui.GetWindowWidth();
+            float buttonWidth = 46.0f;
+
+            // Position des boutons à droite
+            ImGui.SetCursorPosX(windowWidth - (buttonWidth * 3) - 10);
+
+            // Bouton Minimiser
+            if (ImGui.Button("-", new System.Numerics.Vector2(buttonWidth, menuBarHeight)))
+            {
+                WindowState = OpenTK.Windowing.Common.WindowState.Minimized;
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Minimiser");
+
+            ImGui.SameLine(0, 0);
+
+            // Bouton Maximiser/Restaurer
+            bool isMaximized = WindowState == OpenTK.Windowing.Common.WindowState.Maximized;
+            string maximizeIcon = isMaximized ? "◱" : "□";
+            if (ImGui.Button(maximizeIcon, new System.Numerics.Vector2(buttonWidth, menuBarHeight)))
+            {
+                WindowState = isMaximized
+                    ? OpenTK.Windowing.Common.WindowState.Normal
+                    : OpenTK.Windowing.Common.WindowState.Maximized;
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip(isMaximized ? "Restaurer" : "Maximiser");
+
+            ImGui.SameLine(0, 0);
+
+            // Bouton Fermer
+            ImGui.PushStyleColor(ImGuiCol.Button, new System.Numerics.Vector4(0.8f, 0.2f, 0.2f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.9f, 0.3f, 0.3f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(1.0f, 0.1f, 0.1f, 1.0f));
+            if (ImGui.Button("X", new System.Numerics.Vector2(buttonWidth, menuBarHeight)))
+            {
+                _appContext.IsRunning = false;
+            }
+            if (ImGui.IsItemHovered())
+                ImGui.SetTooltip("Fermer");
+            ImGui.PopStyleColor(3);
+
+            // Permettre de déplacer la fenêtre en glissant la barre de menu
+            if (isMenuBarHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            {
+                _isDraggingWindow = true;
+                _dragStartMousePos = ImGui.GetMousePos();
+                _dragStartWindowPos = Location;
+            }
+
             ImGui.EndMenuBar();
+        }
+
+        // Gestion du drag de la fenêtre
+        if (_isDraggingWindow)
+        {
+            if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
+            {
+                var currentMousePos = ImGui.GetMousePos();
+                var delta = currentMousePos - _dragStartMousePos;
+                Location = new OpenTK.Mathematics.Vector2i(
+                    _dragStartWindowPos.X + (int)delta.X,
+                    _dragStartWindowPos.Y + (int)delta.Y
+                );
+            }
+            else
+            {
+                _isDraggingWindow = false;
+            }
         }
 
         ImGui.End();
