@@ -168,6 +168,30 @@ public class MainWindow : GameWindow
         if ((io.ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
         {
             uint dockspaceId = ImGui.GetID("MainDockSpace");
+
+            // Initialiser le layout du dockspace une seule fois
+            if (!_dockspaceInitialized)
+            {
+                _dockspaceInitialized = true;
+
+                // Réinitialiser le dockspace pour être sûr de partir d'une base propre
+                ImGui.DockBuilderRemoveNode(dockspaceId);
+                ImGui.DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags.DockSpace);
+                ImGui.DockBuilderSetNodeSize(dockspaceId, viewport.WorkSize);
+
+                // Créer un split: gauche pour la sidebar, droite pour le contenu
+                float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
+                uint dockLeftId = 0;
+                uint dockRightId = 0;
+                ImGui.DockBuilderSplitNode(dockspaceId, ImGuiDir.Left, sidebarWidth / viewport.WorkSize.X, ref dockLeftId, ref dockRightId);
+
+                // Docker la sidebar à gauche
+                ImGui.DockBuilderDockWindow("Navigation", dockLeftId);
+
+                // Finaliser le layout
+                ImGui.DockBuilderFinish(dockspaceId);
+            }
+
             ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(0.0f, 0.0f), ImGuiDockNodeFlags.None);
         }
 
@@ -225,14 +249,10 @@ public class MainWindow : GameWindow
 
     private void DrawSidebar()
     {
-        float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
+        // La sidebar est maintenant une fenêtre dockable normale
+        ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse;
 
-        ImGui.SetNextWindowPos(new System.Numerics.Vector2(0, ImGui.GetFrameHeight()));
-        ImGui.SetNextWindowSize(new System.Numerics.Vector2(sidebarWidth, ImGui.GetIO().DisplaySize.Y - ImGui.GetFrameHeight()));
-
-        ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse;
-
-        ImGui.Begin("Sidebar", sidebarFlags);
+        ImGui.Begin("Navigation", sidebarFlags);
 
         // Bouton pour rétracter/déplier
         if (ImGui.Button(_isSidebarCollapsed ? "»" : "«", new System.Numerics.Vector2(-1, 30)))
@@ -358,6 +378,7 @@ public class MainWindow : GameWindow
     // État de la sidebar et metrics
     private bool _isSidebarCollapsed = false;
     private bool _showMetricsWindow = false;
+    private bool _dockspaceInitialized = false;
 
     protected override void OnUnload()
     {
