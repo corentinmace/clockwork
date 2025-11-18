@@ -36,7 +36,6 @@ internal class Program
         var gameWindowSettings = new GameWindowSettings()
         {
             UpdateFrequency = 60,
-            RenderFrequency = 60,
         };
 
         // Créer et lancer la fenêtre (Frontend)

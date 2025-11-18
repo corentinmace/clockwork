@@ -42,7 +42,6 @@ public class ImGuiController : IDisposable
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
         CreateDeviceResources();
-        SetKeyMappings();
 
         SetPerFrameImGuiData(1f / 60f);
 
@@ -232,46 +231,10 @@ void main()
         var screenPoint = new Vector2i((int)mouseState.X, (int)mouseState.Y);
         io.MousePos = new System.Numerics.Vector2(screenPoint.X, screenPoint.Y);
 
-        foreach (Keys key in Enum.GetValues(typeof(Keys)))
-        {
-            if (key == Keys.Unknown)
-                continue;
-            io.KeysDown[(int)key] = keyboardState.IsKeyDown(key);
-        }
-
-        foreach (var c in window.KeyboardState.PressedChars)
-        {
-            io.AddInputCharacter(c);
-        }
-
-        io.KeyCtrl = keyboardState.IsKeyDown(Keys.LeftControl) || keyboardState.IsKeyDown(Keys.RightControl);
-        io.KeyAlt = keyboardState.IsKeyDown(Keys.LeftAlt) || keyboardState.IsKeyDown(Keys.RightAlt);
-        io.KeyShift = keyboardState.IsKeyDown(Keys.LeftShift) || keyboardState.IsKeyDown(Keys.RightShift);
-        io.KeySuper = keyboardState.IsKeyDown(Keys.LeftSuper) || keyboardState.IsKeyDown(Keys.RightSuper);
-    }
-
-    private void SetKeyMappings()
-    {
-        ImGuiIOPtr io = ImGui.GetIO();
-        io.KeyMap[(int)ImGuiKey.Tab] = (int)Keys.Tab;
-        io.KeyMap[(int)ImGuiKey.LeftArrow] = (int)Keys.Left;
-        io.KeyMap[(int)ImGuiKey.RightArrow] = (int)Keys.Right;
-        io.KeyMap[(int)ImGuiKey.UpArrow] = (int)Keys.Up;
-        io.KeyMap[(int)ImGuiKey.DownArrow] = (int)Keys.Down;
-        io.KeyMap[(int)ImGuiKey.PageUp] = (int)Keys.PageUp;
-        io.KeyMap[(int)ImGuiKey.PageDown] = (int)Keys.PageDown;
-        io.KeyMap[(int)ImGuiKey.Home] = (int)Keys.Home;
-        io.KeyMap[(int)ImGuiKey.End] = (int)Keys.End;
-        io.KeyMap[(int)ImGuiKey.Delete] = (int)Keys.Delete;
-        io.KeyMap[(int)ImGuiKey.Backspace] = (int)Keys.Backspace;
-        io.KeyMap[(int)ImGuiKey.Enter] = (int)Keys.Enter;
-        io.KeyMap[(int)ImGuiKey.Escape] = (int)Keys.Escape;
-        io.KeyMap[(int)ImGuiKey.A] = (int)Keys.A;
-        io.KeyMap[(int)ImGuiKey.C] = (int)Keys.C;
-        io.KeyMap[(int)ImGuiKey.V] = (int)Keys.V;
-        io.KeyMap[(int)ImGuiKey.X] = (int)Keys.X;
-        io.KeyMap[(int)ImGuiKey.Y] = (int)Keys.Y;
-        io.KeyMap[(int)ImGuiKey.Z] = (int)Keys.Z;
+        io.AddKeyEvent(ImGuiKey.ModCtrl, keyboardState.IsKeyDown(Keys.LeftControl) || keyboardState.IsKeyDown(Keys.RightControl));
+        io.AddKeyEvent(ImGuiKey.ModAlt, keyboardState.IsKeyDown(Keys.LeftAlt) || keyboardState.IsKeyDown(Keys.RightAlt));
+        io.AddKeyEvent(ImGuiKey.ModShift, keyboardState.IsKeyDown(Keys.LeftShift) || keyboardState.IsKeyDown(Keys.RightShift));
+        io.AddKeyEvent(ImGuiKey.ModSuper, keyboardState.IsKeyDown(Keys.LeftSuper) || keyboardState.IsKeyDown(Keys.RightSuper));
     }
 
     /// <summary>
@@ -296,20 +259,20 @@ void main()
         GL.GetInteger(GetPName.ArrayBufferBinding, out int prevArrayBuffer);
         GL.GetInteger(GetPName.VertexArrayBinding, out int prevVertexArray);
 
-        Span<int> prevScissorBox = stackalloc int[4];
+        int[] prevScissorBox = new int[4];
         GL.GetInteger(GetPName.ScissorBox, prevScissorBox);
 
-        Span<int> prevBlendSrcRgb = stackalloc int[1];
+        int[] prevBlendSrcRgb = new int[1];
         GL.GetInteger(GetPName.BlendSrcRgb, prevBlendSrcRgb);
-        Span<int> prevBlendDstRgb = stackalloc int[1];
+        int[] prevBlendDstRgb = new int[1];
         GL.GetInteger(GetPName.BlendDstRgb, prevBlendDstRgb);
-        Span<int> prevBlendSrcAlpha = stackalloc int[1];
+        int[] prevBlendSrcAlpha = new int[1];
         GL.GetInteger(GetPName.BlendSrcAlpha, prevBlendSrcAlpha);
-        Span<int> prevBlendDstAlpha = stackalloc int[1];
+        int[] prevBlendDstAlpha = new int[1];
         GL.GetInteger(GetPName.BlendDstAlpha, prevBlendDstAlpha);
-        Span<int> prevBlendEquationRgb = stackalloc int[1];
+        int[] prevBlendEquationRgb = new int[1];
         GL.GetInteger(GetPName.BlendEquationRgb, prevBlendEquationRgb);
-        Span<int> prevBlendEquationAlpha = stackalloc int[1];
+        int[] prevBlendEquationAlpha = new int[1];
         GL.GetInteger(GetPName.BlendEquationAlpha, prevBlendEquationAlpha);
 
         bool prevEnableBlend = GL.IsEnabled(EnableCap.Blend);
@@ -332,7 +295,7 @@ void main()
         float T = drawData.DisplayPos.Y;
         float B = drawData.DisplayPos.Y + drawData.DisplaySize.Y;
 
-        Span<float> orthoProjection = stackalloc float[]
+        float[] orthoProjection = new float[]
         {
             2.0f / (R - L), 0.0f, 0.0f, 0.0f,
             0.0f, 2.0f / (T - B), 0.0f, 0.0f,
