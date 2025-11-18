@@ -47,8 +47,9 @@ public class HeaderService : IApplicationService
 
     /// <summary>
     /// Loads all headers from the currently loaded ROM.
-    /// Headers are expected to be in: data/a/0/5/0/{headerID}
-    /// Internal names are in: data/fielddata/maptable/mapname.bin
+    /// Following LiTRE structure:
+    /// - Headers are in: unpacked/dynamicHeaders/{headerID}
+    /// - Internal names are in: data/fielddata/maptable/mapname.bin
     /// </summary>
     public bool LoadHeadersFromRom()
     {
@@ -62,19 +63,23 @@ public class HeaderService : IApplicationService
             _headers.Clear();
             _internalNames.Clear();
 
-            string romPath = _romService.CurrentRom.RomPath;
+            var rom = _romService.CurrentRom;
 
             // Load internal names first
-            LoadInternalNames(romPath);
+            LoadInternalNames();
 
-            // Load headers from a/0/5/0 directory
-            string headersPath = Path.Combine(romPath, "data", "a", "0", "5", "0");
+            // Load headers from unpacked/dynamicHeaders/ directory (LiTRE structure)
+            if (!rom.GameDirectories.TryGetValue("dynamicHeaders", out string? headersPath))
+            {
+                return false;
+            }
+
             if (!Directory.Exists(headersPath))
             {
                 return false;
             }
 
-            // Get all header files (numbered 0, 1, 2, etc.)
+            // Get all header files (numbered 0, 1, 2, etc. or 0000, 0001, etc.)
             var headerFiles = Directory.GetFiles(headersPath)
                 .Where(f => int.TryParse(Path.GetFileName(f), out _))
                 .OrderBy(f => int.Parse(Path.GetFileName(f)))
@@ -113,12 +118,21 @@ public class HeaderService : IApplicationService
     /// <summary>
     /// Loads internal names from mapname.bin.
     /// Each name is 16 bytes.
+    /// Following LiTRE: data/fielddata/maptable/mapname.bin
     /// </summary>
-    private void LoadInternalNames(string romPath)
+    private void LoadInternalNames()
     {
+        if (_romService?.CurrentRom == null) return;
+
         try
         {
-            string mapnamePath = Path.Combine(romPath, "data", "fielddata", "maptable", "mapname.bin");
+            var rom = _romService.CurrentRom;
+            if (!rom.GameDirectories.TryGetValue("maptable", out string? maptablePath))
+            {
+                return;
+            }
+
+            string mapnamePath = Path.Combine(maptablePath, "mapname.bin");
             if (!File.Exists(mapnamePath))
             {
                 return;
@@ -158,7 +172,8 @@ public class HeaderService : IApplicationService
     }
 
     /// <summary>
-    /// Saves a header back to its file.
+    /// Saves a header back to its file in unpacked/dynamicHeaders/.
+    /// Following LiTRE structure.
     /// </summary>
     public bool SaveHeader(MapHeader header)
     {
@@ -169,8 +184,18 @@ public class HeaderService : IApplicationService
 
         try
         {
-            string romPath = _romService.CurrentRom.RomPath;
-            string headerPath = Path.Combine(romPath, "data", "a", "0", "5", "0", header.HeaderID.ToString());
+            var rom = _romService.CurrentRom;
+            if (!rom.GameDirectories.TryGetValue("dynamicHeaders", out string? headersPath))
+            {
+                return false;
+            }
+
+            // File name can be with or without leading zeros (0 or 0000)
+            // Try to find existing file first
+            string? existingFile = Directory.GetFiles(headersPath)
+                .FirstOrDefault(f => int.TryParse(Path.GetFileName(f), out int id) && id == header.HeaderID);
+
+            string headerPath = existingFile ?? Path.Combine(headersPath, header.HeaderID.ToString());
 
             return header.WriteToFile(headerPath);
         }

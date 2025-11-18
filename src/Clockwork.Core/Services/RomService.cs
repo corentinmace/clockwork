@@ -156,20 +156,32 @@ public class RomService : IApplicationService
 
     /// <summary>
     /// Initializes the game directory paths.
+    /// Based on LiTRE structure: files are loaded from unpacked/ folder.
     /// </summary>
     private void InitializeGameDirectories(string romPath)
     {
         if (_currentRom == null) return;
 
-        // These paths are based on the typical structure of an extracted DS ROM
-        // The "data" folder contains game files organized in subfolders
+        // LiTRE structure: unpacked/ contains extracted NARC files
         string dataPath = Path.Combine(romPath, "data");
+        string unpackedPath = Path.Combine(romPath, "unpacked");
 
         _currentRom.GameDirectories = new Dictionary<string, string>
         {
             ["root"] = romPath,
             ["data"] = dataPath,
-            // TODO: Add specific paths according to the game version
+            ["unpacked"] = unpackedPath,
+
+            // Unpacked directories (following LiTRE structure)
+            ["dynamicHeaders"] = Path.Combine(unpackedPath, "dynamicHeaders"),
+            ["scripts"] = Path.Combine(unpackedPath, "scripts"),
+            ["eventFiles"] = Path.Combine(unpackedPath, "eventFiles"),
+            ["matrices"] = Path.Combine(unpackedPath, "matrices"),
+            ["maps"] = Path.Combine(unpackedPath, "maps"),
+
+            // Data directories (not unpacked)
+            ["fielddata"] = Path.Combine(dataPath, "fielddata"),
+            ["maptable"] = Path.Combine(dataPath, "fielddata", "maptable"),
         };
     }
 
