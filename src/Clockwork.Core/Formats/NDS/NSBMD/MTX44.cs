@@ -4,7 +4,7 @@
 using System;
 using System.Diagnostics;
 
-namespace Clockwork.Core.Formats.NDS.NSBMD {
+namespace LibNDSFormats.NSBMD {
     /// <summary>
     /// 4x4 matrix class.
     /// </summary>

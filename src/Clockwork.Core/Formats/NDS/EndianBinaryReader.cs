@@ -1,4 +1,4 @@
-// CTools library - Library functions for CTools
+﻿// CTools library - Library functions for CTools
 // Copyright (C) 2010 Chadderz
 
 // This program is free software: you can redistribute it and/or modify

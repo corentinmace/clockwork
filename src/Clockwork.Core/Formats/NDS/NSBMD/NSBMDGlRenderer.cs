@@ -3,15 +3,17 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using OpenTK.Graphics.OpenGL;
 using System.IO;
+using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Media3D;
 using OpenTK.Mathematics;
-using Clockwork.Core.Formats.NDS.Utils;
-using static Clockwork.Core.Formats.NDS.NSBMD.GLLegacy;
-using static Clockwork.Core.Formats.NDS.Utils.Utils;
+using HelixToolkit.Wpf;
+using MKDS_Course_Editor.Export3DTools;
+using OpenTK.Graphics.OpenGL;
+using PixelFormat = OpenTK.Graphics.OpenGL.PixelFormat;
 
-namespace Clockwork.Core.Formats.NDS.NSBMD {
+namespace LibNDSFormats.NSBMD {
 	/// <summary>
 	/// OpenGL renderer for NSBMD models.
 	/// </summary>
@@ -20,7 +22,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		private bool writevertex = true;
 		public List<float[]> normals = new List<float[]>();
 		public List<float[]> vertex = new List<float[]>();
-		List<HelixToolkit.MeshBuilder> md = new List<HelixToolkit.MeshBuilder>();
+		List<MeshBuilder> md = new List<MeshBuilder>();
 		public static DependencyProperty matName = DependencyProperty.Register("MatName", typeof(string), typeof(DiffuseMaterial));
 		public static DependencyProperty polyName = DependencyProperty.Register("PolyName", typeof(string), typeof(DiffuseMaterial));
 		List<ImageBrush> matt = new List<ImageBrush>();
@@ -34,7 +36,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 
 		private static bool gOptWireFrame = false;
 		private static MTX44[] MatrixStack = new MTX44[31];
-		private const float SCALE_IV = 4096.0f;
+		private const float ScaleIV = 4096.0f;
 		private static int stackID;
 
 		private int[] Tx;
@@ -60,11 +62,26 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		private int matstart;
 		private static readonly String[] TEXTURE_FORMATS = new String[] { "", "A3I5", "4-Color", "16-Color", "256-Color", "4x4-Texel", "A5I3", "Direct Texture" };
 
-		#endregion Fields
+        #region OpenGL Constants
 
-		#region Constructors (1)
+        // Constants
+        private const int None = 0;
+		private const int Modulate = 8448;
+		private const int Decal = 8449;
+        private const int SphereMap = 9218;
+		private const int TextureMatrix = 2984;
+		private const int Nearest = 9728;
+		private const int Clamp = 10496;
+        private const int Repeat = 10497;
+        private const int MirroredRepeat = 33648;
 
-		public NSBMDGlRenderer() {
+        #endregion OpenGL Constants
+
+        #endregion Fields
+
+        #region Constructors (1)
+
+        public NSBMDGlRenderer() {
 			this.matstart = 0;
 			// Init matrix stack.
 			for (int i = 0; i < MatrixStack.Length; ++i)
@@ -130,10 +147,10 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 			return multMatrix(a, b);
 		}
 		int lastselectedanim = -2;
-		public void RenderModel(string file2, NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, NSBCA_File ca, bool anim, int selectedani, float X, float Y, float dist, float elev, float ang, NSBTP_File p, NSBMD nsb) {
+		public void RenderModel(string file2, MKDS_Course_Editor.NSBTA.NSBTA.NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, MKDS_Course_Editor.NSBCA.NSBCA.NSBCA_File ca, bool anim, int selectedani, float X, float Y, float dist, float elev, float ang, MKDS_Course_Editor.NSBTP.NSBTP.NSBTP_File p, NSBMD nsb) {
 			RenderModel(file2, ani, aniframeS, aniframeT, aniframeScaleS, aniframeScaleT, aniframeR, ca, anim, selectedani, X, Y, dist, elev, ang, true, p, nsb);
 		}
-		public void RenderModel(string file2, NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, NSBCA_File ca, bool anim, int selectedani, float X, float Y, float dist, float elev, float ang, bool licht, NSBTP_File p, NSBMD nsb) {
+		public void RenderModel(string file2, MKDS_Course_Editor.NSBTA.NSBTA.NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, MKDS_Course_Editor.NSBCA.NSBCA.NSBCA_File ca, bool anim, int selectedani, float X, float Y, float dist, float elev, float ang, bool licht, MKDS_Course_Editor.NSBTP.NSBTP.NSBTP_File p, NSBMD nsb) {
 			if (lastselectedanim != selectedani && selectedani != -1) {
 				Tx = new int[ca.JAC[selectedani].ObjInfo.Length];
 				Ty = new int[ca.JAC[selectedani].ObjInfo.Length];
@@ -159,14 +176,14 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// <summary>
 		/// Render model to OpenGL surface.
 		/// </summary>
-		public void RenderModel(string file2, NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, NSBCA_File ca, RenderMode r, bool anim, bool anim2, int selectedanim, float X, float Y, float dist, float elev, float ang, bool licht, NSBTP_File p, NSBMD nsb) {
+		public void RenderModel(string file2, MKDS_Course_Editor.NSBTA.NSBTA.NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, MKDS_Course_Editor.NSBCA.NSBCA.NSBCA_File ca, RenderMode r, bool anim, bool anim2, int selectedanim, float X, float Y, float dist, float elev, float ang, bool licht, MKDS_Course_Editor.NSBTP.NSBTP.NSBTP_File p, NSBMD nsb) {
 			file = file2;
-			bool light = GL.IsEnabled(GL_LIGHTING);
-			GL.Disable(GL_LIGHTING);
+			bool light = GL.IsEnabled(EnableCap.Lighting);
+			GL.Disable(EnableCap.Lighting);
 			GL.LineWidth(2.0F);
 
-			if (light) {
-				GL.Enable(GL_LIGHTING);
+			if (light == true) {
+				GL.Enable(EnableCap.Lighting);
 			}
 			GL.LineWidth(1.0F);
 
@@ -178,15 +195,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 
 
 				if (obj.RestoreID != -1) {
-                    LoadMatrixf(MatrixStack[obj.RestoreID].Floats);
+                    GL.LoadMatrix(MatrixStack[obj.RestoreID].Floats);
                 }
 
                 if (obj.StackID != -1) {
 					if (obj.Trans) {
-                        Translatef(m_trans[0], m_trans[1], m_trans[2]);
+                        GL.Translate(m_trans[0], m_trans[1], m_trans[2]);
                     }
 
-                    GetFloatv(GL_MODELVIEW_MATRIX, MatrixStack[obj.StackID].Floats);
+                    GL.GetFloat(GetPName.ModelviewMatrix, MatrixStack[obj.StackID].Floats);
 					stackID = obj.StackID; // save the last stackID
 				}
 			}
@@ -203,7 +220,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				if (gOptTexture && !gOptWireFrame && g_mat) {
 					int matid = poly.MatId;
 					if (matid == -1) {
-						GL.BindTexture(GL_TEXTURE_2D, 0);
+						GL.BindTexture(TextureTarget.Texture2D, 0);
 						if (writevertex) {
 							mattt.Add(new ImageBrush());
 						}
@@ -220,10 +237,10 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
                             continue;
                         }
 
-                        GL.BindTexture(GL_TEXTURE_2D, matid + 1 + matstart);
+                        GL.BindTexture(TextureTarget.Texture2D, matid + 1 + matstart);
 
 						// Convert pixel coords to normalised STs
-						MatrixMode(GL_TEXTURE);
+						GL.MatrixMode(MatrixMode.Texture);
 						GL.LoadIdentity();
 						
                         if (p.Header.file_size != 0 ) { 
@@ -287,9 +304,9 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 							if (ani.Header.file_size != 0 && new List<string>(ani.MAT.names).Contains(mat.MaterialName)) {
 								int index = new List<string>(ani.MAT.names).IndexOf(mat.MaterialName);
 
-								GL.Scaled((double)ani.SRTData[index].scaleS[aniframeScaleS[index]], (double)ani.SRTData[index].scaleT[aniframeScaleT[index]], 1);
-								GL.Rotated((double)ani.SRTData[index].rotate[aniframeR[index]], 1, 0, 0);
-								GL.Translated((double)ani.SRTData[index].translateS[aniframeS[index]], (double)ani.SRTData[index].translateT[aniframeT[index]], 0);
+								GL.Scale((double)ani.SRTData[index].scaleS[aniframeScaleS[index]], (double)ani.SRTData[index].scaleT[aniframeScaleT[index]], 1);
+								GL.Rotate((double)ani.SRTData[index].rotate[aniframeR[index]], 1, 0, 0);
+								GL.Translate((double)ani.SRTData[index].translateS[aniframeS[index]], (double)ani.SRTData[index].translateT[aniframeT[index]], 0);
 								if (anim2) {
 									if (aniframeS[index] == ani.SRTData[index].translateS.Length - 1) {
 										aniframeS[index] = 0;
@@ -322,143 +339,143 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 									}
 								}
 								if (!mat.isEnvironmentMap) {
-									Scalef(1.0f / mat.width, 1.0f / mat.height, 1.0f);
+									GL.Scale(1.0f / mat.width, 1.0f / mat.height, 1.0f);
 								}
 							} else {
 								if (!mat.isEnvironmentMap) {
 									if (mat.mtx is null) {
-										Scalef(mat.scaleS / mat.width, mat.scaleT / mat.height, 1.0f);
-										Rotatef(mat.rot, 0, 1, 0);
-										GL.Translatef(mat.transS, mat.transT, 0);
+										GL.Scale(mat.scaleS / mat.width, mat.scaleT / mat.height, 1.0f);
+										GL.Rotate(mat.rot, 0, 1, 0);
+										GL.Translate(mat.transS, mat.transT, 0);
 									} else {
-										Scalef(1.0f / mat.width, 1.0f / mat.height, 1.0f);
-										MultMatrixf(mat.mtx);
+										GL.Scale(1.0f / mat.width, 1.0f / mat.height, 1.0f);
+										GL.MultMatrix(mat.mtx);
 									}
 								}
 							}
 						} catch {
 
 						}
-						GL.Enable(GL_ALPHA_TEST);
-						GL.AlphaFunc(GL_GREATER, 0f);
-						Color4f(0xff, 0xff, 0xff, 0xff);
+						GL.Enable(EnableCap.AlphaTest);
+						GL.AlphaFunc(AlphaFunction.Greater, 0f);
+						GL.Color4(0xff, 0xff, 0xff, 0xff);
 
 						if (licht && (((mat.PolyAttrib >> 0) & 0x1) == 0 && ((mat.PolyAttrib >> 1) & 0x1) == 0 && ((mat.PolyAttrib >> 2) & 0x1) == 0 && ((mat.PolyAttrib >> 3) & 0x1) == 0) == false) {
-							//Lightfv(GL_LIGHT0, GL_POSITION, new float[] { 1, 1, 1, 0 });
-							Lightfv(GL_LIGHT0, GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
-							Lightfv(GL_LIGHT0, GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
-							Lightfv(GL_LIGHT0, GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
-							Lightfv(GL_LIGHT0, GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
-							//Lightfv(GL_LIGHT1, GL_POSITION, new float[] { 1, 1, 1, 0 });
-							Lightfv(GL_LIGHT1, GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
-							Lightfv(GL_LIGHT1, GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
-							Lightfv(GL_LIGHT1, GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
-							Lightfv(GL_LIGHT1, GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
-							//Lightfv(GL_LIGHT2, GL_POSITION, new float[] { 1.0f, 1.0f, 1.0f, 0 });
-							Lightfv(GL_LIGHT2, GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
-							Lightfv(GL_LIGHT2, GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
-							Lightfv(GL_LIGHT2, GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
-							Lightfv(GL_LIGHT2, GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
-							//Lightfv(GL_LIGHT3, GL_POSITION, new float[] { 1.0f, 1.0f, 1.0f, 0 });
-							Lightfv(GL_LIGHT3, GL_DIFFUSE, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
-							Lightfv(GL_LIGHT3, GL_AMBIENT, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
-							Lightfv(GL_LIGHT3, GL_SPECULAR, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
-							Lightfv(GL_LIGHT3, GL_EMISSION, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
+							//GL.Light(LightName.Light0, Gl.GL_POSITION, new float[] { 1, 1, 1, 0 });
+							GL.Light(LightName.Light0, LightParameter.Diffuse, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
+							GL.Light(LightName.Light0, LightParameter.Ambient, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
+							GL.Light(LightName.Light0, LightParameter.Specular, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
+							GL.Light(LightName.Light0, (LightParameter)5632, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
+							//GL.Light(LightName.Light1, Gl.GL_POSITION, new float[] { 1, 1, 1, 0 });
+							GL.Light(LightName.Light1, LightParameter.Diffuse, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
+							GL.Light(LightName.Light1, LightParameter.Ambient, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
+							GL.Light(LightName.Light1, LightParameter.Specular, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
+							GL.Light(LightName.Light1, (LightParameter)5632, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
+							//GL.Light(LightName.Light2, Gl.GL_POSITION, new float[] { 1.0f, 1.0f, 1.0f, 0 });
+							GL.Light(LightName.Light2, LightParameter.Diffuse, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
+							GL.Light(LightName.Light2, LightParameter.Ambient, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
+							GL.Light(LightName.Light2, LightParameter.Specular, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
+							GL.Light(LightName.Light2, (LightParameter)5632, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
+							//GL.Light(LightName.Light3, Gl.GL_POSITION, new float[] { 1.0f, 1.0f, 1.0f, 0 });
+							GL.Light(LightName.Light3, LightParameter.Diffuse, new float[] { (float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f });
+							GL.Light(LightName.Light3, LightParameter.Ambient, new float[] { (float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f });
+							GL.Light(LightName.Light3, LightParameter.Specular, new float[] { (float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f });
+							GL.Light(LightName.Light3, (LightParameter)5632, new float[] { (float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f });
 
-							GL.Enable(GL_LIGHTING);
+							GL.Enable(EnableCap.Lighting);
 							if (((mat.PolyAttrib >> 0) & 0x1) == 1) {
-								GL.Enable(GL_LIGHT0);
+								GL.Enable(EnableCap.Light0);
 							} else {
-								GL.Disable(GL_LIGHT0);
+								GL.Disable(EnableCap.Light0);
 							}
 
 							if (((mat.PolyAttrib >> 1) & 0x1) == 1) {
-								GL.Enable(GL_LIGHT1);
+								GL.Enable(EnableCap.Light1);
 							} else {
-								GL.Disable(GL_LIGHT1);
+								GL.Disable(EnableCap.Light1);
 							}
 							if (((mat.PolyAttrib >> 2) & 0x1) == 1) {
-								GL.Enable(GL_LIGHT2);
+								GL.Enable(EnableCap.Light2);
 							} else {
-								GL.Disable(GL_LIGHT2);
+								GL.Disable(EnableCap.Light2);
 							}
 
 							if (((mat.PolyAttrib >> 3) & 0x1) == 1) {
-								GL.Enable(GL_LIGHT3);
+								GL.Enable(EnableCap.Light3);
 							} else {
-								GL.Disable(GL_LIGHT3);
+								GL.Disable(EnableCap.Light3);
 							}
 
 							if (mat.diffuseColor) {
-								Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
+								GL.Color4((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
 							}
 
 						} else {
-							GL.Disable(GL_LIGHTING);
-							GL.Disable(GL_LIGHT0);
-							GL.Disable(GL_LIGHT1);
-							GL.Disable(GL_LIGHT2);
-							GL.Disable(GL_LIGHT3);
+							GL.Disable(EnableCap.Lighting);
+							GL.Disable(EnableCap.Light0);
+							GL.Disable(EnableCap.Light1);
+							GL.Disable(EnableCap.Light2);
+							GL.Disable(EnableCap.Light3);
 
 							if (mat.diffuseColor) {
-								Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
+								GL.Color4((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
 							}
 
 						}
-						GL.Enable(GL_BLEND);
+						GL.Enable(EnableCap.Blend);
 						if (mat.isEnvironmentMap) {
-							TexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-							TexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-							GL.Enable(GL_TEXTURE_GEN_S);
-							GL.Enable(GL_TEXTURE_GEN_T);
+							GL.TexGen(TextureCoordName.S, TextureGenParameter.TextureGenMode, SphereMap);
+							GL.TexGen(TextureCoordName.T, TextureGenParameter.TextureGenMode, SphereMap);
+							GL.Enable(EnableCap.TextureGenS);
+							GL.Enable(EnableCap.TextureGenT);
 
 						} else {
-							GL.Disable(GL_TEXTURE_GEN_S);
-							GL.Disable(GL_TEXTURE_GEN_T);
-							GL.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+							GL.Disable(EnableCap.TextureGenS);
+							GL.Disable(EnableCap.TextureGenT);
+							GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 						}
 
 						int mode = -1;
 						switch ((mat.PolyAttrib >> 4) & 0x3) {
 							case 0:
-								mode = GL_MODULATE;
+								mode = Modulate;
 								break;
 							case 1:
-								mode = GL_DECAL;
+								mode = Decal;
 								break;
 							case 2:
-								mode = GL_MODULATE;
+								mode = Modulate;
 								break;
 							case 3:
-								mode = GL_MODULATE;
+								mode = Modulate;
 								break;
 						}
-						TexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode);
-						int cullmode = -1;
+						GL.TexEnv(TextureEnvTarget.TextureEnv, TextureEnvParameter.TextureEnvMode, mode);
+						CullFaceMode cullmode = (CullFaceMode)(-1);
 
 						switch (mat.PolyAttrib >> 6 & 0x03) {
 							case 0x03:
-								cullmode = GL_NONE;
+								cullmode = None;
 								break;
 							case 0x02:
-								cullmode = GL_BACK;
+								cullmode = CullFaceMode.Back;
 								break;
 							case 0x01:
-								cullmode = GL_FRONT;
+								cullmode = CullFaceMode.Front;
 								break;
 							case 0x00:
-								cullmode = GL_FRONT_AND_BACK;
+								cullmode = CullFaceMode.FrontAndBack;
 								break;
 						}
 						GL.CullFace(cullmode);
 					}
 
 				} else {
-					GL.BindTexture(GL_TEXTURE_2D, 0);
+					GL.BindTexture(TextureTarget.Texture2D, 0);
 				}
 
 				if (!gOptColoring) {
-					Color3f(1, 1, 1);
+					GL.Color3(1, 1, 1);
 				}
 				stackID = poly.StackID; // the first matrix used by this polygon
 
@@ -499,29 +516,29 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				var m_trans = obj.TransVect;
 				float[] f = loadIdentity();
 				if (obj.RestoreID != -1) {
-					LoadMatrixf(MatrixStack[obj.RestoreID].Floats);
+					GL.LoadMatrix(MatrixStack[obj.RestoreID].Floats);
 				}
 				if (obj.StackID != -1) {
 
-					MultMatrixf(obj.materix);
+					GL.MultMatrix(obj.materix);
 					if (obj.isBillboard) {
 						if (!obj.isYBillboard) {
-							Rotatef(elev, 1, 0, 0);
+							GL.Rotate(elev, 1, 0, 0);
 						}
-						Rotatef(-ang, 0, 1, 0);
+						GL.Rotate(-ang, 0, 1, 0);
 					}
-					GetFloatv(GL_MODELVIEW_MATRIX, MatrixStack[obj.StackID].Floats);
+					GL.GetFloat(GetPName.ModelviewMatrix, MatrixStack[obj.StackID].Floats);
 					stackID = obj.StackID; // save the last stackID
 				} else {
 
 				}
 				if (obj.visible) {
-					//light = GL.IsEnabled(GL_LIGHTING);
-					//GL.Disable(GL_LIGHTING);
+					//light = GL.IsEnabled(EnableCap.Lighting);
+					//GL.Disable(EnableCap.Lighting);
 					//drawJoint(0.1f);
 					//if (light == 1)
 					//{
-					//    GL.Enable(GL_LIGHTING);
+					//    GL.Enable(EnableCap.Lighting);
 					//}
 				}
 
@@ -537,7 +554,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				if (gOptTexture && !gOptWireFrame && g_mat) {
 					int matid = poly.MatId;
 					if (matid == -1) {
-						GL.BindTexture(GL_TEXTURE_2D, 0);
+						GL.BindTexture(TextureTarget.Texture2D, 0);
 						if (writevertex) {
 							mattt.Add(new ImageBrush());
 						}
@@ -547,102 +564,102 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						}
 						var mat = Model.Materials[matid];
 
-						GL.BindTexture(GL_TEXTURE_2D, 0);
+						GL.BindTexture(TextureTarget.Texture2D, 0);
 
 						// Convert pixel coords to normalised STs
-						MatrixMode(GL_TEXTURE);
+						GL.MatrixMode(MatrixMode.Texture);
 						GL.LoadIdentity();
 
 						//scale
 						if (!mat.isEnvironmentMap) {
-							Scalef((float)mat.scaleS / ((float)mat.width), (float)mat.scaleT / ((float)mat.height), 1.0f);
+							GL.Scale((float)mat.scaleS / ((float)mat.width), (float)mat.scaleT / ((float)mat.height), 1.0f);
 						}
 						//end
-						//Color4f(1, 1, 0, 0);
-						GL.Enable(GL_ALPHA_TEST);
-						GL.AlphaFunc(GL_GREATER, 0f);
+						//GL.Color4(1, 1, 0, 0);
+						GL.Enable(EnableCap.AlphaTest);
+						GL.AlphaFunc(AlphaFunction.Greater, 0f);
 
 						if (((mat.PolyAttrib >> 0xf) & 0x1) == 1 && (((mat.PolyAttrib >> 0) & 0x1) == 0 && ((mat.PolyAttrib >> 1) & 0x1) == 0 && ((mat.PolyAttrib >> 2) & 0x1) == 0 && ((mat.PolyAttrib >> 2) & 0x1) == 0) == false) {
-							GL.Enable(GL_LIGHTING);
-							if (((mat.PolyAttrib >> 0) & 0x1) == 1){ GL.Enable(GL_LIGHT0); }
-							else GL.Disable(GL_LIGHT0);
-							if (((mat.PolyAttrib >> 1) & 0x1) == 1){ GL.Enable(GL_LIGHT1); }
-							else GL.Disable(GL_LIGHT1);
-							if (((mat.PolyAttrib >> 2) & 0x1) == 1){ GL.Enable(GL_LIGHT2); }
-							else GL.Disable(GL_LIGHT2);
-							if (((mat.PolyAttrib >> 3) & 0x1) == 1){ GL.Enable(GL_LIGHT3); }
-							else GL.Disable(GL_LIGHT3);
+							GL.Enable(EnableCap.Lighting);
+							if (((mat.PolyAttrib >> 0) & 0x1) == 1){ GL.Enable(EnableCap.Light0); }
+							else GL.Disable(EnableCap.Light0);
+							if (((mat.PolyAttrib >> 1) & 0x1) == 1){ GL.Enable(EnableCap.Light1); }
+							else GL.Disable(EnableCap.Light1);
+							if (((mat.PolyAttrib >> 2) & 0x1) == 1){ GL.Enable(EnableCap.Light2); }
+							else GL.Disable(EnableCap.Light2);
+							if (((mat.PolyAttrib >> 3) & 0x1) == 1){ GL.Enable(EnableCap.Light3); }
+							else GL.Disable(EnableCap.Light3);
 
-							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
-							Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
-							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT);
-							Color4f((float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f);
-							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_SPECULAR);
-							Color4f((float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f);
-							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_EMISSION);
-							Color4f((float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f);
+							GL.ColorMaterial(MaterialFace.FrontAndBack, ColorMaterialParameter.Diffuse);
+							GL.Color4((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
+							GL.ColorMaterial(MaterialFace.FrontAndBack, ColorMaterialParameter.Ambient);
+							GL.Color4((float)mat.AmbientColor.R / 255f, (float)mat.AmbientColor.G / 255f, (float)mat.AmbientColor.B / 255f, (float)mat.AmbientColor.A / 255f);
+							GL.ColorMaterial(MaterialFace.FrontAndBack, ColorMaterialParameter.Specular);
+							GL.Color4((float)mat.SpecularColor.R / 255f, (float)mat.SpecularColor.G / 255f, (float)mat.SpecularColor.B / 255f, (float)mat.SpecularColor.A / 255f);
+							GL.ColorMaterial(MaterialFace.FrontAndBack, ColorMaterialParameter.Emission);
+							GL.Color4((float)mat.EmissionColor.R / 255f, (float)mat.EmissionColor.G / 255f, (float)mat.EmissionColor.B / 255f, (float)mat.EmissionColor.A / 255f);
 
 
-							GL.Enable(GL_COLOR_MATERIAL);
+							GL.Enable(EnableCap.ColorMaterial);
 						} else {
-							GL.Disable(GL_LIGHTING);
-							GL.ColorMaterial(GL_FRONT_AND_BACK, GL_DIFFUSE);
-							Color4f((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
-							GL.Enable(GL_COLOR_MATERIAL);
+							GL.Disable(EnableCap.Lighting);
+							GL.ColorMaterial(MaterialFace.FrontAndBack, ColorMaterialParameter.Diffuse);
+							GL.Color4((float)mat.DiffuseColor.R / 255f, (float)mat.DiffuseColor.G / 255f, (float)mat.DiffuseColor.B / 255f, (float)mat.DiffuseColor.A / 255f);
+							GL.Enable(EnableCap.ColorMaterial);
 						}
-						GL.Enable(GL_BLEND);
+						GL.Enable(EnableCap.Blend);
 						if (mat.isEnvironmentMap) {
-							TexGeni(GL_S, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-							TexGeni(GL_T, GL_TEXTURE_GEN_MODE, GL_SPHERE_MAP);
-							GL.Enable(GL_TEXTURE_GEN_S);
-							GL.Enable(GL_TEXTURE_GEN_T);
-							//GL.BlendFunc(GL_ONE, GL_ONE);
+							GL.TexGen(TextureCoordName.S, TextureGenParameter.TextureGenMode, SphereMap);
+							GL.TexGen(TextureCoordName.T, TextureGenParameter.TextureGenMode, SphereMap);
+							GL.Enable(EnableCap.TextureGenS);
+							GL.Enable(EnableCap.TextureGenT);
+							//GL.BlendFunc(Gl.GL_ONE, Gl.GL_ONE);
 						} else {
-							GL.Disable(GL_TEXTURE_GEN_S);
-							GL.Disable(GL_TEXTURE_GEN_T);
-							GL.BlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+							GL.Disable(EnableCap.TextureGenS);
+							GL.Disable(EnableCap.TextureGenT);
+							GL.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
 						}
 
 						int mode = -1;
 						switch ((mat.PolyAttrib >> 4) & 0x3) {
 							case 0:
-								mode = GL_MODULATE;
+								mode = Modulate;
 								break;
 							case 1:
-								mode = GL_DECAL;
+								mode = Decal;
 								break;
 							case 2:
-								mode = GL_MODULATE;
+								mode = Modulate;
 								break;
 							case 3:
-								mode = GL_MODULATE;
+								mode = Modulate;
 								break;
 						}
-						TexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, mode);
-						int cullmode = -1;
-						//GL.Enable(GL_CULL_FACE);
+						GL.TexEnv(TextureEnvTarget.TextureEnv, TextureEnvParameter.TextureEnvMode, mode);
+						CullFaceMode cullmode = (CullFaceMode)(-1);
+						//GL.Enable(Gl.GL_CULL_FACE);
 						switch (mat.PolyAttrib >> 6 & 0x03) {
-							case 0x03: cullmode = GL_NONE; break;
-							case 0x02: cullmode = GL_BACK; break;
-							case 0x01: cullmode = GL_FRONT; break;
-							case 0x00: cullmode = GL_FRONT_AND_BACK; break;
+							case 0x03: cullmode = None; break;
+							case 0x02: cullmode = CullFaceMode.Back; break;
+							case 0x01: cullmode = CullFaceMode.Front; break;
+							case 0x00: cullmode = CullFaceMode.FrontAndBack; break;
 						}
 						GL.CullFace(cullmode);
 					}
 
 				} else {
-					GL.BindTexture(GL_TEXTURE_2D, 0);
+					GL.BindTexture(TextureTarget.Texture2D, 0);
 				}
 
 				if (!gOptColoring) {
-					//Color3f(1, 1, 1);
+					//GL.Color3(1, 1, 1);
 				}
 				stackID = poly.StackID; // the first matrix used by this polygon
 				Process3DCommand(poly.PolyData, Model.Materials[poly.MatId], poly.JointID, false);
 			}
 			writevertex = false;
 		}
-		public bool DoJointAnimation(NSBCA_File ca, int selectedanim, bool anim, int i) {
+		public bool DoJointAnimation(MKDS_Course_Editor.NSBCA.NSBCA.NSBCA_File ca, int selectedanim, bool anim, int i) {
 			try {
 				if (ca.Header.file_size != 0 && selectedanim != -1) {
 					float[] s = loadIdentity();
@@ -678,7 +695,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					{
 						//mt = scale(mt, ca.JAC[0].ObjInfo[i].scale[0][0][S2[i]], ca.JAC[0].ObjInfo[i].scale[0][1][S2[i]], ca.JAC[0].ObjInfo[i].scale[0][2][S2[i]]);
 						s = scale(s, ca.JAC[selectedanim].ObjInfo[i].scale[0][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[1][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[2][0][S2[i]]);
-						//Scalef(ca.JAC[selectedanim].ObjInfo[i].scale[0][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[1][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[2][0][S2[i]]);
+						//GL.Scale(ca.JAC[selectedanim].ObjInfo[i].scale[0][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[1][0][S2[i]], ca.JAC[selectedanim].ObjInfo[i].scale[2][0][S2[i]]);
 					}*/
 					try {
 						if (ca.JAC[selectedanim].ObjInfo[i].rotate.Count != 0) {
@@ -689,7 +706,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								a = Sign(a, 16);
 								b = Sign(b, 16);
 								//mt = multMatrix(mt, Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
-								//MultMatrixf(Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
+								//GL.MultMatrix(Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
 								r = NSBMD.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f));//multMatrix(r, Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
 							} else {
 								int x = Utils.Read2BytesAsInt16(ca.JAC[selectedanim].RotationData, (((int)ca.JAC[selectedanim].ObjInfo[i].rotate[0]) & 0x7fff) * 10 + 2);
@@ -702,13 +719,13 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								Matrix4 Y = Matrix4.CreateRotationY((float)y / 131072F);//((float)y * (float)Math.PI) / 32768F);
 								Matrix4 Z = Matrix4.CreateRotationZ((float)z / 131072F);//((float)z * (float)Math.PI) / 32768F);
 								Matrix4 full = Matrix4.Identity;
-								full = full * X;
-								full = full * Y;
-								full = full * Z;
+								full = Matrix4.Mult(full, X);
+								full = Matrix4.Mult(full, Y);
+								full = Matrix4.Mult(full, Z);
 							}
 						} else if (ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0].Count != 0) {
-							//MultMatrixf(Nsbmd.mtxPivot(new float[]{ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]],ca.JAC[0].ObjInfo[i].rotate_keyframes[0][R[i]]}, obj.Pivot, obj.Neg));
-							//Rotatef(ca.JAC[0].ObjInfo[i].rotate_keyframes[0][R[i]], 0,(ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]] == 1 ? 1 : 0),(ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]] == 0 ? 1 : 0));
+							//GL.MultMatrix(Nsbmd.mtxPivot(new float[]{ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]],ca.JAC[0].ObjInfo[i].rotate_keyframes[0][R[i]]}, obj.Pivot, obj.Neg));
+							//GL.Rotate(ca.JAC[0].ObjInfo[i].rotate_keyframes[0][R[i]], 0,(ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]] == 1 ? 1 : 0),(ca.JAC[0].ObjInfo[i].rotate_keyframes[1][R[i]] == 0 ? 1 : 0));
 							if (ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[1][R[i]] == 1) {
 								int pvneg = ca.JAC[selectedanim].JointData[(int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 6];//Utils.Read2BytesAsInt16(ca.JAC[selectedanim].JointData, (int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 6 + 0);
 								int a = Utils.Read2BytesAsInt16(ca.JAC[selectedanim].JointData, (int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 6 + 2);
@@ -716,7 +733,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								a = Sign(a, 16);
 								b = Sign(b, 16);
 								//mt = multMatrix(mt, Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
-								//MultMatrixf(Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
+								//GL.MultMatrix(Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
 								r = NSBMD.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f));//multMatrix(r, Nsbmd.mtxPivot(new float[] { (float)a / 4096f, (float)b / 4096f }, (pvneg >> 0 & 0x0f), (pvneg >> 4 & 0x0f)));
 							} else {
 								float param = ca.JAC[selectedanim].RotationData[(int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 10];
@@ -731,25 +748,25 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								Matrix4 Y = Matrix4.CreateRotationY((float)y / 131072F);//((float)y * (float)Math.PI) / 32768F);
 								Matrix4 Z = Matrix4.CreateRotationZ((float)z / 131072F);//((float)z * (float)Math.PI) / 32768F);
 								Matrix4 full = Matrix4.Identity;
-								full = full * X;
-								full = full * Y;
-								full = full * Z;
+								full = Matrix4.Mult(full, X);
+								full = Matrix4.Mult(full, Y);
+								full = Matrix4.Mult(full, Z);
 								/*int x = (param) & 0xFF;
 								if ((x & 0x200) != 0){ x |= -256; }
 								int y = (param >> 8) & 0xFF;
 								if ((y & 0x200) != 0){ y |= -256; }
 								int z = (param >> 16) & 0xFF;
 								if ((z & 0x200) != 0){ z |= -256; }*/
-								//Rotatef((float)x / 32768F * 180F, 1, 0, 0);
-								//Rotatef((float)y / 32768F * 180F, 0, 1, 0);
-								//Rotatef((float)z / 32768F * 180F, 0, 0, 1);
+								//GL.Rotate((float)x / 32768F * 180F, 1, 0, 0);
+								//GL.Rotate((float)y / 32768F * 180F, 0, 1, 0);
+								//GL.Rotate((float)z / 32768F * 180F, 0, 0, 1);
 								//param /= 4096f;
 								//float un = 2048f;//(float)Utils.Read4BytesAsInt32(ca.JAC[selectedanim].RotationData, (int)ca.JAC[selectedanim].ObjInfo[i].rotate_keyframes[0][R[i]] * 10 + 6) / 4096f;
-								//Rotatef(x / un, 1, 0, 0);//((float)x * (float)Math.PI) / 180f, 1, 0, 0);
-								//Rotatef(y / un, 0, 1, 0);//((float)y * (float)Math.PI) / 180f, 0, 1, 0);
-								//Rotatef(z / un, 0, 0, 1);//((float)z * (float)Math.PI) / 180f, 0, 0, 1);
+								//GL.Rotate(x / un, 1, 0, 0);//((float)x * (float)Math.PI) / 180f, 1, 0, 0);
+								//GL.Rotate(y / un, 0, 1, 0);//((float)y * (float)Math.PI) / 180f, 0, 1, 0);
+								//GL.Rotate(z / un, 0, 0, 1);//((float)z * (float)Math.PI) / 180f, 0, 0, 1);
 								//mt = rotate(mt, x, y, z);
-								//MultMatrixf(full.ToFloat());
+								//GL.MultMatrix(full.ToFloat());
 							}
 						} else {
 							//r = multMatrix(r,  Model.Objects[i].rotate_mtx);
@@ -785,11 +802,11 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					//if(ca.JAC[selectedanim].ObjInfo[i].translate[0].Count != 0)
 					//{
 					//mt = translate(mt, ca.JAC[0].ObjInfo[i].translate[0][T2[i]], ca.JAC[0].ObjInfo[i].translate_keyframes[1][T2[i]], ca.JAC[0].ObjInfo[i].translate_keyframes[2][T2[i]]);
-					//GL.Translatef(ca.JAC[selectedanim].ObjInfo[i].translate[0][T2[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[1][T2[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[2][T2[i]] / Model.modelScale);
+					//GL.Translate(ca.JAC[selectedanim].ObjInfo[i].translate[0][T2[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[1][T2[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[2][T2[i]] / Model.modelScale);
 					//    t = translate(t,ca.JAC[selectedanim].ObjInfo[i].translate[0][T2[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[1][T2[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[2][T2[i]] / Model.modelScale);
 					//}
 					float[] m = loadIdentity();
-					//GetFloatv(GL_MODELVIEW_MATRIX, m);
+					//GL.GetFloat(GetPName.ModelviewMatrix, m);
 					m = multMatrix(m, t);
 					//m = translate(m, Model.Objects[i].X, Model.Objects[i].Y, Model.Objects[i].Z);
 					//if (Model.Objects[i].IsRotated)
@@ -807,30 +824,30 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					//} 
 					m = multMatrix(m, s);
 					//m = scale(m, Model.Objects[i].scale[0], Model.Objects[i].scale[1], Model.Objects[i].scale[2]);
-					MultMatrixf(m);
+					GL.MultMatrix(m);
 					//s = loadIdentity();
 					//r = loadIdentity();
 					//t = loadIdentity();
-					//MultMatrixf(mt);
+					//GL.MultMatrix(mt);
 					//mt = loadIdentity();
 					//if(ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][0].Count != 0)
 					// {
 					//mt = scale(mt, ca.JAC[0].ObjInfo[i].scale_keyframes[0][0][S[i]], ca.JAC[0].ObjInfo[i].scale_keyframes[0][1][S[i]], ca.JAC[0].ObjInfo[i].scale_keyframes[0][2][S[i]]);
-					//Scalef((ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][1][S[i]]));
+					//GL.Scale((ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][1][S[i]]));
 					//s = scale(s, (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[0][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[1][1][S[i]]), (ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][0][S[i]] - ca.JAC[selectedanim].ObjInfo[i].scale_keyframes[2][1][S[i]]));
 					//}
 
 					//if(ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[0].Count != 0)
 					//{
 					//mt = translate(mt, ca.JAC[0].ObjInfo[i].translate_keyframes[0][T[i]], ca.JAC[0].ObjInfo[i].translate_keyframes[1][T[i]], ca.JAC[0].ObjInfo[i].translate_keyframes[2][T[i]]);
-					//GL.Translatef(ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[0][T[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[1][T[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[2][T[i]] / Model.modelScale);
+					//GL.Translate(ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[0][T[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[1][T[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[2][T[i]] / Model.modelScale);
 					//   t = translate(t, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[0][T[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[1][T[i]] / Model.modelScale, ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[2][T[i]] / Model.modelScale);
 					//}
 					// m = loadIdentity();
 					//m = multMatrix(m, t);
 					//m = multMatrix(m, r);
 					//m = multMatrix(m, s);
-					//MultMatrixf(m);
+					//GL.MultMatrix(m);
 					if (anim) {
 						if (Tx[i] == ca.JAC[selectedanim].ObjInfo[i].translate_keyframes[0].Count - 1) {
 							Tx[i] = 0;
@@ -953,7 +970,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 			//    alpha = 0.2F;
 			//if(drawMode == 0 && !checkStack)
 			//    alpha = 0.0F;
-			Color4f(color[0], color[1], color[2], alpha);
+			GL.Color4(color[0], color[1], color[2], alpha);
 		}
 
 		private float[] baseColor = {
@@ -1140,7 +1157,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// </summary>
 		/// <param name="mod">NSBMD Model</param>
 		private void MakeTexture(NSBMDModel mod) {
-			MatrixMode(GL_TEXTURE_MATRIX);
+			GL.MatrixMode((MatrixMode)TextureMatrix);
 			GL.LoadIdentity();
 
 
@@ -1237,7 +1254,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								//image[j].G = (byte)(((p >> 5) & 0x1f) << 3);
 								//image[j].B = (byte)(((p >> 10) & 0x1f) << 3);
 								//image[j].A = (byte)(((p & 0x8000) != 0) ? 0xff : 0);
-								image[j] = RGBA.fromColor(Utils.BGR555ToColor(mat.texdata[j * 2], mat.texdata[j * 2 + 1]));
+								image[j] = RGBA.fromColor(Tinke.Convertir.BGR555ToColor(mat.texdata[j * 2], mat.texdata[j * 2 + 1]));
 								ushort p = (ushort)(mat.texdata[j * 2] + (mat.texdata[j * 2 + 1] << 8));
 								image[j].A = (byte)(((p & 0x8000) != 0) ? 0xff : 0);
 							}
@@ -1275,7 +1292,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						}
 						bitmap = bitmap2;
 					} else if (mat.flipS == 1) {
-						//br.TileMode = int /*TileMode*/.FlipX;
+						//br.TileMode = System.Windows.Media.TileMode.FlipX;
 						System.Drawing.Bitmap bitmap2 = new System.Drawing.Bitmap(mat.width * 2, mat.height);
 						using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(bitmap2)) {
 							g.DrawImage(bitmap, 0, 0);
@@ -1285,7 +1302,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						}
 						bitmap = bitmap2;
 					} else if (mat.flipT == 1) {
-						//br.TileMode = int /*TileMode*/.FlipY;
+						//br.TileMode = System.Windows.Media.TileMode.FlipY;
 						System.Drawing.Bitmap bitmap2 = new System.Drawing.Bitmap(mat.width, mat.height * 2);
 						using (System.Drawing.Graphics g = System.Drawing.Graphics.FromImage(bitmap2)) {
 							g.DrawImage(bitmap, 0, 0);
@@ -1295,9 +1312,9 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						}
 						bitmap = bitmap2;
 					} else if (mat.repeatS == 1 || mat.repeatT == 1) {
-						//br.TileMode = int /*TileMode*/.Tile;
+						//br.TileMode = System.Windows.Media.TileMode.Tile;
 					} else {
-						//br.TileMode = int /*TileMode*/.None;
+						//br.TileMode = System.Windows.Media.TileMode.None;
 					}
 					ImageBrush br = new ImageBrush(CreateBitmapSourceFromBitmap(bitmap));
 					br.Viewbox = new Rect(0, 0, br.ImageSource.Width, br.ImageSource.Height);
@@ -1310,26 +1327,26 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					br.Opacity = (double)(((mat.Alpha + 1) * 8) - 1) / 1.0d;
 					matt.Add(br);
 					//ttt
-					GL.BindTexture(GL_TEXTURE_2D, i + 1 + matstart);
-					GL.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mat.width, mat.height, 0, GL_RGBA,
-									GL_UNSIGNED_BYTE,
+					GL.BindTexture(TextureTarget.Texture2D, i + 1 + matstart);
+					GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, mat.width, mat.height, 0, PixelFormat.Rgba,
+									PixelType.UnsignedByte,
 									imageBytes);
-					TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-					TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+					GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, Nearest);
+					GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, Nearest);
 
 					if (mat.flipS == 1 && mat.repeatS == 1) {
-						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+						GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, MirroredRepeat);
 					} else if (mat.repeatS == 1) {
-						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+						GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, Repeat);
 					} else {
-						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+						GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, Clamp);
 					}
 					if (mat.flipT == 1 && mat.repeatT == 1) {
-						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+						GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, MirroredRepeat);
 					} else if (mat.repeatT == 1) {
-						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+						GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, Repeat);
 					} else {
-						TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+						GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, Clamp);
 					}
 				} catch {
 					matt.Add(new ImageBrush());
@@ -1463,26 +1480,26 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				var imageBytes = imageBytesList.ToArray();
 
 				//ttt
-				GL.BindTexture(GL_TEXTURE_2D, i + 1 + matstart);
-				GL.TexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, mat.width, mat.height, 0, GL_RGBA,
-								GL_UNSIGNED_BYTE,
+				GL.BindTexture(TextureTarget.Texture2D, i + 1 + matstart);
+				GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, mat.width, mat.height, 0, PixelFormat.Rgba,
+								PixelType.UnsignedByte,
 								imageBytes);
-				TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-				TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+				GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, Nearest);
+				GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, Nearest);
 
 				if (mat.flipS == 1 && mat.repeatS == 1) {
-					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_MIRRORED_REPEAT);
+					GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, MirroredRepeat);
 				} else if (mat.repeatS == 1) {
-					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+					GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, Repeat);
 				} else {
-					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+					GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, Clamp);
 				}
 				if (mat.flipT == 1 && mat.repeatT == 1) {
-					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_MIRRORED_REPEAT);
+					GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, MirroredRepeat);
 				} else if (mat.repeatT == 1) {
-					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+					GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, Repeat);
 				} else {
-					TexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+					GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, Clamp);
 				}
 			} catch {
 				//matt.Add(new System.Windows.Media.ImageBrush());
@@ -1523,7 +1540,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// </summary>
 		/// <param name="polydata">Data of specific polygon.</param>
 		private void Process3DCommand(byte[] polydata, NSBMDMaterial m, int jointID, bool color) {
-			MatrixMode(GL_MODELVIEW);
+			GL.MatrixMode(MatrixMode.Modelview);
 			GL.LoadIdentity();
 			MaterialHelper.CreateMaterial(new ImageBrush());
 
@@ -1538,6 +1555,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 			int commandlimit = polydata.Length;
 			int[] command = new int[4];
 			int cur_vertex, mode, i;
+			BeginMode beginMode;
 			float[] vtx_state = { 0.0f, 0.0f, 0.0f };
 			float[] vtx_trans = { 0.0f, 0.0f, 0.0f };
 			cur_vertex = gCurrentVertex; // for vertex_mode
@@ -1569,15 +1587,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								commandptr += 4;
 								switch (param) {
 									case 0:
-										// GL.MatrixMode(GL_PROJECTION_MATRIX);
+										// GL.MatrixMode(Gl.GL_PROJECTION_MATRIX);
 										break;
 									case 1:
-										// GL.MatrixMode(GL_MODELVIEW_MATRIX);
+										// GL.MatrixMode(GetPName.ModelviewMatrix);
 										break;
 									case 2:
 										break;
 									case 3:
-										// GL.MatrixMode(GL_TEXTURE_MATRIX);
+										// GL.MatrixMode(MatrixMode.Texture_MATRIX);
 										break;
 								}
 								break;
@@ -1664,12 +1682,12 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								commandptr += 4;
 								z = Utils.Read4BytesAsInt32(polydata, commandptr);
 								commandptr += 4;
-								//CurrentMatrix[0] = (float)sign(x, 32) / SCALE_IV;
-								//CurrentMatrix[5] = (float)sign(y, 32) / SCALE_IV;
-								//CurrentMatrix[10] = (float)sign(z, 32) / SCALE_IV;
+								//CurrentMatrix[0] = (float)sign(x, 32) / ScaleIV;
+								//CurrentMatrix[5] = (float)sign(y, 32) / ScaleIV;
+								//CurrentMatrix[10] = (float)sign(z, 32) / ScaleIV;
 								//CurrentMatrix.SetValues(scale(CurrentMatrix.Floats, x, y, z));
-								CurrentMatrix.Scale((float)x / SCALE_IV / Model.modelScale, (float)y / SCALE_IV / Model.modelScale, (float)z / SCALE_IV / Model.modelScale);
-								//CurrentMatrix.Scale((float)sign(x, 32) / SCALE_IV, (float)sign(y, 32) / SCALE_IV, (float)sign(z, 32) / SCALE_IV);
+								CurrentMatrix.Scale((float)x / ScaleIV / Model.modelScale, (float)y / ScaleIV / Model.modelScale, (float)z / ScaleIV / Model.modelScale);
+								//CurrentMatrix.Scale((float)sign(x, 32) / ScaleIV, (float)sign(y, 32) / ScaleIV, (float)sign(z, 32) / ScaleIV);
 								break;
 							}
 						case 0x1c:
@@ -1685,7 +1703,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								commandptr += 4;
 								z = Utils.Read4BytesAsInt32(polydata, commandptr);
 								commandptr += 4;
-								CurrentMatrix.translate((float)Sign(x, 32) / SCALE_IV / Model.modelScale, (float)Sign(y, 32) / SCALE_IV / Model.modelScale, (float)Sign(z, 32) / SCALE_IV / Model.modelScale);
+								CurrentMatrix.translate((float)Sign(x, 32) / ScaleIV / Model.modelScale, (float)Sign(y, 32) / ScaleIV / Model.modelScale, (float)Sign(z, 32) / ScaleIV / Model.modelScale);
 								break;
 							}
 						case 0x20: // Directly Set Vertex Color (W)
@@ -1700,7 +1718,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 									g = (rgb >> 5) & 0x1F;
 									b = (rgb >> 10) & 0x1F;
 									if (color) {
-										Color4f(((float)r) / 31.0f, ((float)g) / 31.0f, ((float)b) / 31.0f, m.Alpha / 31.0f);
+										GL.Color4(((float)r) / 31.0f, ((float)g) / 31.0f, ((float)b) / 31.0f, m.Alpha / 31.0f);
 									}
 								}
 							}
@@ -1727,11 +1745,11 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								if ((y & 0x200) != 0){ y |= -1024; }
 								z = (xyz >> 20) & 0x3FF;
 								if ((z & 0x200) != 0){ z |= -1024; }
-								Normal3f(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f);
+								GL.Normal3(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f);
 								if (writevertex) {
 									//normals.Add(new float[] { ((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f });
-									//mod.Normals.Add(new Vector3D(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f))
-									nor.Add(new Vector3D(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f));
+									//mod.Normals.Add(new System.Windows.Media.Media3D.Vector3D(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f))
+									nor.Add(new System.Windows.Media.Media3D.Vector3D(((float)x) / 512.0f, ((float)y) / 512.0f, ((float)z) / 512.0f));
 								}
 								break;
 							}
@@ -1753,7 +1771,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								if ((s & 0x8000) != 0){ s |= unchecked((int)0xFFFF0000); }//-65536;
 								t = (st >> 16) & 0xffff;
 								if ((t & 0x8000) != 0){ t |= unchecked((int)0xFFFF0000); }//-65536;
-								TexCoord2f(((float)s) / 16.0f, ((float)t) / 16.0f);
+								GL.TexCoord2(((float)s) / 16.0f, ((float)t) / 16.0f);
 
 								if (writevertex) {
 									//mod.TextureCoordinates.Add(new System.Windows.Point((float)s/1024f,(float)t/1024f));
@@ -1785,16 +1803,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								z = Sign(parameter & 0xFFFF, 16);
 								// if ((z & 0x8000) != 0){ z |= unchecked((int)0xFFFF0000); }//-65536;
 
-								vtx_state[0] = ((float)x) / SCALE_IV;
-								vtx_state[1] = ((float)y) / SCALE_IV;
-								vtx_state[2] = ((float)z) / SCALE_IV;
+								vtx_state[0] = ((float)x) / ScaleIV;
+								vtx_state[1] = ((float)y) / ScaleIV;
+								vtx_state[2] = ((float)z) / ScaleIV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									Vertex3fv(vtx_trans);
+									GL.Vertex3(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
-										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
-										poi.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -1803,15 +1821,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								} else {
-									Vertex3fv(vtx_state);
+									GL.Vertex3(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
-										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
-										poi.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -1820,7 +1838,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								}
@@ -1855,11 +1873,11 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								vtx_state[2] = (float)z / 64.0f;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									Vertex3fv(vtx_trans);
+									GL.Vertex3(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
-										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
-										poi.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -1868,15 +1886,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								} else {
-									Vertex3fv(vtx_state);
+									GL.Vertex3(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
-										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
-										poi.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -1885,7 +1903,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								}
@@ -1911,15 +1929,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								y = Sign((xy >> 16) & 0xFFFF, 16);
 								//if ((y & 0x8000) != 0){ y |= unchecked((int)0xFFFF0000); }//-65536;
 
-								vtx_state[0] = ((float)x) / SCALE_IV;
-								vtx_state[1] = ((float)y) / SCALE_IV;
+								vtx_state[0] = ((float)x) / ScaleIV;
+								vtx_state[1] = ((float)y) / ScaleIV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									Vertex3fv(vtx_trans);
+									GL.Vertex3(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
-										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
-										poi.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -1928,15 +1946,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								} else {
-									Vertex3fv(vtx_state);
+									GL.Vertex3(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
-										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
-										poi.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -1945,7 +1963,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								}
@@ -1971,15 +1989,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								z = Sign((xz >> 16) & 0xFFFF, 16);
 								// if ((z & 0x8000) != 0){ z |= unchecked((int)0xFFFF0000); }//-65536;
 
-								vtx_state[0] = ((float)x) / SCALE_IV;
-								vtx_state[2] = ((float)z) / SCALE_IV;
+								vtx_state[0] = ((float)x) / ScaleIV;
+								vtx_state[2] = ((float)z) / ScaleIV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									Vertex3fv(vtx_trans);
+									GL.Vertex3(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
-										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
-										poi.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -1988,15 +2006,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								} else {
-									Vertex3fv(vtx_state);
+									GL.Vertex3(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
-										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
-										poi.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -2005,7 +2023,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								}
@@ -2030,15 +2048,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								z = Sign((yz >> 16) & 0xFFFF, 16);
 								//if ((z & 0x8000) != 0){ z |= unchecked((int)0xFFFF0000); }//-65536;
 
-								vtx_state[1] = ((float)y) / SCALE_IV;
-								vtx_state[2] = ((float)z) / SCALE_IV;
+								vtx_state[1] = ((float)y) / ScaleIV;
+								vtx_state[2] = ((float)z) / ScaleIV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									Vertex3fv(vtx_trans);
+									GL.Vertex3(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
-										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
-										poi.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -2047,15 +2065,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								} else {
-									Vertex3fv(vtx_state);
+									GL.Vertex3(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
-										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
-										poi.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -2064,7 +2082,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								}
@@ -2094,16 +2112,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								//if ((z & 0x200) != 0){ z |= unchecked((int)0xFFFFFC00); }
 
 
-								vtx_state[0] += ((float)x) / SCALE_IV;
-								vtx_state[1] += ((float)y) / SCALE_IV;
-								vtx_state[2] += ((float)z) / SCALE_IV;
+								vtx_state[0] += ((float)x) / ScaleIV;
+								vtx_state[1] += ((float)y) / ScaleIV;
+								vtx_state[2] += ((float)z) / ScaleIV;
 								if (stackID != -1) {
 									vtx_trans = CurrentMatrix.MultVector(vtx_state);
-									Vertex3fv(vtx_trans);
+									GL.Vertex3(vtx_trans);
 									if (writevertex) {
 										//vertex.Add(vtx_trans);
-										//mod.Positions.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
-										poi.Add(new Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_trans[0], vtx_trans[1], vtx_trans[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -2112,15 +2130,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								} else {
-									Vertex3fv(vtx_state);
+									GL.Vertex3(vtx_state);
 									if (writevertex) {
 										//vertex.Add(vtx_state);
-										//mod.Positions.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
-										poi.Add(new Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										//mod.Positions.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
+										poi.Add(new System.Windows.Media.Media3D.Point3D(vtx_state[0], vtx_state[1], vtx_state[2]));
 										if (poi.Count > tex.Count && tex.Count != 0) {
 											tex.Add(tex[tex.Count - 1]);//new System.Windows.Point(double.NegativeInfinity, double.PositiveInfinity));
 										} else if (tex.Count == 0) {
@@ -2129,7 +2147,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 										if (poi.Count > nor.Count && nor.Count != 0) {
 											nor.Add(nor[nor.Count - 1]);
 										} else if (nor.Count == 0) {
-											nor.Add(new Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
+											nor.Add(new System.Windows.Media.Media3D.Vector3D(double.NegativeInfinity, double.PositiveInfinity, 0));
 										}
 									}
 								}
@@ -2146,16 +2164,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								switch (polygonMode)
 								{
 									case 0:
-										mode = GL_MODULATE;
+										mode = Modulate;
 										break;
 									case 1:
-										mode = GL_DECAL;
+										mode = Decal;
 										break;
 									case 2:
-										mode = GL_SHADOW_AMBIENT_SGIX;
+										mode = Gl.GL_SHADOW_AMBIENT_SGIX;
 										break;
 									case 3:
-										mode = GL_QUAD_STRIP;
+										mode = BeginMode.QuadStrip;
 										break;
 									default:
 										//return ;// FALSE;
@@ -2185,27 +2203,27 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 								typ = mode;
 								switch (mode) {
 									case 0:
-										mode = GL_TRIANGLES;
+										beginMode = BeginMode.Triangles;
 										break;
 									case 1:
-										mode = GL_QUADS;
+                                        beginMode = BeginMode.Quads;
 										break;
 									case 2:
-										mode = GL_TRIANGLE_STRIP;
+                                        beginMode = BeginMode.TriangleStrip;
 										break;
 									case 3:
-										mode = GL_QUAD_STRIP;
+                                        beginMode = BeginMode.QuadStrip;
 										break;
 									default:
 										//return ;// FALSE;
 										throw new Exception();
 								}
 
-								Begin(mode);
+								GL.Begin(beginMode);
 								break;
 							}
 						case 0x41:
-							End();
+							GL.End();
 
 							if (writevertex) {
 								switch (typ) {
@@ -2349,8 +2367,9 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				list.Add(Process3DCommandRipper(polygon.PolyData, Model.Materials[polygon.MatId], polygon.JointID, true));
 				num3++;
 			}
-			File.Create(file).Close();
-			ObjExporter exporter = new ObjExporter(file, "Created with Alloy Universal Repo Editor " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString());
+			Stream fileStream = File.Create(file);
+			ObjExporter exporter = new ObjExporter();
+			exporter.Comment = "Created with Alloy Universal Repo Editor " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
 			int index = 0;
 			foreach (Group group in list) {
 				ImageBrush brush = new ImageBrush();
@@ -2374,7 +2393,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 				material2.AmbientColor = Color.FromArgb(this.Model.Materials[this.Model.Polygons[index].MatId].AmbientColor.A, this.Model.Materials[this.Model.Polygons[index].MatId].AmbientColor.R, this.Model.Materials[this.Model.Polygons[index].MatId].AmbientColor.G, this.Model.Materials[this.Model.Polygons[index].MatId].AmbientColor.B);
 				material2.Color = Color.FromArgb(0xff, this.Model.Materials[this.Model.Polygons[index].MatId].DiffuseColor.R, this.Model.Materials[this.Model.Polygons[index].MatId].DiffuseColor.G, this.Model.Materials[this.Model.Polygons[index].MatId].DiffuseColor.B);
 				builder = new MeshBuilder();
-				foreach (Polygon polygon2 in group) {
+				foreach (MKDS_Course_Editor.Export3DTools.Polygon polygon2 in group) {
 					IList<Point3D> list3;
 					IList<Vector3D> list4;
 					IList<System.Windows.Point> list5;
@@ -2477,11 +2496,11 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 					builder.AddTriangleStrip(list3, list4, list5);
 				}
 				modeld = new GeometryModel3D(builder.ToMesh(false), material2);
-				exporter.Export(modeld);
+				exporter.Export(modeld, fileStream);
 				index++;
 			}
 
-			exporter.Close();
+			fileStream.Close();
 			this.writevertex = false;
 		}
 		private Group Process3DCommandRipper(byte[] polydata, NSBMDMaterial m, int jointID, bool color) {
@@ -2984,16 +3003,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						num6 = 8;
 						continue;
 					Label_0ED1:
-						group.Add(new Polygon(PolygonType.Triangle, list2.Cast<object>().ToArray(), list3.Cast<object>().ToArray(), list.Cast<object>().ToArray()));
+						group.Add(new MKDS_Course_Editor.Export3DTools.Polygon(PolygonType.Triangle, list2.ToArray(), list3.ToArray(), list.ToArray()));
 						goto Label_0F67;
 					Label_0EF6:
-						group.Add(new Polygon(PolygonType.Quad, list2.Cast<object>().ToArray(), list3.Cast<object>().ToArray(), list.Cast<object>().ToArray()));
+						group.Add(new MKDS_Course_Editor.Export3DTools.Polygon(PolygonType.Quad, list2.ToArray(), list3.ToArray(), list.ToArray()));
 						goto Label_0F67;
 					Label_0F1B:
-						group.Add(new Polygon(PolygonType.TriangleStrip, list2.Cast<object>().ToArray(), list3.Cast<object>().ToArray(), list.Cast<object>().ToArray()));
+						group.Add(new MKDS_Course_Editor.Export3DTools.Polygon(PolygonType.TriangleStrip, list2.ToArray(), list3.ToArray(), list.ToArray()));
 						goto Label_0F67;
 					Label_0F40:
-						group.Add(new Polygon(PolygonType.QuadStrip, list2.Cast<object>().ToArray(), list3.Cast<object>().ToArray(), list.Cast<object>().ToArray()));
+						group.Add(new MKDS_Course_Editor.Export3DTools.Polygon(PolygonType.QuadStrip, list2.ToArray(), list3.ToArray(), list.ToArray()));
 					Label_0F67:
 						list2.Clear();
 						list.Clear();

@@ -1,22 +1,23 @@
-// Object definition for NSBMD models.
+// Object definiton for NSBMD models.
 // Code adapted from kiwi.ds' NSBMD Model Viewer.
 
 using System;
 using System.Collections.Generic;
 
-namespace Clockwork.Core.Formats.NDS.NSBMD
+namespace LibNDSFormats.NSBMD
 {
-    /// <summary>
-    /// Type for NSBMD objects.
-    /// </summary>
+	/// <summary>
+	/// Type for NSBMD objects.
+	/// </summary>
     public class NSBMDObject
     {
+        #region Fields (7) 
+
         private readonly float[] _transVect = new float[3];
         private float _x;
         private float _y;
         private float _z;
         private const float FACTOR1 = 1f;
-
         // StackID used by this object
         public int RestoreID = -1;
         // rotation
@@ -26,13 +27,17 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
 
         public List<int> childs = new List<int>();
 
-        public float[] rotate_mtx = Matrix4x4Util.LoadIdentity();
+        public float[] rotate_mtx = NSBMDGlRenderer.loadIdentity();
         public float[] scale = new float[3];
 
-        public float[] materix = Matrix4x4Util.LoadIdentity();
+        public float[] materix = NSBMDGlRenderer.loadIdentity();
 
         public bool isBillboard = false;
         public bool isYBillboard = false;
+
+        #endregion Fields 
+
+        #region Properties (12) 
 
         public bool IsRotated { get; set; }
         public bool IsRotated2 { get; set; }
@@ -44,10 +49,11 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
 
         public int Neg { get; set; }
 
-        // RestoreID is the ID of the matrix in stack to be restored as current matrix
+        // RestoreID is the ID of the matrix in stack{ get; set; } to be restored as current matrix
         public int ParentID { get; set; }
 
         public int Pivot { get; set; }
+
 
         // applies to rotation matrix
         public float RotA { get; set; }
@@ -92,5 +98,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
                 TransVect[2] = value/FACTOR1;
             }
         }
+
+        #endregion Properties 
     }
 }

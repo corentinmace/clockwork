@@ -1,7 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
-namespace Clockwork.Core.Formats.NDS.NSBMD
+namespace LibNDSFormats.NSBMD
 {
     public class NSBMDTexture
     {

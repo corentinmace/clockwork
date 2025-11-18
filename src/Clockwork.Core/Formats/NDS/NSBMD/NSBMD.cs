@@ -6,11 +6,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using Clockwork.Core.Formats.NDS.NSBTX;
-using Clockwork.Core.Formats.NDS.Utils;
+using LibNDSFormats.NSBTX;
+using System.Drawing;
 
-
-namespace Clockwork.Core.Formats.NDS.NSBMD {
+namespace LibNDSFormats.NSBMD {
     // Class for storing NSBMD data.
     // Adapted from kiwi.ds NSBMD viewer.
     public class NSBMD {
@@ -657,10 +656,10 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
                     int height = 8 << (texImageParam >> 7 & 7);
                     //int m_DifAmbColors = reader.ReadInt32();
                     //int m_SpeEmiColors = reader.ReadInt32();
-                    mod.Materials[j].DiffuseColor = Utils.BGR15ToColor((ushort)(unknown1 & 0x7FFF));
-                    mod.Materials[j].AmbientColor = Utils.BGR15ToColor((ushort)(unknown1 >> 16 & 0x7FFF));
-                    mod.Materials[j].SpecularColor = Utils.BGR15ToColor((ushort)(unknown2 & 0x7FFF));
-                    mod.Materials[j].EmissionColor = Utils.BGR15ToColor((ushort)(unknown2 >> 16 & 0x7FFF));
+                    mod.Materials[j].DiffuseColor = SM64DSe.Helper.BGR15ToColor((ushort)(unknown1 & 0x7FFF));
+                    mod.Materials[j].AmbientColor = SM64DSe.Helper.BGR15ToColor((ushort)(unknown1 >> 16 & 0x7FFF));
+                    mod.Materials[j].SpecularColor = SM64DSe.Helper.BGR15ToColor((ushort)(unknown2 & 0x7FFF));
+                    mod.Materials[j].EmissionColor = SM64DSe.Helper.BGR15ToColor((ushort)(unknown2 >> 16 & 0x7FFF));
                     int a = (int)((unknown3 >> 16) & 31);
                     mod.Materials[j].Alpha = a;//a * 2 + 1;//a * 2 + (a + 31) / 32;
                     mod.Materials[j].PolyAttrib = (uint)unknown3;
@@ -1133,4 +1132,71 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
         }
     }
 
+    /// <summary>
+    /// Type for storing RGBA data in.
+    /// </summary>
+    public struct RGBA {
+        #region Data Members (6)
+
+        public byte A;
+        public byte R;
+        public byte G;
+        public byte B;
+
+        /// <summary>
+        /// Transparent color.
+        /// </summary>
+        public static RGBA Transparent = new RGBA { R = 0xFF, A = 0x0 };
+
+        public static RGBA fromColor(System.Drawing.Color c) {
+            RGBA a = new RGBA();
+            a.R = c.R;
+            a.G = c.G;
+            a.B = c.B;
+            a.A = c.A;
+            return a;
+        }
+
+        /// <summary>
+        /// Index accessor.
+        /// </summary>
+        public byte this[int i] {
+            get {
+                switch (i) {
+                    case 0:
+                        return R;
+                    case 1:
+                        return G;
+                    case 2:
+                        return B;
+                    case 3:
+                        return A;
+                    default:
+                        throw new Exception();
+                }
+            }
+            set {
+                switch (i) {
+                    case 0:
+                        R = value;
+                        break;
+                    case 1:
+                        G = value;
+                        break;
+                    case 2:
+                        B = value;
+                        break;
+                    case 3:
+                        A = value;
+                        break;
+                    default:
+                        throw new Exception();
+                }
+            }
+        }
+        public Color ToColor() {
+            return Color.FromArgb(A, R, G, B);
+        }
+        #endregion Data Members
+    }
 }

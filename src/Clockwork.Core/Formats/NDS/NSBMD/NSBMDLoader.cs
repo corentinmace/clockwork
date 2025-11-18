@@ -3,7 +3,7 @@
 
 using System.IO;
 
-namespace Clockwork.Core.Formats.NDS.NSBMD
+namespace LibNDSFormats.NSBMD
 {
 	/// <summary>
 	/// Loader for NSBMD data.

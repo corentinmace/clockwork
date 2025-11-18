@@ -3,13 +3,15 @@
 
 using System;
 
-namespace Clockwork.Core.Formats.NDS.NSBMD
+namespace LibNDSFormats.NSBMD
 {
-    /// <summary>
-    /// Type for NSBMD polygons.
-    /// </summary>
+	/// <summary>
+	/// Type for NSBMd polygons.
+	/// </summary>
     public class NSBMDPolygon
     {
+        #region Properties (4) 
+
         /// <summary>
         /// Used material ID.
         /// </summary>
@@ -25,11 +27,15 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         /// </summary>
         public byte[] PolyData { get; set; }
 
+        //public UInt32 DataOffset{ get; set; }
+        //public int DataSize{ get; set; }
         /// <summary>
         /// StackID of polygon.
         /// </summary>
         public int StackID { get; set; }
 
         public int JointID { get; set; }
+
+        #endregion Properties 
     }
 }
