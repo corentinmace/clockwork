@@ -33,12 +33,46 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public ImageSource ImageSource { get; set; }
         public double Opacity { get; set; }
         public Rect Viewbox { get; set; }
+        public BrushMappingMode ViewboxUnits { get; set; }
+        public Rect Viewport { get; set; }
+        public BrushMappingMode ViewportUnits { get; set; }
+        public Stretch Stretch { get; set; }
+    }
+
+    // Stub for BrushMappingMode enum
+    public enum BrushMappingMode
+    {
+        Absolute,
+        RelativeToBoundingBox
+    }
+
+    // Stub for Stretch enum
+    public enum Stretch
+    {
+        None,
+        Fill,
+        Uniform,
+        UniformToFill
+    }
+
+    // Stub for WPF SolidColorBrush
+    public class SolidColorBrush
+    {
+        public SolidColorBrush() { }
+        public SolidColorBrush(Color color) { Color = color; }
+        public Color Color { get; set; }
     }
 
     // Stub for WPF DiffuseMaterial
     public class DiffuseMaterial
     {
         public DiffuseMaterial()
+        {
+            Brush = new ImageBrush();
+            AmbientColor = new Color();
+            Color = new Color();
+        }
+        public DiffuseMaterial(object brush)
         {
             Brush = new ImageBrush();
             AmbientColor = new Color();
@@ -51,9 +85,33 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public void SetValue(DependencyProperty prop, object value) { }
     }
 
+    // Stub for GeometryModel3D
+    public class GeometryModel3D : Model3D
+    {
+        public GeometryModel3D() { }
+        public GeometryModel3D(object geometry, object material)
+        {
+            Geometry = geometry;
+            Material = material;
+        }
+        public object Geometry { get; set; }
+        public object Material { get; set; }
+    }
+
     // Stub for HelixToolkit MeshBuilder
     public class MeshBuilder
     {
+        public void AddTriangle(Point3D p0, Point3D p1, Point3D p2) { }
+        public void AddTriangle(Point3D p0, Point3D p1, Point3D p2, Point t0, Point t1, Point t2) { }
+        public void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3) { }
+        public void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3, Point t0, Point t1, Point t2, Point t3) { }
+        public void AddTriangles(System.Collections.Generic.IList<Point3D> positions) { }
+        public void AddTriangles(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddQuads(System.Collections.Generic.IList<Point3D> positions) { }
+        public void AddQuads(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions) { }
+        public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public object ToMesh(bool freeze) { return new object(); }
     }
 
     // Stub for MaterialHelper (if needed)
@@ -144,6 +202,10 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public object[] Normals { get; set; }
         public object[] TextureCoordinates { get; set; }
 
+        // Properties expected by NSBMDGlRenderer
+        public Vector3[] Vertex { get; set; } = Array.Empty<Vector3>();
+        public Vector3[] TexCoords { get; set; } = Array.Empty<Vector3>();
+
         public Polygon(PolygonType type, object[] positions, object[] normals, object[] textureCoords)
         {
             PolyType = type;
@@ -157,8 +219,21 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
 // Add HelixToolkit namespace stub
 namespace HelixToolkit
 {
+    using Clockwork.Core.Formats.NDS.NSBMD;
+
     public class MeshBuilder
     {
+        public void AddTriangle(Point3D p0, Point3D p1, Point3D p2) { }
+        public void AddTriangle(Point3D p0, Point3D p1, Point3D p2, Point t0, Point t1, Point t2) { }
+        public void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3) { }
+        public void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3, Point t0, Point t1, Point t2, Point t3) { }
+        public void AddTriangles(System.Collections.Generic.IList<Point3D> positions) { }
+        public void AddTriangles(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddQuads(System.Collections.Generic.IList<Point3D> positions) { }
+        public void AddQuads(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions) { }
+        public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public object ToMesh(bool freeze) { return new object(); }
     }
 }
 

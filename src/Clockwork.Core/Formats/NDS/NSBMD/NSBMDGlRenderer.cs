@@ -129,10 +129,10 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 			return multMatrix(a, b);
 		}
 		int lastselectedanim = -2;
-		public void RenderModel(string file2, object ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, object ca, bool anim, int selectedani, float X, float Y, float dist, float elev, float ang, object p, NSBMD nsb) {
+		public void RenderModel(string file2, NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, NSBCA_File ca, bool anim, int selectedani, float X, float Y, float dist, float elev, float ang, NSBTP_File p, NSBMD nsb) {
 			RenderModel(file2, ani, aniframeS, aniframeT, aniframeScaleS, aniframeScaleT, aniframeR, ca, anim, selectedani, X, Y, dist, elev, ang, true, p, nsb);
 		}
-		public void RenderModel(string file2, object ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, object ca, bool anim, int selectedani, float X, float Y, float dist, float elev, float ang, bool licht, object p, NSBMD nsb) {
+		public void RenderModel(string file2, NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, NSBCA_File ca, bool anim, int selectedani, float X, float Y, float dist, float elev, float ang, bool licht, NSBTP_File p, NSBMD nsb) {
 			if (lastselectedanim != selectedani && selectedani != -1) {
 				Tx = new int[ca.JAC[selectedani].ObjInfo.Length];
 				Ty = new int[ca.JAC[selectedani].ObjInfo.Length];
@@ -158,7 +158,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// <summary>
 		/// Render model to OpenGL surface.
 		/// </summary>
-		public void RenderModel(string file2, object ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, object ca, RenderMode r, bool anim, bool anim2, int selectedanim, float X, float Y, float dist, float elev, float ang, bool licht, object p, NSBMD nsb) {
+		public void RenderModel(string file2, NSBTA_File ani, int[] aniframeS, int[] aniframeT, int[] aniframeScaleS, int[] aniframeScaleT, int[] aniframeR, NSBCA_File ca, RenderMode r, bool anim, bool anim2, int selectedanim, float X, float Y, float dist, float elev, float ang, bool licht, NSBTP_File p, NSBMD nsb) {
 			file = file2;
 			bool light = GL.IsEnabled(GL_LIGHTING);
 			GL.Disable(GL_LIGHTING);
@@ -641,7 +641,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 			}
 			writevertex = false;
 		}
-		public bool DoJointAnimation(object ca, int selectedanim, bool anim, int i) {
+		public bool DoJointAnimation(NSBCA_File ca, int selectedanim, bool anim, int i) {
 			try {
 				if (ca.Header.file_size != 0 && selectedanim != -1) {
 					float[] s = loadIdentity();
