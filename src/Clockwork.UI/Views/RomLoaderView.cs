@@ -12,6 +12,7 @@ public class RomLoaderView : IView
     private readonly ApplicationContext _appContext;
     private RomService? _romService;
     private NdsToolService? _ndsToolService;
+    private DialogService? _dialogService;
     private string _romFolderPath = string.Empty;
     private string _ndsFilePath = string.Empty;
     private string _extractOutputPath = string.Empty;
@@ -27,6 +28,7 @@ public class RomLoaderView : IView
         _appContext = appContext;
         _romService = _appContext.GetService<RomService>();
         _ndsToolService = _appContext.GetService<NdsToolService>();
+        _dialogService = _appContext.GetService<DialogService>();
     }
 
     public void Draw()
@@ -99,11 +101,34 @@ public class RomLoaderView : IView
 
                     // Input: .nds file
                     ImGui.Text("ROM File (.nds):");
+                    ImGui.SetNextItemWidth(-80);
                     ImGui.InputText("##ndsfile", ref _ndsFilePath, 500);
+                    ImGui.SameLine();
+                    if (ImGui.Button("Browse##nds", new System.Numerics.Vector2(70, 0)))
+                    {
+                        string? selectedFile = _dialogService?.OpenFileDialog(
+                            "NDS ROM Files|*.nds|All Files|*.*",
+                            "Select NDS ROM File"
+                        );
+                        if (selectedFile != null)
+                        {
+                            _ndsFilePath = selectedFile;
+                        }
+                    }
 
                     // Input: Output folder
                     ImGui.Text("Output Folder:");
+                    ImGui.SetNextItemWidth(-80);
                     ImGui.InputText("##extractoutput", ref _extractOutputPath, 500);
+                    ImGui.SameLine();
+                    if (ImGui.Button("Browse##out", new System.Numerics.Vector2(70, 0)))
+                    {
+                        string? selectedFolder = _dialogService?.OpenFolderDialog("Select Output Folder");
+                        if (selectedFolder != null)
+                        {
+                            _extractOutputPath = selectedFolder;
+                        }
+                    }
 
                     ImGui.Spacing();
 
@@ -171,7 +196,17 @@ public class RomLoaderView : IView
 
                     // Input for folder path
                     ImGui.Text("Extracted ROM Folder Path:");
+                    ImGui.SetNextItemWidth(-80);
                     ImGui.InputText("##rompath", ref _romFolderPath, 500);
+                    ImGui.SameLine();
+                    if (ImGui.Button("Browse##rom", new System.Numerics.Vector2(70, 0)))
+                    {
+                        string? selectedFolder = _dialogService?.OpenFolderDialog("Select Extracted ROM Folder");
+                        if (selectedFolder != null)
+                        {
+                            _romFolderPath = selectedFolder;
+                        }
+                    }
 
                     ImGui.Spacing();
 
