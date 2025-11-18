@@ -8,15 +8,15 @@ namespace NSMBe4
 {
     public class FilePalette : Palette
     {
-        File f;
+        NSMBe4.DSFileSystem.File f;
         string name;
 
-        public FilePalette(File f)
+        public FilePalette(NSMBe4.DSFileSystem.File f)
             : this(f, f.name)
         {
         }
 
-        public FilePalette(File f, string name)
+        public FilePalette(NSMBe4.DSFileSystem.File f, string name)
         {
             this.f = f;
             f.beginEdit(this);

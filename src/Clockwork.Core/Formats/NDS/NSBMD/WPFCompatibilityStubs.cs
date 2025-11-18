@@ -1,5 +1,5 @@
-// WPF Compatibility stubs for cross-platform .NET 8
-// These types replace WPF dependencies used in NSBMDGlRenderer
+// WPF and Windows Forms Compatibility stubs for cross-platform .NET 8
+// These types replace WPF/WinForms dependencies used in the codebase
 
 using System;
 using System.Collections.Generic;
@@ -156,5 +156,22 @@ namespace HelixToolkit.Wpf
         public void AddTriangleStrip(IList<Point3D> positions, IList<Vector3D> normals, IList<Point> textureCoords) { }
 
         public object ToMesh(bool freeze) { return new object(); }
+    }
+}
+
+// System.Windows.Forms namespace
+namespace System.Windows.Forms
+{
+    using System.ComponentModel;
+    using System.Drawing;
+
+    public class Form
+    {
+        public Form() { }
+    }
+
+    public class Control
+    {
+        public Control() { }
     }
 }
