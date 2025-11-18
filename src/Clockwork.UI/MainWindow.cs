@@ -9,7 +9,7 @@ using OpenTK.Windowing.Desktop;
 namespace Clockwork.UI;
 
 /// <summary>
-/// Fenêtre principale de l'application utilisant OpenTK et ImGui.
+/// Main application window using OpenTK and ImGui.
 /// </summary>
 public class MainWindow : GameWindow
 {
@@ -17,18 +17,9 @@ public class MainWindow : GameWindow
     private ApplicationContext _appContext;
 
     // Views
-    private readonly DashboardView _dashboardView;
-    private readonly WelcomeView _welcomeView;
-    private readonly PropertiesView _propertiesView;
-    private readonly ConsoleView _consoleView;
-    private readonly HierarchyView _hierarchyView;
     private readonly AboutView _aboutView;
-    private readonly SettingsView _settingsView;
-    private readonly UserManagementView _userManagementView;
-    private readonly DataViewView _dataViewView;
-    private readonly ReportsView _reportsView;
-    private readonly AnalyticsView _analyticsView;
     private readonly RomLoaderView _romLoaderView;
+    private readonly HeaderEditorView _headerEditorView;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -36,18 +27,9 @@ public class MainWindow : GameWindow
         _appContext = appContext;
 
         // Initialize views
-        _dashboardView = new DashboardView(_appContext) { IsVisible = true };
-        _welcomeView = new WelcomeView(_appContext);
-        _propertiesView = new PropertiesView(_appContext);
-        _consoleView = new ConsoleView(_appContext);
-        _hierarchyView = new HierarchyView(_appContext);
         _aboutView = new AboutView(_appContext);
-        _settingsView = new SettingsView(_appContext);
-        _userManagementView = new UserManagementView(_appContext);
-        _dataViewView = new DataViewView(_appContext);
-        _reportsView = new ReportsView(_appContext);
-        _analyticsView = new AnalyticsView(_appContext);
         _romLoaderView = new RomLoaderView(_appContext);
+        _headerEditorView = new HeaderEditorView(_appContext);
     }
 
     protected override void OnLoad()
@@ -205,6 +187,15 @@ public class MainWindow : GameWindow
                 ImGui.EndMenu();
             }
 
+            if (ImGui.BeginMenu("Editors"))
+            {
+                if (ImGui.MenuItem("Header Editor"))
+                {
+                    _headerEditorView.IsVisible = true;
+                }
+                ImGui.EndMenu();
+            }
+
             if (ImGui.BeginMenu("Help"))
             {
                 if (ImGui.MenuItem("About"))
@@ -227,18 +218,9 @@ public class MainWindow : GameWindow
         DrawSidebar();
 
         // Draw all views
-        _welcomeView.Draw();
-        _propertiesView.Draw();
-        _consoleView.Draw();
-        _hierarchyView.Draw();
         _aboutView.Draw();
-        _dashboardView.Draw();
-        _settingsView.Draw();
-        _userManagementView.Draw();
-        _dataViewView.Draw();
-        _reportsView.Draw();
-        _analyticsView.Draw();
         _romLoaderView.Draw();
+        _headerEditorView.Draw();
 
         if (_showMetricsWindow)
         {
@@ -274,108 +256,13 @@ public class MainWindow : GameWindow
             ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "NAVIGATION");
             ImGui.Separator();
             ImGui.Spacing();
-        }
 
-        if (_isSidebarCollapsed)
-        {
-            // Collapsed mode - show only icons
-            ImGui.Spacing();
-            if (ImGui.Button("📊", new System.Numerics.Vector2(-1, 40))) _dashboardView.IsVisible = !_dashboardView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Dashboard");
-
-            if (ImGui.Button("👋", new System.Numerics.Vector2(-1, 40))) _welcomeView.IsVisible = !_welcomeView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Welcome");
-
-            if (ImGui.Button("📝", new System.Numerics.Vector2(-1, 40))) _propertiesView.IsVisible = !_propertiesView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Properties");
-
-            if (ImGui.Button("💻", new System.Numerics.Vector2(-1, 40))) _consoleView.IsVisible = !_consoleView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Console");
-
-            if (ImGui.Button("🌳", new System.Numerics.Vector2(-1, 40))) _hierarchyView.IsVisible = !_hierarchyView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Hierarchy");
-
-            if (ImGui.Button("📁", new System.Numerics.Vector2(-1, 40))) _dataViewView.IsVisible = !_dataViewView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Data View");
-
-            if (ImGui.Button("📄", new System.Numerics.Vector2(-1, 40))) _reportsView.IsVisible = !_reportsView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Reports");
-
-            if (ImGui.Button("📈", new System.Numerics.Vector2(-1, 40))) _analyticsView.IsVisible = !_analyticsView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Analytics");
-
-            if (ImGui.Button("⚙️", new System.Numerics.Vector2(-1, 40))) _settingsView.IsVisible = !_settingsView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Settings");
-
-            if (ImGui.Button("👥", new System.Numerics.Vector2(-1, 40))) _userManagementView.IsVisible = !_userManagementView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("User Management");
-        }
-        else
-        {
-            // Normal mode - show full menu
-            // Section: General
-            if (ImGui.CollapsingHeader("General", ImGuiTreeNodeFlags.DefaultOpen))
+            // Editors section
+            if (ImGui.CollapsingHeader("Editors", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                if (ImGui.Selectable("  📊 Dashboard", _dashboardView.IsVisible))
+                if (ImGui.Selectable("  📝 Header Editor", _headerEditorView.IsVisible))
                 {
-                    _dashboardView.IsVisible = !_dashboardView.IsVisible;
-                }
-                if (ImGui.Selectable("  👋 Welcome", _welcomeView.IsVisible))
-                {
-                    _welcomeView.IsVisible = !_welcomeView.IsVisible;
-                }
-                if (ImGui.Selectable("  📝 Properties", _propertiesView.IsVisible))
-                {
-                    _propertiesView.IsVisible = !_propertiesView.IsVisible;
-                }
-            }
-
-            ImGui.Spacing();
-
-            // Section: Development
-            if (ImGui.CollapsingHeader("Development", ImGuiTreeNodeFlags.DefaultOpen))
-            {
-                if (ImGui.Selectable("  💻 Console", _consoleView.IsVisible))
-                {
-                    _consoleView.IsVisible = !_consoleView.IsVisible;
-                }
-                if (ImGui.Selectable("  🌳 Hierarchy", _hierarchyView.IsVisible))
-                {
-                    _hierarchyView.IsVisible = !_hierarchyView.IsVisible;
-                }
-            }
-
-            ImGui.Spacing();
-
-            // Section: Data
-            if (ImGui.CollapsingHeader("Data"))
-            {
-                if (ImGui.Selectable("  📁 Data View", _dataViewView.IsVisible))
-                {
-                    _dataViewView.IsVisible = !_dataViewView.IsVisible;
-                }
-                if (ImGui.Selectable("  📄 Reports", _reportsView.IsVisible))
-                {
-                    _reportsView.IsVisible = !_reportsView.IsVisible;
-                }
-                if (ImGui.Selectable("  📈 Analytics", _analyticsView.IsVisible))
-                {
-                    _analyticsView.IsVisible = !_analyticsView.IsVisible;
-                }
-            }
-
-            ImGui.Spacing();
-
-            // Section: System
-            if (ImGui.CollapsingHeader("System"))
-            {
-                if (ImGui.Selectable("  ⚙️ Settings", _settingsView.IsVisible))
-                {
-                    _settingsView.IsVisible = !_settingsView.IsVisible;
-                }
-                if (ImGui.Selectable("  👥 User Management", _userManagementView.IsVisible))
-                {
-                    _userManagementView.IsVisible = !_userManagementView.IsVisible;
+                    _headerEditorView.IsVisible = !_headerEditorView.IsVisible;
                 }
             }
         }

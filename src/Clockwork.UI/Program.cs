@@ -16,10 +16,6 @@ internal class Program
         var appContext = new ApplicationContext();
 
         // Register services
-        appContext.AddService(new ExampleService());
-        appContext.AddService(new DashboardService());
-        appContext.AddService(new UserService());
-        appContext.AddService(new DataService());
         appContext.AddService(new RomService());
         appContext.AddService(new NdsToolService());
         appContext.AddService(new DialogService());
