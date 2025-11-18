@@ -21,7 +21,6 @@ public class MapEditorView : IView
     private string? _lastLoadedRomPath;
 
     // Grid painting state
-    private bool _isPainting = false;
     private bool _paintWalkable = true;
 
     public bool IsVisible { get; set; } = false;
@@ -188,9 +187,15 @@ public class MapEditorView : IView
         if (ImGui.CollapsingHeader("Collision Tools", ImGuiTreeNodeFlags.DefaultOpen))
         {
             ImGui.Text("Paint Mode:");
-            ImGui.RadioButton("Walkable (Green)", ref _paintWalkable, true);
+            if (ImGui.RadioButton("Walkable (Green)", _paintWalkable))
+            {
+                _paintWalkable = true;
+            }
             ImGui.SameLine();
-            ImGui.RadioButton("Blocked (Red)", ref _paintWalkable, false);
+            if (ImGui.RadioButton("Blocked (Red)", !_paintWalkable))
+            {
+                _paintWalkable = false;
+            }
         }
 
         ImGui.Spacing();
