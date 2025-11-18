@@ -11,7 +11,7 @@ public class RomService : IApplicationService
     private readonly Dictionary<string, GameVersion> _gameCodeMapping = new()
     {
         // Platinum Italian
-        { "CPUI", GameVersion.Platinum }
+        { "PLIT", GameVersion.Platinum }
     };
 
     public RomInfo? CurrentRom => _currentRom;
@@ -125,7 +125,7 @@ public class RomService : IApplicationService
 
         return gameCode[3] switch
         {
-            'I' => GameLanguage.Italian,
+            'T' => GameLanguage.Italian,
             _ => GameLanguage.Unknown
         };
     }
