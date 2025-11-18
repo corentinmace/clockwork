@@ -129,7 +129,7 @@ public class HeaderEditorView : IView
         ImGui.Spacing();
 
         // Header list
-        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(0, 0), true);
+        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(0, 0), ImGuiChildFlags.Border);
 
         var headers = _headerService.Headers;
         foreach (var header in headers)
