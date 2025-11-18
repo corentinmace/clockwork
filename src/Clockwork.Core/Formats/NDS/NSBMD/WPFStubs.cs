@@ -106,11 +106,11 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3) { }
         public void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3, Point t0, Point t1, Point t2, Point t3) { }
         public void AddTriangles(System.Collections.Generic.IList<Point3D> positions) { }
-        public void AddTriangles(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddTriangles(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<System.Windows.Point> textureCoords) { }
         public void AddQuads(System.Collections.Generic.IList<Point3D> positions) { }
-        public void AddQuads(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddQuads(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<System.Windows.Point> textureCoords) { }
         public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions) { }
-        public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<System.Windows.Point> textureCoords) { }
         public object ToMesh(bool freeze) { return new object(); }
     }
 
@@ -139,6 +139,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public ObjExporter(string file, string comment) { }
         public void Close() { }
         public void AddModel(object model, object material) { }
+        public void Export(Polygon polygon) { }
     }
 
     // Stub for Vector3
@@ -198,20 +199,22 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
     public class Polygon
     {
         public PolygonType PolyType { get; set; }
-        public object[] Positions { get; set; }
-        public object[] Normals { get; set; }
-        public object[] TextureCoordinates { get; set; }
+        public Point3D[] Positions { get; set; } = Array.Empty<Point3D>();
+        public Vector3D[] Normals { get; set; } = Array.Empty<Vector3D>();
+        public System.Windows.Point[] TextureCoordinates { get; set; } = Array.Empty<System.Windows.Point>();
 
         // Properties expected by NSBMDGlRenderer
-        public Vector3[] Vertex { get; set; } = Array.Empty<Vector3>();
-        public Vector3[] TexCoords { get; set; } = Array.Empty<Vector3>();
+        public Point3D[] Vertex { get; set; } = Array.Empty<Point3D>();
+        public System.Windows.Point[] TexCoords { get; set; } = Array.Empty<System.Windows.Point>();
 
-        public Polygon(PolygonType type, object[] positions, object[] normals, object[] textureCoords)
+        public Polygon(PolygonType type, Point3D[] positions, Vector3D[] normals, System.Windows.Point[] textureCoords)
         {
             PolyType = type;
             Positions = positions;
             Normals = normals;
             TextureCoordinates = textureCoords;
+            Vertex = positions;
+            TexCoords = textureCoords;
         }
     }
 }
@@ -228,11 +231,11 @@ namespace HelixToolkit
         public void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3) { }
         public void AddQuad(Point3D p0, Point3D p1, Point3D p2, Point3D p3, Point t0, Point t1, Point t2, Point t3) { }
         public void AddTriangles(System.Collections.Generic.IList<Point3D> positions) { }
-        public void AddTriangles(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddTriangles(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<System.Windows.Point> textureCoords) { }
         public void AddQuads(System.Collections.Generic.IList<Point3D> positions) { }
-        public void AddQuads(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddQuads(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<System.Windows.Point> textureCoords) { }
         public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions) { }
-        public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<Point> textureCoords) { }
+        public void AddTriangleStrip(System.Collections.Generic.IList<Point3D> positions, System.Collections.Generic.IList<Vector3D> normals, System.Collections.Generic.IList<System.Windows.Point> textureCoords) { }
         public object ToMesh(bool freeze) { return new object(); }
     }
 }

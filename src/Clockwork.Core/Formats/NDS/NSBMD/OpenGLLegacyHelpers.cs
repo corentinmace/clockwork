@@ -28,7 +28,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public const int GL_LINES = (int)PrimitiveType.Lines;
         public const int GL_LINE_STRIP = (int)PrimitiveType.LineStrip;
 
-        public const TextureTarget GL_TEXTURE_2D = TextureTarget.Texture2D;
+        public const int GL_TEXTURE_2D = (int)TextureTarget.Texture2D;
         public const int GL_TEXTURE = 0x1702;
         public const int GL_TEXTURE_ENV = 0x2300;
         public const int GL_TEXTURE_ENV_MODE = 0x2200;
@@ -45,16 +45,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public const int GL_RGB = (int)PixelFormat.Rgb;
         public const int GL_UNSIGNED_BYTE = (int)PixelType.UnsignedByte;
 
-        public const EnableCap GL_LIGHTING = EnableCap.Lighting;
-        public const EnableCap GL_LIGHT0 = EnableCap.Light0;
-        public const EnableCap GL_LIGHT1 = EnableCap.Light1;
-        public const EnableCap GL_LIGHT2 = EnableCap.Light2;
-        public const EnableCap GL_LIGHT3 = EnableCap.Light3;
-        public const EnableCap GL_ALPHA_TEST = EnableCap.AlphaTest;
-        public const EnableCap GL_BLEND = EnableCap.Blend;
-        public const EnableCap GL_COLOR_MATERIAL = EnableCap.ColorMaterial;
-        public const EnableCap GL_TEXTURE_GEN_S = EnableCap.TextureGenS;
-        public const EnableCap GL_TEXTURE_GEN_T = EnableCap.TextureGenT;
+        public const int GL_LIGHTING = (int)EnableCap.Lighting;
+        public const int GL_LIGHT0 = (int)EnableCap.Light0;
+        public const int GL_LIGHT1 = (int)EnableCap.Light1;
+        public const int GL_LIGHT2 = (int)EnableCap.Light2;
+        public const int GL_LIGHT3 = (int)EnableCap.Light3;
+        public const int GL_ALPHA_TEST = (int)EnableCap.AlphaTest;
+        public const int GL_BLEND = (int)EnableCap.Blend;
+        public const int GL_COLOR_MATERIAL = (int)EnableCap.ColorMaterial;
+        public const int GL_TEXTURE_GEN_S = (int)EnableCap.TextureGenS;
+        public const int GL_TEXTURE_GEN_T = (int)EnableCap.TextureGenT;
 
         public const int GL_DIFFUSE = 0x1201;
         public const int GL_AMBIENT = 0x1200;
@@ -62,9 +62,9 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public const int GL_EMISSION = 0x1600;
         public const int GL_POSITION = 0x1203;
 
-        public const MaterialFace GL_FRONT = MaterialFace.Front;
-        public const MaterialFace GL_BACK = MaterialFace.Back;
-        public const MaterialFace GL_FRONT_AND_BACK = MaterialFace.FrontAndBack;
+        public const int GL_FRONT = (int)MaterialFace.Front;
+        public const int GL_BACK = (int)MaterialFace.Back;
+        public const int GL_FRONT_AND_BACK = (int)MaterialFace.FrontAndBack;
         public const int GL_NONE = 0;
 
         public const int GL_MODELVIEW = 0x1700;
@@ -72,9 +72,9 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public const int GL_TEXTURE_MATRIX = 0x0BA8;
         public const int GL_PROJECTION = 0x1701;
 
-        public const BlendingFactor GL_SRC_ALPHA = BlendingFactor.SrcAlpha;
-        public const BlendingFactor GL_ONE_MINUS_SRC_ALPHA = BlendingFactor.OneMinusSrcAlpha;
-        public const AlphaFunction GL_GREATER = AlphaFunction.Greater;
+        public const int GL_SRC_ALPHA = (int)BlendingFactor.SrcAlpha;
+        public const int GL_ONE_MINUS_SRC_ALPHA = (int)BlendingFactor.OneMinusSrcAlpha;
+        public const int GL_GREATER = (int)AlphaFunction.Greater;
 
         public const int GL_S = 0x2000;
         public const int GL_T = 0x2001;

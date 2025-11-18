@@ -9,6 +9,7 @@ using System.IO;
 using OpenTK.Mathematics;
 using Clockwork.Core.Formats.NDS.Utils;
 using static Clockwork.Core.Formats.NDS.NSBMD.GLLegacy;
+using static Clockwork.Core.Formats.NDS.Utils.Utils;
 
 namespace Clockwork.Core.Formats.NDS.NSBMD {
 	/// <summary>
