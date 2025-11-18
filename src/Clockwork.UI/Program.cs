@@ -18,17 +18,20 @@ internal class Program
         // Register services
         var romService = new RomService();
         var headerService = new HeaderService();
+        var mapService = new MapService();
 
         appContext.AddService(romService);
         appContext.AddService(new NdsToolService());
         appContext.AddService(new DialogService());
         appContext.AddService(headerService);
+        appContext.AddService(mapService);
 
         // Initialize context
         appContext.Initialize();
 
         // Set service dependencies
         headerService.SetRomService(romService);
+        mapService.SetRomService(romService);
 
         // OpenTK window configuration
         var nativeWindowSettings = new NativeWindowSettings()

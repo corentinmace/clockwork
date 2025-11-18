@@ -20,6 +20,7 @@ public class MainWindow : GameWindow
     private readonly AboutView _aboutView;
     private readonly RomLoaderView _romLoaderView;
     private readonly HeaderEditorView _headerEditorView;
+    private readonly MapEditorView _mapEditorView;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -30,6 +31,7 @@ public class MainWindow : GameWindow
         _aboutView = new AboutView(_appContext);
         _romLoaderView = new RomLoaderView(_appContext);
         _headerEditorView = new HeaderEditorView(_appContext);
+        _mapEditorView = new MapEditorView(_appContext);
     }
 
     protected override void OnLoad()
@@ -193,6 +195,10 @@ public class MainWindow : GameWindow
                 {
                     _headerEditorView.IsVisible = true;
                 }
+                if (ImGui.MenuItem("Map Editor"))
+                {
+                    _mapEditorView.IsVisible = true;
+                }
                 ImGui.EndMenu();
             }
 
@@ -221,6 +227,7 @@ public class MainWindow : GameWindow
         _aboutView.Draw();
         _romLoaderView.Draw();
         _headerEditorView.Draw();
+        _mapEditorView.Draw();
 
         if (_showMetricsWindow)
         {
@@ -263,6 +270,10 @@ public class MainWindow : GameWindow
                 if (ImGui.Selectable("  📝 Header Editor", _headerEditorView.IsVisible))
                 {
                     _headerEditorView.IsVisible = !_headerEditorView.IsVisible;
+                }
+                if (ImGui.Selectable("  🗺️  Map Editor", _mapEditorView.IsVisible))
+                {
+                    _mapEditorView.IsVisible = !_mapEditorView.IsVisible;
                 }
             }
         }
