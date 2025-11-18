@@ -16,8 +16,10 @@ internal class Program
         var appContext = new ApplicationContext();
 
         // Enregistrer les services métier
-        var exampleService = new ExampleService();
-        appContext.AddService(exampleService);
+        appContext.AddService(new ExampleService());
+        appContext.AddService(new DashboardService());
+        appContext.AddService(new UserService());
+        appContext.AddService(new DataService());
 
         // Initialiser le contexte
         appContext.Initialize();
