@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using OpenTK.Graphics.OpenGL;
 using System.IO;
 using OpenTK.Mathematics;
@@ -2980,16 +2981,16 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						num6 = 8;
 						continue;
 					Label_0ED1:
-						group.Add(new Polygon(PolygonType.Triangle, list2.ToArray(), list3.ToArray(), list.ToArray()));
+						group.Add(new Polygon(PolygonType.Triangle, list2.Cast<object>().ToArray(), list3.Cast<object>().ToArray(), list.Cast<object>().ToArray()));
 						goto Label_0F67;
 					Label_0EF6:
-						group.Add(new Polygon(PolygonType.Quad, list2.ToArray(), list3.ToArray(), list.ToArray()));
+						group.Add(new Polygon(PolygonType.Quad, list2.Cast<object>().ToArray(), list3.Cast<object>().ToArray(), list.Cast<object>().ToArray()));
 						goto Label_0F67;
 					Label_0F1B:
-						group.Add(new Polygon(PolygonType.TriangleStrip, list2.ToArray(), list3.ToArray(), list.ToArray()));
+						group.Add(new Polygon(PolygonType.TriangleStrip, list2.Cast<object>().ToArray(), list3.Cast<object>().ToArray(), list.Cast<object>().ToArray()));
 						goto Label_0F67;
 					Label_0F40:
-						group.Add(new Polygon(PolygonType.QuadStrip, list2.ToArray(), list3.ToArray(), list.ToArray()));
+						group.Add(new Polygon(PolygonType.QuadStrip, list2.Cast<object>().ToArray(), list3.Cast<object>().ToArray(), list.Cast<object>().ToArray()));
 					Label_0F67:
 						list2.Clear();
 						list.Clear();
