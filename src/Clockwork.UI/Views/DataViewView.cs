@@ -5,7 +5,7 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue d'exploration des données.
+/// Data exploration view.
 /// </summary>
 public class DataViewView : IView
 {
@@ -26,15 +26,15 @@ public class DataViewView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Vue des données", ref isVisible);
+        ImGui.Begin("Data View", ref isVisible);
 
-        ImGui.Text("Exploration des données");
+        ImGui.Text("Data Exploration");
         ImGui.Separator();
         ImGui.Spacing();
 
-        // Filtres
-        ImGui.Text("Filtres:");
-        ImGui.InputText("Recherche", ref _searchText, 256);
+        // Filters
+        ImGui.Text("Filters:");
+        ImGui.InputText("Search", ref _searchText, 256);
 
         ImGui.Spacing();
         ImGui.Separator();
@@ -44,7 +44,7 @@ public class DataViewView : IView
         {
             var dataItems = _dataService.GetDataItems();
 
-            // Données
+            // Data
             ImGui.BeginChild("DataContent", new System.Numerics.Vector2(0, -30), ImGuiChildFlags.Border);
 
             foreach (var item in dataItems)
@@ -56,14 +56,14 @@ public class DataViewView : IView
                 {
                     ImGui.Text($"ID: {item.Id}");
                     ImGui.Text($"Timestamp: {item.Timestamp:yyyy-MM-dd HH:mm:ss}");
-                    ImGui.Text($"Valeur: {item.Value}");
+                    ImGui.Text($"Value: {item.Value}");
                     ImGui.TreePop();
                 }
             }
 
             ImGui.EndChild();
 
-            ImGui.Text($"Total: {dataItems.Count} éléments");
+            ImGui.Text($"Total: {dataItems.Count} items");
         }
 
         ImGui.End();

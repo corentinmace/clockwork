@@ -4,7 +4,7 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue de propriétés.
+/// Properties view.
 /// </summary>
 public class PropertiesView : IView
 {
@@ -23,12 +23,12 @@ public class PropertiesView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Propriétés", ref isVisible);
+        ImGui.Begin("Properties", ref isVisible);
 
-        ImGui.Text("Fenêtre de propriétés");
+        ImGui.Text("Properties Window");
         ImGui.Separator();
 
-        ImGui.Text("Nom:");
+        ImGui.Text("Name:");
         ImGui.SameLine();
         ImGui.InputText("##name", ref _name, 100);
 
@@ -40,7 +40,7 @@ public class PropertiesView : IView
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.CollapsingHeader("Détails"))
+        if (ImGui.CollapsingHeader("Details"))
         {
             ImGui.BulletText("Version: 1.0.0");
             ImGui.BulletText("Framework: .NET 8");

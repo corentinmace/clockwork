@@ -4,7 +4,7 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue d'accueil.
+/// Welcome view.
 /// </summary>
 public class WelcomeView : IView
 {
@@ -22,17 +22,17 @@ public class WelcomeView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Bienvenue", ref isVisible);
+        ImGui.Begin("Welcome", ref isVisible);
 
-        ImGui.Text("Bienvenue dans Clockwork!");
+        ImGui.Text("Welcome to Clockwork!");
         ImGui.Spacing();
 
         ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Architecture:");
         ImGui.BulletText(".NET 8");
-        ImGui.BulletText("ImGui.NET pour l'interface");
-        ImGui.BulletText("OpenTK pour OpenGL");
-        ImGui.BulletText("Séparation Frontend/Backend");
-        ImGui.BulletText("Docking fullscreen activé");
+        ImGui.BulletText("ImGui.NET for interface");
+        ImGui.BulletText("OpenTK for OpenGL");
+        ImGui.BulletText("Frontend/Backend separation");
+        ImGui.BulletText("Fullscreen docking enabled");
         ImGui.Spacing();
 
         ImGui.Separator();
@@ -42,7 +42,7 @@ public class WelcomeView : IView
         ImGui.Text($"Frame Time: {1000.0f / ImGui.GetIO().Framerate:F2} ms");
         ImGui.Spacing();
 
-        ImGui.TextWrapped("Vous pouvez déplacer et docker toutes les fenêtres où vous voulez dans l'interface.");
+        ImGui.TextWrapped("You can move and dock all windows anywhere in the interface.");
 
         ImGui.End();
         IsVisible = isVisible;

@@ -5,7 +5,7 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue de gestion des utilisateurs.
+/// User management view.
 /// </summary>
 public class UserManagementView : IView
 {
@@ -25,15 +25,15 @@ public class UserManagementView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Gestion des utilisateurs", ref isVisible);
+        ImGui.Begin("User Management", ref isVisible);
 
-        ImGui.Text("Liste des utilisateurs");
+        ImGui.Text("User List");
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.Button("Ajouter utilisateur"))
+        if (ImGui.Button("Add User"))
         {
-            // TODO: Ouvrir un dialogue pour ajouter un utilisateur
+            // TODO: Open a dialog to add a user
         }
 
         ImGui.Spacing();
@@ -44,12 +44,12 @@ public class UserManagementView : IView
         {
             var users = _userService.GetUsers();
 
-            // Table des utilisateurs
+            // User table
             if (ImGui.BeginTable("users_table", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
             {
-                ImGui.TableSetupColumn("Nom");
+                ImGui.TableSetupColumn("Name");
                 ImGui.TableSetupColumn("Email");
-                ImGui.TableSetupColumn("Rôle");
+                ImGui.TableSetupColumn("Role");
                 ImGui.TableHeadersRow();
 
                 foreach (var user in users)

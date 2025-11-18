@@ -4,7 +4,7 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue à propos.
+/// About view.
 /// </summary>
 public class AboutView : IView
 {
@@ -22,7 +22,7 @@ public class AboutView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("À propos", ref isVisible, ImGuiWindowFlags.AlwaysAutoResize);
+        ImGui.Begin("About", ref isVisible, ImGuiWindowFlags.AlwaysAutoResize);
 
         ImGui.Text("Clockwork");
         ImGui.Separator();
@@ -37,7 +37,7 @@ public class AboutView : IView
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.Button("Fermer"))
+        if (ImGui.Button("Close"))
         {
             isVisible = false;
         }

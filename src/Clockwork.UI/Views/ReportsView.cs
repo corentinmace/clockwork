@@ -4,17 +4,17 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue des rapports.
+/// Reports view.
 /// </summary>
 public class ReportsView : IView
 {
     private readonly ApplicationContext _appContext;
     private readonly string[] _reportTypes =
     {
-        "Rapport mensuel - Janvier 2024",
-        "Rapport mensuel - Février 2024",
-        "Rapport annuel - 2023",
-        "Rapport personnalisé - Q4 2023"
+        "Monthly Report - January 2024",
+        "Monthly Report - February 2024",
+        "Annual Report - 2023",
+        "Custom Report - Q4 2023"
     };
 
     public bool IsVisible { get; set; } = false;
@@ -29,29 +29,29 @@ public class ReportsView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Rapports", ref isVisible);
+        ImGui.Begin("Reports", ref isVisible);
 
-        ImGui.Text("Génération de rapports");
+        ImGui.Text("Report Generation");
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.Button("Générer rapport mensuel"))
+        if (ImGui.Button("Generate Monthly Report"))
         {
-            // TODO: Action de génération
+            // TODO: Generation action
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Générer rapport annuel"))
+        if (ImGui.Button("Generate Annual Report"))
         {
-            // TODO: Action de génération
+            // TODO: Generation action
         }
 
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();
 
-        ImGui.Text("Rapports disponibles:");
+        ImGui.Text("Available Reports:");
 
         ImGui.BeginChild("ReportsList");
 
@@ -59,7 +59,7 @@ public class ReportsView : IView
         {
             if (ImGui.Selectable(report))
             {
-                // TODO: Ouvrir le rapport
+                // TODO: Open report
             }
         }
 

@@ -4,7 +4,7 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue de hiérarchie.
+/// Hierarchy view.
 /// </summary>
 public class HierarchyView : IView
 {
@@ -22,9 +22,9 @@ public class HierarchyView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Hiérarchie", ref isVisible);
+        ImGui.Begin("Hierarchy", ref isVisible);
 
-        ImGui.Text("Structure de l'application:");
+        ImGui.Text("Application Structure:");
         ImGui.Spacing();
 
         if (ImGui.TreeNode("Clockwork.Core (Backend)"))

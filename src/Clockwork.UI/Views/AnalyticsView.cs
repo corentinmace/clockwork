@@ -4,7 +4,7 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue des analytiques.
+/// Analytics view.
 /// </summary>
 public class AnalyticsView : IView
 {
@@ -22,33 +22,33 @@ public class AnalyticsView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Analytiques", ref isVisible);
+        ImGui.Begin("Analytics", ref isVisible);
 
-        ImGui.Text("Analyse des données");
+        ImGui.Text("Data Analysis");
         ImGui.Separator();
         ImGui.Spacing();
 
-        ImGui.Text("Métriques clés:");
+        ImGui.Text("Key Metrics:");
         ImGui.Spacing();
 
-        // Graphique simple (simulé avec des barres de progression)
-        ImGui.Text("Utilisation CPU:");
+        // Simple chart (simulated with progress bars)
+        ImGui.Text("CPU Usage:");
         ImGui.ProgressBar(0.45f, new System.Numerics.Vector2(-1, 0), "45%");
 
-        ImGui.Text("Utilisation Mémoire:");
+        ImGui.Text("Memory Usage:");
         ImGui.ProgressBar(0.67f, new System.Numerics.Vector2(-1, 0), "67%");
 
-        ImGui.Text("Stockage:");
+        ImGui.Text("Storage:");
         ImGui.ProgressBar(0.23f, new System.Numerics.Vector2(-1, 0), "23%");
 
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();
 
-        ImGui.Text("Tendances:");
-        ImGui.BulletText("Augmentation de 15% de l'utilisation");
-        ImGui.BulletText("Performance stable sur 7 jours");
-        ImGui.BulletText("3 alertes cette semaine");
+        ImGui.Text("Trends:");
+        ImGui.BulletText("15% increase in usage");
+        ImGui.BulletText("Stable performance over 7 days");
+        ImGui.BulletText("3 alerts this week");
 
         ImGui.End();
         IsVisible = isVisible;

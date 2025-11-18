@@ -4,7 +4,7 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue des paramètres.
+/// Settings view.
 /// </summary>
 public class SettingsView : IView
 {
@@ -14,7 +14,7 @@ public class SettingsView : IView
     private int _currentTheme = 0;
     private bool _debugMode = false;
     private bool _showFps = true;
-    private readonly string[] _themes = { "Sombre", "Clair", "Système" };
+    private readonly string[] _themes = { "Dark", "Light", "System" };
 
     public bool IsVisible { get; set; } = false;
 
@@ -28,32 +28,32 @@ public class SettingsView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Paramètres", ref isVisible);
+        ImGui.Begin("Settings", ref isVisible);
 
-        ImGui.Text("Paramètres de l'application");
+        ImGui.Text("Application Settings");
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.CollapsingHeader("Général", ImGuiTreeNodeFlags.DefaultOpen))
+        if (ImGui.CollapsingHeader("General", ImGuiTreeNodeFlags.DefaultOpen))
         {
-            ImGui.Checkbox("Sauvegarde automatique", ref _autoSave);
-            ImGui.SliderInt("Intervalle (min)", ref _interval, 1, 30);
+            ImGui.Checkbox("Auto-save", ref _autoSave);
+            ImGui.SliderInt("Interval (min)", ref _interval, 1, 30);
         }
 
         ImGui.Spacing();
 
-        if (ImGui.CollapsingHeader("Apparence"))
+        if (ImGui.CollapsingHeader("Appearance"))
         {
-            ImGui.Text("Thème:");
+            ImGui.Text("Theme:");
             ImGui.Combo("##theme", ref _currentTheme, _themes, _themes.Length);
         }
 
         ImGui.Spacing();
 
-        if (ImGui.CollapsingHeader("Avancé"))
+        if (ImGui.CollapsingHeader("Advanced"))
         {
-            ImGui.Checkbox("Mode debug", ref _debugMode);
-            ImGui.Checkbox("Afficher les FPS", ref _showFps);
+            ImGui.Checkbox("Debug mode", ref _debugMode);
+            ImGui.Checkbox("Show FPS", ref _showFps);
         }
 
         ImGui.End();
