@@ -169,7 +169,7 @@ public class MapFile
     }
 
     /// <summary>
-    /// Check if a tile is walkable (collision value 0x00).
+    /// Check if a tile is walkable (collision value 0x00 or non-0x80).
     /// </summary>
     public bool IsWalkable(int x, int y)
     {
@@ -180,7 +180,7 @@ public class MapFile
     }
 
     /// <summary>
-    /// Set tile walkability.
+    /// Set tile walkability (legacy method for backwards compatibility).
     /// </summary>
     public void SetWalkable(int x, int y, bool walkable)
     {
@@ -191,5 +191,49 @@ public class MapFile
             Collisions[x, y] = 0x00;
         else
             Collisions[x, y] = 0x80;
+    }
+
+    /// <summary>
+    /// Get collision type at position.
+    /// </summary>
+    public byte GetCollision(int x, int y)
+    {
+        if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE)
+            return 0x80; // Out of bounds is blocked
+
+        return Collisions[x, y];
+    }
+
+    /// <summary>
+    /// Set collision type at position.
+    /// </summary>
+    public void SetCollision(int x, int y, byte collisionValue)
+    {
+        if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE)
+            return;
+
+        Collisions[x, y] = collisionValue;
+    }
+
+    /// <summary>
+    /// Get terrain type at position.
+    /// </summary>
+    public byte GetTerrainType(int x, int y)
+    {
+        if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE)
+            return 0x00;
+
+        return Types[x, y];
+    }
+
+    /// <summary>
+    /// Set terrain type at position.
+    /// </summary>
+    public void SetTerrainType(int x, int y, byte terrainValue)
+    {
+        if (x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE)
+            return;
+
+        Types[x, y] = terrainValue;
     }
 }
