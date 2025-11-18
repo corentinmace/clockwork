@@ -1,4 +1,5 @@
 using Clockwork.Core;
+using Clockwork.UI.Views;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Mathematics;
@@ -8,28 +9,40 @@ using OpenTK.Windowing.Desktop;
 namespace Clockwork.UI;
 
 /// <summary>
-/// Fenêtre principale de l'application utilisant OpenTK et ImGui.
+/// Main application window using OpenTK and ImGui.
 /// </summary>
 public class MainWindow : GameWindow
 {
     private ImGuiController? _imguiController;
     private ApplicationContext _appContext;
 
+    // Views
+    private readonly AboutView _aboutView;
+    private readonly RomLoaderView _romLoaderView;
+    private readonly HeaderEditorView _headerEditorView;
+    private readonly MapEditorView _mapEditorView;
+
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
     {
         _appContext = appContext;
+
+        // Initialize views
+        _aboutView = new AboutView(_appContext);
+        _romLoaderView = new RomLoaderView(_appContext);
+        _headerEditorView = new HeaderEditorView(_appContext);
+        _mapEditorView = new MapEditorView(_appContext);
     }
 
     protected override void OnLoad()
     {
         base.OnLoad();
 
-        Title = "Clockwork - .NET 8 + ImGui";
+        Title = "Clockwork - Pokémon ROM Editor";
 
         _imguiController = new ImGuiController(ClientSize.X, ClientSize.Y);
 
-        // Configuration du style ImGui
+        // Configure ImGui style
         ConfigureImGuiStyle();
 
         Console.WriteLine("Application started successfully!");
@@ -39,18 +52,18 @@ public class MainWindow : GameWindow
     {
         var style = ImGui.GetStyle();
 
-        // Arrondis
+        // Rounding
         style.WindowRounding = 6.0f;
         style.FrameRounding = 3.0f;
         style.GrabRounding = 3.0f;
         style.TabRounding = 3.0f;
 
-        // Espacements
+        // Spacing
         style.WindowPadding = new System.Numerics.Vector2(10, 10);
         style.FramePadding = new System.Numerics.Vector2(8, 4);
         style.ItemSpacing = new System.Numerics.Vector2(8, 4);
 
-        // Couleurs (thème sombre moderne)
+        // Colors (modern dark theme)
         var colors = style.Colors;
         colors[(int)ImGuiCol.WindowBg] = new System.Numerics.Vector4(0.11f, 0.11f, 0.11f, 0.94f);
         colors[(int)ImGuiCol.ChildBg] = new System.Numerics.Vector4(0.15f, 0.15f, 0.15f, 1.00f);
@@ -90,10 +103,10 @@ public class MainWindow : GameWindow
 
         _imguiController?.Update(this, args.Time);
 
-        // Mettre à jour le contexte de l'application
+        // Update application context
         _appContext.Update(args.Time);
 
-        // Si l'application doit se fermer
+        // Close if requested
         if (!_appContext.IsRunning)
         {
             Close();
@@ -104,14 +117,14 @@ public class MainWindow : GameWindow
     {
         base.OnRenderFrame(args);
 
-        // Effacer l'écran
+        // Clear screen
         GL.ClearColor(new Color4(0.1f, 0.1f, 0.1f, 1.0f));
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-        // Dessiner l'interface ImGui
+        // Draw ImGui UI
         DrawUI();
 
-        // Rendu ImGui
+        // Render ImGui
         _imguiController?.Render();
 
         SwapBuffers();
@@ -119,8 +132,16 @@ public class MainWindow : GameWindow
 
     private void DrawUI()
     {
-        // Créer un DockSpace fullscreen qui occupe toute la fenêtre
+        // Calculate sidebar width
+        float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
+
+        // Create DockSpace that starts after the sidebar
         var viewport = ImGui.GetMainViewport();
+        float menuBarHeight = ImGui.GetFrameHeight();
+
+        // DockSpace size (offset to leave space for sidebar)
+        var dockspaceSize = new System.Numerics.Vector2(viewport.WorkSize.X - sidebarWidth, viewport.WorkSize.Y);
+
         ImGui.SetNextWindowPos(viewport.WorkPos);
         ImGui.SetNextWindowSize(viewport.WorkSize);
         ImGui.SetNextWindowViewport(viewport.ID);
@@ -136,42 +157,60 @@ public class MainWindow : GameWindow
         ImGui.Begin("DockSpaceWindow", windowFlags);
         ImGui.PopStyleVar(3);
 
-        // DockSpace
+        // DockSpace (offset to leave space for sidebar)
         ImGuiIOPtr io = ImGui.GetIO();
         if ((io.ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
         {
+            // Position cursor for DockSpace
+            ImGui.SetCursorPos(new System.Numerics.Vector2(sidebarWidth, menuBarHeight));
+
             uint dockspaceId = ImGui.GetID("MainDockSpace");
-            ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(0.0f, 0.0f), ImGuiDockNodeFlags.None);
+            ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(dockspaceSize.X, dockspaceSize.Y - menuBarHeight), ImGuiDockNodeFlags.None);
         }
 
-        // Menu principal
+        // Main menu
         if (ImGui.BeginMenuBar())
         {
-            if (ImGui.BeginMenu("Fichier"))
+            if (ImGui.BeginMenu("File"))
             {
-                if (ImGui.MenuItem("Quitter", "Alt+F4"))
+                if (ImGui.MenuItem("Quit", "Alt+F4"))
                 {
                     _appContext.IsRunning = false;
                 }
                 ImGui.EndMenu();
             }
 
-            if (ImGui.BeginMenu("Affichage"))
+            if (ImGui.BeginMenu("ROM"))
             {
-                ImGui.MenuItem("Bienvenue", null, ref _showWelcomeWindow);
-                ImGui.MenuItem("Propriétés", null, ref _showPropertiesWindow);
-                ImGui.MenuItem("Console", null, ref _showConsoleWindow);
-                ImGui.MenuItem("Hiérarchie", null, ref _showHierarchyWindow);
-                ImGui.Separator();
-                ImGui.MenuItem("Métriques ImGui", null, ref _showMetricsWindow);
+                if (ImGui.MenuItem("Open ROM...", "Ctrl+O"))
+                {
+                    _romLoaderView.IsVisible = true;
+                }
                 ImGui.EndMenu();
             }
 
-            if (ImGui.BeginMenu("Aide"))
+            if (ImGui.BeginMenu("Editors"))
             {
-                if (ImGui.MenuItem("À propos"))
+                if (ImGui.MenuItem("Header Editor"))
                 {
-                    _showAboutWindow = true;
+                    _headerEditorView.IsVisible = true;
+                }
+                if (ImGui.MenuItem("Map Editor"))
+                {
+                    _mapEditorView.IsVisible = true;
+                }
+                ImGui.EndMenu();
+            }
+
+            if (ImGui.BeginMenu("Help"))
+            {
+                if (ImGui.MenuItem("About"))
+                {
+                    _aboutView.IsVisible = true;
+                }
+                if (ImGui.MenuItem("ImGui Metrics"))
+                {
+                    _showMetricsWindow = !_showMetricsWindow;
                 }
                 ImGui.EndMenu();
             }
@@ -181,12 +220,14 @@ public class MainWindow : GameWindow
 
         ImGui.End();
 
-        // Dessiner toutes les fenêtres dockables
-        DrawWelcomeWindow();
-        DrawPropertiesWindow();
-        DrawConsoleWindow();
-        DrawHierarchyWindow();
-        DrawAboutWindow();
+        // Sidebar menu
+        DrawSidebar();
+
+        // Draw all views
+        _aboutView.Draw();
+        _romLoaderView.Draw();
+        _headerEditorView.Draw();
+        _mapEditorView.Draw();
 
         if (_showMetricsWindow)
         {
@@ -194,157 +235,55 @@ public class MainWindow : GameWindow
         }
     }
 
-    // États des fenêtres
-    private bool _showWelcomeWindow = true;
-    private bool _showPropertiesWindow = true;
-    private bool _showConsoleWindow = true;
-    private bool _showHierarchyWindow = true;
-    private bool _showMetricsWindow = false;
-    private bool _showAboutWindow = false;
-
-    private void DrawWelcomeWindow()
+    private void DrawSidebar()
     {
-        if (!_showWelcomeWindow) return;
+        // Calculate sidebar position and size
+        float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
+        var viewport = ImGui.GetMainViewport();
+        float menuBarHeight = ImGui.GetFrameHeight();
 
-        ImGui.Begin("Bienvenue", ref _showWelcomeWindow);
+        // Position sidebar on the left, below menu
+        ImGui.SetNextWindowPos(new System.Numerics.Vector2(viewport.WorkPos.X, viewport.WorkPos.Y + menuBarHeight));
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(sidebarWidth, viewport.WorkSize.Y - menuBarHeight));
 
-        ImGui.Text("Bienvenue dans Clockwork!");
-        ImGui.Spacing();
+        // Fixed window that cannot be moved or resized
+        ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking;
 
-        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Architecture:");
-        ImGui.BulletText(".NET 8");
-        ImGui.BulletText("ImGui.NET pour l'interface");
-        ImGui.BulletText("OpenTK pour OpenGL");
-        ImGui.BulletText("Séparation Frontend/Backend");
-        ImGui.BulletText("Docking fullscreen activé");
-        ImGui.Spacing();
+        ImGui.Begin("Navigation", sidebarFlags);
 
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        ImGui.Text($"FPS: {ImGui.GetIO().Framerate:F1}");
-        ImGui.Text($"Frame Time: {1000.0f / ImGui.GetIO().Framerate:F2} ms");
-        ImGui.Spacing();
-
-        ImGui.TextWrapped("Vous pouvez déplacer et docker toutes les fenêtres où vous voulez dans l'interface.");
-
-        ImGui.End();
-    }
-
-    private void DrawPropertiesWindow()
-    {
-        if (!_showPropertiesWindow) return;
-
-        ImGui.Begin("Propriétés", ref _showPropertiesWindow);
-
-        ImGui.Text("Fenêtre de propriétés");
-        ImGui.Separator();
-
-        ImGui.Text("Nom:");
-        ImGui.SameLine();
-        string name = "Clockwork";
-        ImGui.InputText("##name", ref name, 100);
-
-        ImGui.Text("Type:");
-        ImGui.SameLine();
-        ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.5f, 0.5f, 1.0f), "Application");
-
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        if (ImGui.CollapsingHeader("Détails"))
+        // Toggle collapse button
+        if (ImGui.Button(_isSidebarCollapsed ? "»" : "«", new System.Numerics.Vector2(-1, 30)))
         {
-            ImGui.BulletText("Version: 1.0.0");
-            ImGui.BulletText("Framework: .NET 8");
-            ImGui.BulletText("UI: ImGui.NET 1.90.5.1");
+            _isSidebarCollapsed = !_isSidebarCollapsed;
         }
 
-        ImGui.End();
-    }
-
-    private void DrawConsoleWindow()
-    {
-        if (!_showConsoleWindow) return;
-
-        ImGui.Begin("Console", ref _showConsoleWindow);
-
-        ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f), "[INFO]");
-        ImGui.SameLine();
-        ImGui.Text("Application démarrée avec succès");
-
-        ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f), "[INFO]");
-        ImGui.SameLine();
-        ImGui.Text("Backend initialisé");
-
-        ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f), "[INFO]");
-        ImGui.SameLine();
-        ImGui.Text("Frontend prêt");
-
-        ImGui.Separator();
-
-        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "[DEBUG]");
-        ImGui.SameLine();
-        ImGui.Text("Toutes les fenêtres peuvent être dockées librement");
-
-        ImGui.End();
-    }
-
-    private void DrawHierarchyWindow()
-    {
-        if (!_showHierarchyWindow) return;
-
-        ImGui.Begin("Hiérarchie", ref _showHierarchyWindow);
-
-        ImGui.Text("Structure de l'application:");
-        ImGui.Spacing();
-
-        if (ImGui.TreeNode("Clockwork.Core (Backend)"))
+        if (!_isSidebarCollapsed)
         {
-            if (ImGui.TreeNode("ApplicationContext"))
+            ImGui.Spacing();
+            ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "NAVIGATION");
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            // Editors section
+            if (ImGui.CollapsingHeader("Editors", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                ImGui.BulletText("ExampleService");
-                ImGui.TreePop();
+                if (ImGui.Selectable("  📝 Header Editor", _headerEditorView.IsVisible))
+                {
+                    _headerEditorView.IsVisible = !_headerEditorView.IsVisible;
+                }
+                if (ImGui.Selectable("  🗺️  Map Editor", _mapEditorView.IsVisible))
+                {
+                    _mapEditorView.IsVisible = !_mapEditorView.IsVisible;
+                }
             }
-            ImGui.TreePop();
-        }
-
-        if (ImGui.TreeNode("Clockwork.UI (Frontend)"))
-        {
-            ImGui.BulletText("MainWindow");
-            ImGui.BulletText("ImGuiController");
-            ImGui.TreePop();
         }
 
         ImGui.End();
     }
 
-    private void DrawAboutWindow()
-    {
-        if (!_showAboutWindow) return;
-
-        ImGui.Begin("À propos", ref _showAboutWindow, ImGuiWindowFlags.AlwaysAutoResize);
-
-        ImGui.Text("Clockwork");
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        ImGui.Text("Version: 1.0.0");
-        ImGui.Text("Framework: .NET 8");
-        ImGui.Text("UI Library: ImGui.NET 1.90.5.1");
-        ImGui.Text("Graphics: OpenTK 4.8.2 (OpenGL)");
-        ImGui.Spacing();
-
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        if (ImGui.Button("Fermer"))
-        {
-            _showAboutWindow = false;
-        }
-
-        ImGui.End();
-    }
+    // Sidebar state and metrics
+    private bool _isSidebarCollapsed = false;
+    private bool _showMetricsWindow = false;
 
     protected override void OnUnload()
     {

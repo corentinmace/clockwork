@@ -27,6 +27,14 @@ public class ApplicationContext
     }
 
     /// <summary>
+    /// Récupère un service par son type.
+    /// </summary>
+    public T? GetService<T>() where T : class, IApplicationService
+    {
+        return _services.OfType<T>().FirstOrDefault();
+    }
+
+    /// <summary>
     /// Initialise tous les services enregistrés.
     /// </summary>
     public void Initialize()
