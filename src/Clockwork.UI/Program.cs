@@ -20,6 +20,7 @@ internal class Program
         appContext.AddService(new DashboardService());
         appContext.AddService(new UserService());
         appContext.AddService(new DataService());
+        appContext.AddService(new RomService());
 
         // Initialiser le contexte
         appContext.Initialize();

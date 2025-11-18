@@ -28,6 +28,7 @@ public class MainWindow : GameWindow
     private readonly DataViewView _dataViewView;
     private readonly ReportsView _reportsView;
     private readonly AnalyticsView _analyticsView;
+    private readonly RomLoaderView _romLoaderView;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -46,6 +47,7 @@ public class MainWindow : GameWindow
         _dataViewView = new DataViewView(_appContext);
         _reportsView = new ReportsView(_appContext);
         _analyticsView = new AnalyticsView(_appContext);
+        _romLoaderView = new RomLoaderView(_appContext);
     }
 
     protected override void OnLoad()
@@ -194,6 +196,15 @@ public class MainWindow : GameWindow
                 ImGui.EndMenu();
             }
 
+            if (ImGui.BeginMenu("ROM"))
+            {
+                if (ImGui.MenuItem("Ouvrir ROM...", "Ctrl+O"))
+                {
+                    _romLoaderView.IsVisible = true;
+                }
+                ImGui.EndMenu();
+            }
+
             if (ImGui.BeginMenu("Aide"))
             {
                 if (ImGui.MenuItem("À propos"))
@@ -227,6 +238,7 @@ public class MainWindow : GameWindow
         _dataViewView.Draw();
         _reportsView.Draw();
         _analyticsView.Draw();
+        _romLoaderView.Draw();
 
         if (_showMetricsWindow)
         {
