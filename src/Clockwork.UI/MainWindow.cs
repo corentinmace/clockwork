@@ -146,8 +146,16 @@ public class MainWindow : GameWindow
 
     private void DrawUI()
     {
-        // Créer un DockSpace fullscreen qui occupe toute la fenêtre
+        // Calculer la largeur de la sidebar
+        float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
+
+        // Créer un DockSpace qui commence après la sidebar
         var viewport = ImGui.GetMainViewport();
+        float menuBarHeight = ImGui.GetFrameHeight();
+
+        // Taille du DockSpace (décalé vers la droite pour laisser place à la sidebar)
+        var dockspaceSize = new System.Numerics.Vector2(viewport.WorkSize.X - sidebarWidth, viewport.WorkSize.Y);
+
         ImGui.SetNextWindowPos(viewport.WorkPos);
         ImGui.SetNextWindowSize(viewport.WorkSize);
         ImGui.SetNextWindowViewport(viewport.ID);
@@ -163,36 +171,15 @@ public class MainWindow : GameWindow
         ImGui.Begin("DockSpaceWindow", windowFlags);
         ImGui.PopStyleVar(3);
 
-        // DockSpace
+        // DockSpace (décalé pour laisser l'espace de la sidebar)
         ImGuiIOPtr io = ImGui.GetIO();
         if ((io.ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
         {
+            // Positionner le curseur pour le DockSpace
+            ImGui.SetCursorPos(new System.Numerics.Vector2(sidebarWidth, menuBarHeight));
+
             uint dockspaceId = ImGui.GetID("MainDockSpace");
-
-            // Initialiser le layout du dockspace une seule fois
-            if (!_dockspaceInitialized)
-            {
-                _dockspaceInitialized = true;
-
-                // Réinitialiser le dockspace pour être sûr de partir d'une base propre
-                ImGui.DockBuilderRemoveNode(dockspaceId);
-                ImGui.DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags.DockSpace);
-                ImGui.DockBuilderSetNodeSize(dockspaceId, viewport.WorkSize);
-
-                // Créer un split: gauche pour la sidebar, droite pour le contenu
-                float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
-                uint dockLeftId = 0;
-                uint dockRightId = 0;
-                ImGui.DockBuilderSplitNode(dockspaceId, ImGuiDir.Left, sidebarWidth / viewport.WorkSize.X, ref dockLeftId, ref dockRightId);
-
-                // Docker la sidebar à gauche
-                ImGui.DockBuilderDockWindow("Navigation", dockLeftId);
-
-                // Finaliser le layout
-                ImGui.DockBuilderFinish(dockspaceId);
-            }
-
-            ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(0.0f, 0.0f), ImGuiDockNodeFlags.None);
+            ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(dockspaceSize.X, dockspaceSize.Y - menuBarHeight), ImGuiDockNodeFlags.None);
         }
 
         // Menu principal
@@ -249,8 +236,17 @@ public class MainWindow : GameWindow
 
     private void DrawSidebar()
     {
-        // La sidebar est maintenant une fenêtre dockable normale
-        ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoCollapse;
+        // Calculer la position et la taille de la sidebar
+        float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
+        var viewport = ImGui.GetMainViewport();
+        float menuBarHeight = ImGui.GetFrameHeight();
+
+        // Positionner la sidebar à gauche, sous le menu
+        ImGui.SetNextWindowPos(new System.Numerics.Vector2(viewport.WorkPos.X, viewport.WorkPos.Y + menuBarHeight));
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(sidebarWidth, viewport.WorkSize.Y - menuBarHeight));
+
+        // Fenêtre fixe qui ne peut pas être déplacée ou redimensionnée
+        ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking;
 
         ImGui.Begin("Navigation", sidebarFlags);
 
@@ -378,7 +374,6 @@ public class MainWindow : GameWindow
     // État de la sidebar et metrics
     private bool _isSidebarCollapsed = false;
     private bool _showMetricsWindow = false;
-    private bool _dockspaceInitialized = false;
 
     protected override void OnUnload()
     {
