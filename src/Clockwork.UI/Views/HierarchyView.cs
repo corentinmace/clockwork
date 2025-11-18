@@ -21,7 +21,8 @@ public class HierarchyView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Hiérarchie", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Hiérarchie", ref isVisible);
 
         ImGui.Text("Structure de l'application:");
         ImGui.Spacing();
@@ -62,5 +63,6 @@ public class HierarchyView : IView
         }
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

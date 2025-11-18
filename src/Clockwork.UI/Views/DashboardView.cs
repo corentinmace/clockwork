@@ -24,7 +24,8 @@ public class DashboardView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Tableau de bord", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Tableau de bord", ref isVisible);
 
         ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Tableau de bord principal");
         ImGui.Separator();
@@ -68,5 +69,6 @@ public class DashboardView : IView
         ImGui.Text($"Frame Time: {1000.0f / ImGui.GetIO().Framerate:F2} ms");
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

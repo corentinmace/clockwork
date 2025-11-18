@@ -25,7 +25,8 @@ public class DataViewView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Vue des données", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Vue des données", ref isVisible);
 
         ImGui.Text("Exploration des données");
         ImGui.Separator();
@@ -66,5 +67,6 @@ public class DataViewView : IView
         }
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

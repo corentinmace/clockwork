@@ -27,7 +27,8 @@ public class SettingsView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Paramètres", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Paramètres", ref isVisible);
 
         ImGui.Text("Paramètres de l'application");
         ImGui.Separator();
@@ -56,5 +57,6 @@ public class SettingsView : IView
         }
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

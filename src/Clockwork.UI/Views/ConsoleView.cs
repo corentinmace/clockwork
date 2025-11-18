@@ -21,7 +21,8 @@ public class ConsoleView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Console", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Console", ref isVisible);
 
         ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f), "[INFO]");
         ImGui.SameLine();
@@ -42,5 +43,6 @@ public class ConsoleView : IView
         ImGui.Text("Toutes les fenêtres peuvent être dockées librement");
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

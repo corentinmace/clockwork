@@ -28,7 +28,8 @@ public class ReportsView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Rapports", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Rapports", ref isVisible);
 
         ImGui.Text("Génération de rapports");
         ImGui.Separator();
@@ -65,5 +66,6 @@ public class ReportsView : IView
         ImGui.EndChild();
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

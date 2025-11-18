@@ -22,7 +22,8 @@ public class PropertiesView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Propriétés", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Propriétés", ref isVisible);
 
         ImGui.Text("Fenêtre de propriétés");
         ImGui.Separator();
@@ -47,5 +48,6 @@ public class PropertiesView : IView
         }
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

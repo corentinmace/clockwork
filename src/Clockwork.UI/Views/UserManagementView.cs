@@ -24,7 +24,8 @@ public class UserManagementView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Gestion des utilisateurs", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Gestion des utilisateurs", ref isVisible);
 
         ImGui.Text("Liste des utilisateurs");
         ImGui.Separator();
@@ -67,5 +68,6 @@ public class UserManagementView : IView
         }
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

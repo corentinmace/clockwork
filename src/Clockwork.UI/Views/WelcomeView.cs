@@ -21,7 +21,8 @@ public class WelcomeView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Bienvenue", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Bienvenue", ref isVisible);
 
         ImGui.Text("Bienvenue dans Clockwork!");
         ImGui.Spacing();
@@ -44,5 +45,6 @@ public class WelcomeView : IView
         ImGui.TextWrapped("Vous pouvez déplacer et docker toutes les fenêtres où vous voulez dans l'interface.");
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

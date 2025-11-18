@@ -21,7 +21,8 @@ public class AboutView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("À propos", ref Unsafe.AsRef(in IsVisible), ImGuiWindowFlags.AlwaysAutoResize);
+        bool isVisible = IsVisible;
+        ImGui.Begin("À propos", ref isVisible, ImGuiWindowFlags.AlwaysAutoResize);
 
         ImGui.Text("Clockwork");
         ImGui.Separator();
@@ -38,9 +39,10 @@ public class AboutView : IView
 
         if (ImGui.Button("Fermer"))
         {
-            IsVisible = false;
+            isVisible = false;
         }
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }

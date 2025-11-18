@@ -21,7 +21,8 @@ public class AnalyticsView : IView
     {
         if (!IsVisible) return;
 
-        ImGui.Begin("Analytiques", ref Unsafe.AsRef(in IsVisible));
+        bool isVisible = IsVisible;
+        ImGui.Begin("Analytiques", ref isVisible);
 
         ImGui.Text("Analyse des données");
         ImGui.Separator();
@@ -50,5 +51,6 @@ public class AnalyticsView : IView
         ImGui.BulletText("3 alertes cette semaine");
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 }
