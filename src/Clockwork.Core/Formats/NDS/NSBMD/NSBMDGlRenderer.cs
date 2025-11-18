@@ -182,7 +182,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 
                 if (obj.StackID != -1) {
 					if (obj.Trans) {
-                        GL.Translatef(m_trans[0], m_trans[1], m_trans[2]);
+                        Translatef(m_trans[0], m_trans[1], m_trans[2]);
                     }
 
                     GetFloatv(GL_MODELVIEW_MATRIX, MatrixStack[obj.StackID].Floats);
@@ -222,7 +222,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
                         GL.BindTexture(GL_TEXTURE_2D, matid + 1 + matstart);
 
 						// Convert pixel coords to normalised STs
-						GL.MatrixMode(GL_TEXTURE);
+						MatrixMode(GL_TEXTURE);
 						GL.LoadIdentity();
 						
                         if (p.Header.file_size != 0 ) { 
@@ -549,7 +549,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 						GL.BindTexture(GL_TEXTURE_2D, 0);
 
 						// Convert pixel coords to normalised STs
-						GL.MatrixMode(GL_TEXTURE);
+						MatrixMode(GL_TEXTURE);
 						GL.LoadIdentity();
 
 						//scale
@@ -1139,7 +1139,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// </summary>
 		/// <param name="mod">NSBMD Model</param>
 		private void MakeTexture(NSBMDModel mod) {
-			GL.MatrixMode(GL_TEXTURE_MATRIX);
+			MatrixMode(GL_TEXTURE_MATRIX);
 			GL.LoadIdentity();
 
 
@@ -1522,7 +1522,7 @@ namespace Clockwork.Core.Formats.NDS.NSBMD {
 		/// </summary>
 		/// <param name="polydata">Data of specific polygon.</param>
 		private void Process3DCommand(byte[] polydata, NSBMDMaterial m, int jointID, bool color) {
-			GL.MatrixMode(GL_MODELVIEW);
+			MatrixMode(GL_MODELVIEW);
 			GL.LoadIdentity();
 			MaterialHelper.CreateMaterial(new ImageBrush());
 
