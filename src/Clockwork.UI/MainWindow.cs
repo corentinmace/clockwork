@@ -150,13 +150,6 @@ public class MainWindow : GameWindow
         // Menu principal
         if (ImGui.BeginMenuBar())
         {
-            // Zone de drag invisible pour déplacer la fenêtre
-            var menuBarRect = ImGui.GetCurrentWindow().MenuBarRect();
-            bool isMenuBarHovered = ImGui.IsMouseHoveringRect(
-                menuBarRect.Min,
-                new System.Numerics.Vector2(menuBarRect.Max.X - 150, menuBarRect.Max.Y)
-            );
-
             // Titre de l'application
             ImGui.Text("Clockwork");
             ImGui.Spacing();
@@ -190,10 +183,33 @@ public class MainWindow : GameWindow
                 ImGui.EndMenu();
             }
 
-            // Contrôles de fenêtre à droite
+            // Zone draggable pour déplacer la fenêtre
             float menuBarHeight = ImGui.GetFrameHeight();
             float windowWidth = ImGui.GetWindowWidth();
             float buttonWidth = 46.0f;
+            float currentPosX = ImGui.GetCursorPosX();
+            float availableWidth = windowWidth - currentPosX - (buttonWidth * 3) - 20;
+
+            // Bouton invisible pour draguer la fenêtre
+            if (availableWidth > 0)
+            {
+                if (ImGui.InvisibleButton("##DragZone", new System.Numerics.Vector2(availableWidth, menuBarHeight)))
+                {
+                    // Click handled
+                }
+
+                if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                {
+                    if (!_isDraggingWindow)
+                    {
+                        _isDraggingWindow = true;
+                        _dragStartMousePos = ImGui.GetMousePos();
+                        _dragStartWindowPos = Location;
+                    }
+                }
+
+                ImGui.SameLine();
+            }
 
             // Position des boutons à droite
             ImGui.SetCursorPosX(windowWidth - (buttonWidth * 3) - 10);
@@ -233,14 +249,6 @@ public class MainWindow : GameWindow
             if (ImGui.IsItemHovered())
                 ImGui.SetTooltip("Fermer");
             ImGui.PopStyleColor(3);
-
-            // Permettre de déplacer la fenêtre en glissant la barre de menu
-            if (isMenuBarHovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
-            {
-                _isDraggingWindow = true;
-                _dragStartMousePos = ImGui.GetMousePos();
-                _dragStartWindowPos = Location;
-            }
 
             ImGui.EndMenuBar();
         }
