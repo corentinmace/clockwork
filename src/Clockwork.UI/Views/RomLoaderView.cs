@@ -5,13 +5,14 @@ using ImGuiNET;
 namespace Clockwork.UI.Views;
 
 /// <summary>
-/// Vue pour charger une ROM Pokémon.
+/// View for loading Pokémon ROMs.
 /// </summary>
 public class RomLoaderView : IView
 {
     private readonly ApplicationContext _appContext;
     private RomService? _romService;
     private NdsToolService? _ndsToolService;
+    private DialogService? _dialogService;
     private string _romFolderPath = string.Empty;
     private string _ndsFilePath = string.Empty;
     private string _extractOutputPath = string.Empty;
@@ -27,6 +28,7 @@ public class RomLoaderView : IView
         _appContext = appContext;
         _romService = _appContext.GetService<RomService>();
         _ndsToolService = _appContext.GetService<NdsToolService>();
+        _dialogService = _appContext.GetService<DialogService>();
     }
 
     public void Draw()
@@ -34,92 +36,101 @@ public class RomLoaderView : IView
         if (!IsVisible) return;
 
         bool isVisible = IsVisible;
-        ImGui.Begin("Charger une ROM", ref isVisible);
+        ImGui.Begin("Load ROM", ref isVisible);
 
-        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Chargement de ROM Pokémon");
+        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Pokémon ROM Loading");
         ImGui.Separator();
         ImGui.Spacing();
 
-        // Afficher les informations de la ROM si chargée
+        // Display ROM info if loaded
         if (_romService?.CurrentRom?.IsLoaded == true)
         {
             var rom = _romService.CurrentRom;
 
-            ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f), "ROM chargée:");
+            ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f), "ROM Loaded:");
             ImGui.Spacing();
 
-            ImGui.Text($"Jeu: {rom.GameName}");
+            ImGui.Text($"Game: {rom.GameName}");
             ImGui.Text($"Code: {rom.GameCode}");
             ImGui.Text($"Version: {rom.Version}");
-            ImGui.Text($"Langue: {rom.Language}");
-            ImGui.Text($"Famille: {rom.Family}");
-            ImGui.Text($"Chemin: {rom.RomPath}");
+            ImGui.Text($"Language: {rom.Language}");
+            ImGui.Text($"Family: {rom.Family}");
+            ImGui.Text($"Path: {rom.RomPath}");
 
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.Spacing();
 
-            if (ImGui.Button("Décharger la ROM", new System.Numerics.Vector2(-1, 30)))
+            if (ImGui.Button("Unload ROM", new System.Numerics.Vector2(-1, 30)))
             {
                 _romService.UnloadRom();
-                _statusMessage = "ROM déchargée";
+                _statusMessage = "ROM unloaded";
                 _statusColor = new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f);
             }
         }
         else
         {
-            ImGui.Text("Aucune ROM chargée");
+            ImGui.Text("No ROM loaded");
             ImGui.Spacing();
 
-            // Onglets pour Extraire / Charger
+            // Tabs for Extract / Load
             if (ImGui.BeginTabBar("LoadTabs"))
             {
-                // Onglet: Extraire ROM
-                if (ImGui.BeginTabItem("Extraire ROM (.nds)"))
+                // Tab: Extract ROM
+                if (ImGui.BeginTabItem("Extract ROM (.nds)"))
                 {
                     ImGui.Spacing();
 
-                    // Vérifier si ndstool est disponible
+                    // Check if ndstool is available
                     if (_ndsToolService?.IsAvailable != true)
                     {
                         ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.4f, 0.4f, 1.0f),
-                            "ndstool.exe n'est pas disponible!");
-                        ImGui.TextWrapped("Téléchargez ndstool.exe depuis DSPRE et placez-le dans le dossier Tools/");
+                            "ndstool.exe is not available!");
+                        ImGui.TextWrapped("Download ndstool.exe from DSPRE and place it in the Tools/ folder");
                         ImGui.Text("URL: https://github.com/DS-Pokemon-Rom-Editor/DSPRE/raw/master/DS_Map/Tools/ndstool.exe");
                     }
                     else
                     {
                         ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f),
-                            $"ndstool.exe disponible: {_ndsToolService.NdsToolPath}");
+                            $"ndstool.exe available: {_ndsToolService.NdsToolPath}");
                     }
 
                     ImGui.Spacing();
                     ImGui.Separator();
                     ImGui.Spacing();
 
-                    // Input: Fichier .nds
-                    ImGui.Text("Fichier ROM (.nds):");
+                    // Input: .nds file
+                    ImGui.Text("ROM File (.nds):");
                     ImGui.InputText("##ndsfile", ref _ndsFilePath, 500);
                     ImGui.SameLine();
-                    if (ImGui.Button("...##browsends"))
+                    if (ImGui.Button("Browse...##browsends"))
                     {
-                        _statusMessage = "Dialogue de sélection non implémenté - Entrez le chemin manuellement";
-                        _statusColor = new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f);
+                        string? selectedFile = _dialogService?.OpenFileDialog(
+                            "NDS ROM Files|*.nds|All Files|*.*",
+                            "Select NDS ROM File"
+                        );
+                        if (selectedFile != null)
+                        {
+                            _ndsFilePath = selectedFile;
+                        }
                     }
 
-                    // Input: Dossier de sortie
-                    ImGui.Text("Dossier de sortie:");
+                    // Input: Output folder
+                    ImGui.Text("Output Folder:");
                     ImGui.InputText("##extractoutput", ref _extractOutputPath, 500);
                     ImGui.SameLine();
-                    if (ImGui.Button("...##browseoutput"))
+                    if (ImGui.Button("Browse...##browseoutput"))
                     {
-                        _statusMessage = "Dialogue de sélection non implémenté - Entrez le chemin manuellement";
-                        _statusColor = new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f);
+                        string? selectedFolder = _dialogService?.OpenFolderDialog("Select Output Folder");
+                        if (selectedFolder != null)
+                        {
+                            _extractOutputPath = selectedFolder;
+                        }
                     }
 
                     ImGui.Spacing();
 
-                    // Bouton Extraire
+                    // Extract button
                     bool canExtract = _ndsToolService?.IsAvailable == true &&
                                      !string.IsNullOrWhiteSpace(_ndsFilePath) &&
                                      !string.IsNullOrWhiteSpace(_extractOutputPath) &&
@@ -130,7 +141,7 @@ public class RomLoaderView : IView
                         ImGui.BeginDisabled();
                     }
 
-                    if (ImGui.Button("Extraire la ROM", new System.Numerics.Vector2(-1, 40)))
+                    if (ImGui.Button("Extract ROM", new System.Numerics.Vector2(-1, 40)))
                     {
                         _isExtracting = true;
                         _extractionLog = "";
@@ -144,13 +155,13 @@ public class RomLoaderView : IView
 
                         if (success)
                         {
-                            _statusMessage = "Extraction réussie! Vous pouvez maintenant charger la ROM.";
+                            _statusMessage = "Extraction successful! You can now load the ROM.";
                             _statusColor = new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f);
                             _romFolderPath = _extractOutputPath;
                         }
                         else
                         {
-                            _statusMessage = "Erreur lors de l'extraction. Consultez les logs.";
+                            _statusMessage = "Error during extraction. Check logs.";
                             _statusColor = new System.Numerics.Vector4(1.0f, 0.4f, 0.4f, 1.0f);
                         }
                     }
@@ -160,12 +171,12 @@ public class RomLoaderView : IView
                         ImGui.EndDisabled();
                     }
 
-                    // Afficher les logs d'extraction
+                    // Display extraction logs
                     if (!string.IsNullOrEmpty(_extractionLog))
                     {
                         ImGui.Spacing();
                         ImGui.Separator();
-                        ImGui.Text("Logs d'extraction:");
+                        ImGui.Text("Extraction Logs:");
                         ImGui.BeginChild("ExtractionLogs", new System.Numerics.Vector2(0, 150), ImGuiChildFlags.Border);
                         ImGui.TextWrapped(_extractionLog);
                         ImGui.EndChild();
@@ -174,31 +185,34 @@ public class RomLoaderView : IView
                     ImGui.EndTabItem();
                 }
 
-                // Onglet: Charger ROM extraite
-                if (ImGui.BeginTabItem("Charger ROM extraite"))
+                // Tab: Load Extracted ROM
+                if (ImGui.BeginTabItem("Load Extracted ROM"))
                 {
                     ImGui.Spacing();
                     ImGui.Separator();
                     ImGui.Spacing();
 
-                    // Input pour le chemin du dossier
-                    ImGui.Text("Chemin du dossier ROM extrait:");
+                    // Input for folder path
+                    ImGui.Text("Extracted ROM Folder Path:");
                     ImGui.InputText("##rompath", ref _romFolderPath, 500);
 
                     ImGui.SameLine();
-                    if (ImGui.Button("Parcourir..."))
+                    if (ImGui.Button("Browse..."))
                     {
-                        _statusMessage = "Dialogue de sélection non implémenté - Entrez le chemin manuellement";
-                        _statusColor = new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f);
+                        string? selectedFolder = _dialogService?.OpenFolderDialog("Select Extracted ROM Folder");
+                        if (selectedFolder != null)
+                        {
+                            _romFolderPath = selectedFolder;
+                        }
                     }
 
                     ImGui.Spacing();
 
-                    if (ImGui.Button("Charger la ROM", new System.Numerics.Vector2(-1, 40)))
+                    if (ImGui.Button("Load ROM", new System.Numerics.Vector2(-1, 40)))
                     {
                         if (string.IsNullOrWhiteSpace(_romFolderPath))
                         {
-                            _statusMessage = "Erreur: Veuillez spécifier un chemin";
+                            _statusMessage = "Error: Please specify a path";
                             _statusColor = new System.Numerics.Vector4(1.0f, 0.4f, 0.4f, 1.0f);
                         }
                         else
@@ -206,12 +220,12 @@ public class RomLoaderView : IView
                             bool success = _romService?.LoadRomFromFolder(_romFolderPath) ?? false;
                             if (success)
                             {
-                                _statusMessage = $"ROM chargée avec succès: {_romService?.CurrentRom?.GameName}";
+                                _statusMessage = $"ROM loaded successfully: {_romService?.CurrentRom?.GameName}";
                                 _statusColor = new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f);
                             }
                             else
                             {
-                                _statusMessage = "Erreur: Impossible de charger la ROM. Vérifiez le chemin et que header.bin existe.";
+                                _statusMessage = "Error: Unable to load ROM. Check that header.bin exists.";
                                 _statusColor = new System.Numerics.Vector4(1.0f, 0.4f, 0.4f, 1.0f);
                             }
                         }
@@ -221,7 +235,7 @@ public class RomLoaderView : IView
                     ImGui.Separator();
                     ImGui.Spacing();
 
-                    ImGui.TextWrapped("Le dossier doit contenir les fichiers extraits de la ROM (header.bin, arm9.bin, etc.)");
+                    ImGui.TextWrapped("The folder must contain extracted ROM files (header.bin, arm9.bin, etc.)");
 
                     ImGui.EndTabItem();
                 }
@@ -230,7 +244,7 @@ public class RomLoaderView : IView
             }
         }
 
-        // Afficher le message de statut
+        // Display status message
         if (!string.IsNullOrEmpty(_statusMessage))
         {
             ImGui.Spacing();

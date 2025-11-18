@@ -10,23 +10,24 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        Console.WriteLine("Démarrage de Clockwork...");
+        Console.WriteLine("Starting Clockwork...");
 
-        // Créer le contexte de l'application (Backend)
+        // Create application context (Backend)
         var appContext = new ApplicationContext();
 
-        // Enregistrer les services métier
+        // Register services
         appContext.AddService(new ExampleService());
         appContext.AddService(new DashboardService());
         appContext.AddService(new UserService());
         appContext.AddService(new DataService());
         appContext.AddService(new RomService());
         appContext.AddService(new NdsToolService());
+        appContext.AddService(new DialogService());
 
-        // Initialiser le contexte
+        // Initialize context
         appContext.Initialize();
 
-        // Configuration de la fenêtre OpenTK
+        // OpenTK window configuration
         var nativeWindowSettings = new NativeWindowSettings()
         {
             ClientSize = new Vector2i(1280, 720),
@@ -42,12 +43,12 @@ internal class Program
             UpdateFrequency = 60,
         };
 
-        // Créer et lancer la fenêtre (Frontend)
+        // Create and run window (Frontend)
         using (var window = new MainWindow(appContext, gameWindowSettings, nativeWindowSettings))
         {
             window.Run();
         }
 
-        Console.WriteLine("Application fermée.");
+        Console.WriteLine("Application closed.");
     }
 }

@@ -54,11 +54,11 @@ public class MainWindow : GameWindow
     {
         base.OnLoad();
 
-        Title = "Clockwork - .NET 8 + ImGui";
+        Title = "Clockwork - Pokémon ROM Editor";
 
         _imguiController = new ImGuiController(ClientSize.X, ClientSize.Y);
 
-        // Configuration du style ImGui
+        // Configure ImGui style
         ConfigureImGuiStyle();
 
         Console.WriteLine("Application started successfully!");
@@ -68,18 +68,18 @@ public class MainWindow : GameWindow
     {
         var style = ImGui.GetStyle();
 
-        // Arrondis
+        // Rounding
         style.WindowRounding = 6.0f;
         style.FrameRounding = 3.0f;
         style.GrabRounding = 3.0f;
         style.TabRounding = 3.0f;
 
-        // Espacements
+        // Spacing
         style.WindowPadding = new System.Numerics.Vector2(10, 10);
         style.FramePadding = new System.Numerics.Vector2(8, 4);
         style.ItemSpacing = new System.Numerics.Vector2(8, 4);
 
-        // Couleurs (thème sombre moderne)
+        // Colors (modern dark theme)
         var colors = style.Colors;
         colors[(int)ImGuiCol.WindowBg] = new System.Numerics.Vector4(0.11f, 0.11f, 0.11f, 0.94f);
         colors[(int)ImGuiCol.ChildBg] = new System.Numerics.Vector4(0.15f, 0.15f, 0.15f, 1.00f);
@@ -119,10 +119,10 @@ public class MainWindow : GameWindow
 
         _imguiController?.Update(this, args.Time);
 
-        // Mettre à jour le contexte de l'application
+        // Update application context
         _appContext.Update(args.Time);
 
-        // Si l'application doit se fermer
+        // Close if requested
         if (!_appContext.IsRunning)
         {
             Close();
@@ -133,14 +133,14 @@ public class MainWindow : GameWindow
     {
         base.OnRenderFrame(args);
 
-        // Effacer l'écran
+        // Clear screen
         GL.ClearColor(new Color4(0.1f, 0.1f, 0.1f, 1.0f));
         GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-        // Dessiner l'interface ImGui
+        // Draw ImGui UI
         DrawUI();
 
-        // Rendu ImGui
+        // Render ImGui
         _imguiController?.Render();
 
         SwapBuffers();
@@ -148,14 +148,14 @@ public class MainWindow : GameWindow
 
     private void DrawUI()
     {
-        // Calculer la largeur de la sidebar
+        // Calculate sidebar width
         float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
 
-        // Créer un DockSpace qui commence après la sidebar
+        // Create DockSpace that starts after the sidebar
         var viewport = ImGui.GetMainViewport();
         float menuBarHeight = ImGui.GetFrameHeight();
 
-        // Taille du DockSpace (décalé vers la droite pour laisser place à la sidebar)
+        // DockSpace size (offset to leave space for sidebar)
         var dockspaceSize = new System.Numerics.Vector2(viewport.WorkSize.X - sidebarWidth, viewport.WorkSize.Y);
 
         ImGui.SetNextWindowPos(viewport.WorkPos);
@@ -173,23 +173,23 @@ public class MainWindow : GameWindow
         ImGui.Begin("DockSpaceWindow", windowFlags);
         ImGui.PopStyleVar(3);
 
-        // DockSpace (décalé pour laisser l'espace de la sidebar)
+        // DockSpace (offset to leave space for sidebar)
         ImGuiIOPtr io = ImGui.GetIO();
         if ((io.ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
         {
-            // Positionner le curseur pour le DockSpace
+            // Position cursor for DockSpace
             ImGui.SetCursorPos(new System.Numerics.Vector2(sidebarWidth, menuBarHeight));
 
             uint dockspaceId = ImGui.GetID("MainDockSpace");
             ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(dockspaceSize.X, dockspaceSize.Y - menuBarHeight), ImGuiDockNodeFlags.None);
         }
 
-        // Menu principal
+        // Main menu
         if (ImGui.BeginMenuBar())
         {
-            if (ImGui.BeginMenu("Fichier"))
+            if (ImGui.BeginMenu("File"))
             {
-                if (ImGui.MenuItem("Quitter", "Alt+F4"))
+                if (ImGui.MenuItem("Quit", "Alt+F4"))
                 {
                     _appContext.IsRunning = false;
                 }
@@ -198,20 +198,20 @@ public class MainWindow : GameWindow
 
             if (ImGui.BeginMenu("ROM"))
             {
-                if (ImGui.MenuItem("Ouvrir ROM...", "Ctrl+O"))
+                if (ImGui.MenuItem("Open ROM...", "Ctrl+O"))
                 {
                     _romLoaderView.IsVisible = true;
                 }
                 ImGui.EndMenu();
             }
 
-            if (ImGui.BeginMenu("Aide"))
+            if (ImGui.BeginMenu("Help"))
             {
-                if (ImGui.MenuItem("À propos"))
+                if (ImGui.MenuItem("About"))
                 {
                     _aboutView.IsVisible = true;
                 }
-                if (ImGui.MenuItem("Métriques ImGui"))
+                if (ImGui.MenuItem("ImGui Metrics"))
                 {
                     _showMetricsWindow = !_showMetricsWindow;
                 }
@@ -223,10 +223,10 @@ public class MainWindow : GameWindow
 
         ImGui.End();
 
-        // Menu latéral
+        // Sidebar menu
         DrawSidebar();
 
-        // Dessiner toutes les vues
+        // Draw all views
         _welcomeView.Draw();
         _propertiesView.Draw();
         _consoleView.Draw();
@@ -248,21 +248,21 @@ public class MainWindow : GameWindow
 
     private void DrawSidebar()
     {
-        // Calculer la position et la taille de la sidebar
+        // Calculate sidebar position and size
         float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
         var viewport = ImGui.GetMainViewport();
         float menuBarHeight = ImGui.GetFrameHeight();
 
-        // Positionner la sidebar à gauche, sous le menu
+        // Position sidebar on the left, below menu
         ImGui.SetNextWindowPos(new System.Numerics.Vector2(viewport.WorkPos.X, viewport.WorkPos.Y + menuBarHeight));
         ImGui.SetNextWindowSize(new System.Numerics.Vector2(sidebarWidth, viewport.WorkSize.Y - menuBarHeight));
 
-        // Fenêtre fixe qui ne peut pas être déplacée ou redimensionnée
+        // Fixed window that cannot be moved or resized
         ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking;
 
         ImGui.Begin("Navigation", sidebarFlags);
 
-        // Bouton pour rétracter/déplier
+        // Toggle collapse button
         if (ImGui.Button(_isSidebarCollapsed ? "»" : "«", new System.Numerics.Vector2(-1, 30)))
         {
             _isSidebarCollapsed = !_isSidebarCollapsed;
@@ -278,53 +278,53 @@ public class MainWindow : GameWindow
 
         if (_isSidebarCollapsed)
         {
-            // Mode rétracté - afficher juste des icônes
+            // Collapsed mode - show only icons
             ImGui.Spacing();
             if (ImGui.Button("📊", new System.Numerics.Vector2(-1, 40))) _dashboardView.IsVisible = !_dashboardView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Tableau de bord");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Dashboard");
 
             if (ImGui.Button("👋", new System.Numerics.Vector2(-1, 40))) _welcomeView.IsVisible = !_welcomeView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Bienvenue");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Welcome");
 
             if (ImGui.Button("📝", new System.Numerics.Vector2(-1, 40))) _propertiesView.IsVisible = !_propertiesView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Propriétés");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Properties");
 
             if (ImGui.Button("💻", new System.Numerics.Vector2(-1, 40))) _consoleView.IsVisible = !_consoleView.IsVisible;
             if (ImGui.IsItemHovered()) ImGui.SetTooltip("Console");
 
             if (ImGui.Button("🌳", new System.Numerics.Vector2(-1, 40))) _hierarchyView.IsVisible = !_hierarchyView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Hiérarchie");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Hierarchy");
 
             if (ImGui.Button("📁", new System.Numerics.Vector2(-1, 40))) _dataViewView.IsVisible = !_dataViewView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Vue des données");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Data View");
 
             if (ImGui.Button("📄", new System.Numerics.Vector2(-1, 40))) _reportsView.IsVisible = !_reportsView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Rapports");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Reports");
 
             if (ImGui.Button("📈", new System.Numerics.Vector2(-1, 40))) _analyticsView.IsVisible = !_analyticsView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Analytiques");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Analytics");
 
             if (ImGui.Button("⚙️", new System.Numerics.Vector2(-1, 40))) _settingsView.IsVisible = !_settingsView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Paramètres");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Settings");
 
             if (ImGui.Button("👥", new System.Numerics.Vector2(-1, 40))) _userManagementView.IsVisible = !_userManagementView.IsVisible;
-            if (ImGui.IsItemHovered()) ImGui.SetTooltip("Gestion utilisateurs");
+            if (ImGui.IsItemHovered()) ImGui.SetTooltip("User Management");
         }
         else
         {
-            // Mode normal - afficher le menu complet
-            // Section: Général
-            if (ImGui.CollapsingHeader("Général", ImGuiTreeNodeFlags.DefaultOpen))
+            // Normal mode - show full menu
+            // Section: General
+            if (ImGui.CollapsingHeader("General", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                if (ImGui.Selectable("  📊 Tableau de bord", _dashboardView.IsVisible))
+                if (ImGui.Selectable("  📊 Dashboard", _dashboardView.IsVisible))
                 {
                     _dashboardView.IsVisible = !_dashboardView.IsVisible;
                 }
-                if (ImGui.Selectable("  👋 Bienvenue", _welcomeView.IsVisible))
+                if (ImGui.Selectable("  👋 Welcome", _welcomeView.IsVisible))
                 {
                     _welcomeView.IsVisible = !_welcomeView.IsVisible;
                 }
-                if (ImGui.Selectable("  📝 Propriétés", _propertiesView.IsVisible))
+                if (ImGui.Selectable("  📝 Properties", _propertiesView.IsVisible))
                 {
                     _propertiesView.IsVisible = !_propertiesView.IsVisible;
                 }
@@ -332,14 +332,14 @@ public class MainWindow : GameWindow
 
             ImGui.Spacing();
 
-            // Section: Développement
-            if (ImGui.CollapsingHeader("Développement", ImGuiTreeNodeFlags.DefaultOpen))
+            // Section: Development
+            if (ImGui.CollapsingHeader("Development", ImGuiTreeNodeFlags.DefaultOpen))
             {
                 if (ImGui.Selectable("  💻 Console", _consoleView.IsVisible))
                 {
                     _consoleView.IsVisible = !_consoleView.IsVisible;
                 }
-                if (ImGui.Selectable("  🌳 Hiérarchie", _hierarchyView.IsVisible))
+                if (ImGui.Selectable("  🌳 Hierarchy", _hierarchyView.IsVisible))
                 {
                     _hierarchyView.IsVisible = !_hierarchyView.IsVisible;
                 }
@@ -347,18 +347,18 @@ public class MainWindow : GameWindow
 
             ImGui.Spacing();
 
-            // Section: Données
-            if (ImGui.CollapsingHeader("Données"))
+            // Section: Data
+            if (ImGui.CollapsingHeader("Data"))
             {
-                if (ImGui.Selectable("  📁 Vue des données", _dataViewView.IsVisible))
+                if (ImGui.Selectable("  📁 Data View", _dataViewView.IsVisible))
                 {
                     _dataViewView.IsVisible = !_dataViewView.IsVisible;
                 }
-                if (ImGui.Selectable("  📄 Rapports", _reportsView.IsVisible))
+                if (ImGui.Selectable("  📄 Reports", _reportsView.IsVisible))
                 {
                     _reportsView.IsVisible = !_reportsView.IsVisible;
                 }
-                if (ImGui.Selectable("  📈 Analytiques", _analyticsView.IsVisible))
+                if (ImGui.Selectable("  📈 Analytics", _analyticsView.IsVisible))
                 {
                     _analyticsView.IsVisible = !_analyticsView.IsVisible;
                 }
@@ -366,14 +366,14 @@ public class MainWindow : GameWindow
 
             ImGui.Spacing();
 
-            // Section: Système
-            if (ImGui.CollapsingHeader("Système"))
+            // Section: System
+            if (ImGui.CollapsingHeader("System"))
             {
-                if (ImGui.Selectable("  ⚙️ Paramètres", _settingsView.IsVisible))
+                if (ImGui.Selectable("  ⚙️ Settings", _settingsView.IsVisible))
                 {
                     _settingsView.IsVisible = !_settingsView.IsVisible;
                 }
-                if (ImGui.Selectable("  👥 Gestion utilisateurs", _userManagementView.IsVisible))
+                if (ImGui.Selectable("  👥 User Management", _userManagementView.IsVisible))
                 {
                     _userManagementView.IsVisible = !_userManagementView.IsVisible;
                 }
@@ -383,7 +383,7 @@ public class MainWindow : GameWindow
         ImGui.End();
     }
 
-    // État de la sidebar et metrics
+    // Sidebar state and metrics
     private bool _isSidebarCollapsed = false;
     private bool _showMetricsWindow = false;
 
