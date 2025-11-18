@@ -1,40 +1,28 @@
 namespace Clockwork.Core.Models;
 
 /// <summary>
-/// Représente les différentes versions de jeux Pokémon DS supportées.
+/// Represents the supported Pokémon DS game versions.
 /// </summary>
 public enum GameVersion
 {
     Unknown,
-    Diamond,
-    Pearl,
-    Platinum,
-    HeartGold,
-    SoulSilver
+    Platinum
 }
 
 /// <summary>
-/// Représente les langues supportées.
+/// Represents the supported languages.
 /// </summary>
 public enum GameLanguage
 {
     Unknown,
-    Japanese,
-    English,
-    French,
-    Italian,
-    German,
-    Spanish,
-    Korean
+    Italian
 }
 
 /// <summary>
-/// Représente la famille de jeux (génération).
+/// Represents the game family (generation).
 /// </summary>
 public enum GameFamily
 {
     Unknown,
-    DiamondPearl,
-    Platinum,
-    HeartGoldSoulSilver
+    Platinum
 }

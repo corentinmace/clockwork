@@ -3,62 +3,15 @@ using Clockwork.Core.Models;
 namespace Clockwork.Core.Services;
 
 /// <summary>
-/// Service de gestion de la ROM Pokémon.
+/// Service for managing Pokémon ROM.
 /// </summary>
 public class RomService : IApplicationService
 {
     private RomInfo? _currentRom;
     private readonly Dictionary<string, GameVersion> _gameCodeMapping = new()
     {
-        // Diamond
-        { "ADAE", GameVersion.Diamond }, // US
-        { "ADAJ", GameVersion.Diamond }, // JP
-        { "ADAP", GameVersion.Diamond }, // EU
-        { "ADAS", GameVersion.Diamond }, // ES
-        { "ADAI", GameVersion.Diamond }, // IT
-        { "ADAF", GameVersion.Diamond }, // FR
-        { "ADAD", GameVersion.Diamond }, // DE
-        { "ADAK", GameVersion.Diamond }, // KR
-
-        // Pearl
-        { "APAE", GameVersion.Pearl }, // US
-        { "APAJ", GameVersion.Pearl }, // JP
-        { "APAP", GameVersion.Pearl }, // EU
-        { "APAS", GameVersion.Pearl }, // ES
-        { "APAI", GameVersion.Pearl }, // IT
-        { "APAF", GameVersion.Pearl }, // FR
-        { "APAD", GameVersion.Pearl }, // DE
-        { "APAK", GameVersion.Pearl }, // KR
-
-        // Platinum
-        { "CPUE", GameVersion.Platinum }, // US
-        { "CPUJ", GameVersion.Platinum }, // JP
-        { "CPUP", GameVersion.Platinum }, // EU
-        { "CPUS", GameVersion.Platinum }, // ES
-        { "CPUI", GameVersion.Platinum }, // IT
-        { "CPUF", GameVersion.Platinum }, // FR
-        { "CPUD", GameVersion.Platinum }, // DE
-        { "CPUK", GameVersion.Platinum }, // KR
-
-        // HeartGold
-        { "IPKE", GameVersion.HeartGold }, // US
-        { "IPKJ", GameVersion.HeartGold }, // JP
-        { "IPKP", GameVersion.HeartGold }, // EU
-        { "IPKS", GameVersion.HeartGold }, // ES
-        { "IPKI", GameVersion.HeartGold }, // IT
-        { "IPKF", GameVersion.HeartGold }, // FR
-        { "IPKD", GameVersion.HeartGold }, // DE
-        { "IPKK", GameVersion.HeartGold }, // KR
-
-        // SoulSilver
-        { "IPGE", GameVersion.SoulSilver }, // US
-        { "IPGJ", GameVersion.SoulSilver }, // JP
-        { "IPGP", GameVersion.SoulSilver }, // EU
-        { "IPGS", GameVersion.SoulSilver }, // ES
-        { "IPGI", GameVersion.SoulSilver }, // IT
-        { "IPGF", GameVersion.SoulSilver }, // FR
-        { "IPGD", GameVersion.SoulSilver }, // DE
-        { "IPGK", GameVersion.SoulSilver }, // KR
+        // Platinum Italian
+        { "CPUI", GameVersion.Platinum }
     };
 
     public RomInfo? CurrentRom => _currentRom;
@@ -70,7 +23,7 @@ public class RomService : IApplicationService
 
     public void Update(double deltaTime)
     {
-        // Rien à faire
+        // Nothing to do
     }
 
     public void Shutdown()
@@ -84,41 +37,41 @@ public class RomService : IApplicationService
     }
 
     /// <summary>
-    /// Charge une ROM depuis un dossier extrait.
+    /// Loads a ROM from an extracted folder.
     /// </summary>
-    /// <param name="folderPath">Chemin vers le dossier contenant la ROM extraite.</param>
-    /// <returns>True si le chargement a réussi.</returns>
+    /// <param name="folderPath">Path to the folder containing the extracted ROM.</param>
+    /// <returns>True if loading succeeded.</returns>
     public bool LoadRomFromFolder(string folderPath)
     {
         try
         {
-            // Vérifier que le dossier existe
+            // Check that the folder exists
             if (!Directory.Exists(folderPath))
             {
                 return false;
             }
 
-            // Lire le header.bin pour obtenir le game code
+            // Read header.bin to get the game code
             string headerPath = Path.Combine(folderPath, "header.bin");
             if (!File.Exists(headerPath))
             {
                 return false;
             }
 
-            // Lire le game code (4 bytes à l'offset 0x0C dans le header)
+            // Read the game code (4 bytes at offset 0x0C in the header)
             string gameCode = ReadGameCodeFromHeader(headerPath);
             if (string.IsNullOrEmpty(gameCode))
             {
                 return false;
             }
 
-            // Déterminer la version du jeu
+            // Determine the game version
             if (!_gameCodeMapping.TryGetValue(gameCode, out GameVersion version))
             {
                 return false;
             }
 
-            // Créer RomInfo
+            // Create RomInfo
             _currentRom = new RomInfo
             {
                 GameCode = gameCode,
@@ -129,7 +82,7 @@ public class RomService : IApplicationService
                 RomPath = folderPath
             };
 
-            // Initialiser les chemins des dossiers
+            // Initialize game directories
             InitializeGameDirectories(folderPath);
 
             return true;
@@ -142,7 +95,7 @@ public class RomService : IApplicationService
     }
 
     /// <summary>
-    /// Lit le game code depuis le fichier header.bin.
+    /// Reads the game code from the header.bin file.
     /// </summary>
     private string ReadGameCodeFromHeader(string headerPath)
     {
@@ -151,7 +104,7 @@ public class RomService : IApplicationService
             using var fs = new FileStream(headerPath, FileMode.Open, FileAccess.Read);
             using var reader = new BinaryReader(fs);
 
-            // Le game code est à l'offset 0x0C et fait 4 bytes
+            // The game code is at offset 0x0C and is 4 bytes
             fs.Seek(0x0C, SeekOrigin.Begin);
             byte[] codeBytes = reader.ReadBytes(4);
 
@@ -164,7 +117,7 @@ public class RomService : IApplicationService
     }
 
     /// <summary>
-    /// Détermine la langue depuis le game code.
+    /// Determines the language from the game code.
     /// </summary>
     private GameLanguage GetLanguageFromGameCode(string gameCode)
     {
@@ -172,70 +125,56 @@ public class RomService : IApplicationService
 
         return gameCode[3] switch
         {
-            'E' => GameLanguage.English,
-            'J' => GameLanguage.Japanese,
-            'F' => GameLanguage.French,
             'I' => GameLanguage.Italian,
-            'D' => GameLanguage.German,
-            'S' => GameLanguage.Spanish,
-            'K' => GameLanguage.Korean,
-            'P' => GameLanguage.English, // EU = English par défaut
             _ => GameLanguage.Unknown
         };
     }
 
     /// <summary>
-    /// Détermine la famille du jeu.
+    /// Determines the game family.
     /// </summary>
     private GameFamily GetGameFamily(GameVersion version)
     {
         return version switch
         {
-            GameVersion.Diamond or GameVersion.Pearl => GameFamily.DiamondPearl,
             GameVersion.Platinum => GameFamily.Platinum,
-            GameVersion.HeartGold or GameVersion.SoulSilver => GameFamily.HeartGoldSoulSilver,
             _ => GameFamily.Unknown
         };
     }
 
     /// <summary>
-    /// Obtient le nom du jeu.
+    /// Gets the game name.
     /// </summary>
     private string GetGameName(GameVersion version)
     {
         return version switch
         {
-            GameVersion.Diamond => "Pokémon Diamond",
-            GameVersion.Pearl => "Pokémon Pearl",
             GameVersion.Platinum => "Pokémon Platinum",
-            GameVersion.HeartGold => "Pokémon HeartGold",
-            GameVersion.SoulSilver => "Pokémon SoulSilver",
             _ => "Unknown"
         };
     }
 
     /// <summary>
-    /// Initialise les chemins des dossiers du jeu.
+    /// Initializes the game directory paths.
     /// </summary>
     private void InitializeGameDirectories(string romPath)
     {
         if (_currentRom == null) return;
 
-        // Ces chemins sont basés sur la structure typique d'une ROM DS extraite
-        // Le dossier "a" contient les fichiers du jeu organisés en sous-dossiers
+        // These paths are based on the typical structure of an extracted DS ROM
+        // The "data" folder contains game files organized in subfolders
         string dataPath = Path.Combine(romPath, "data");
 
         _currentRom.GameDirectories = new Dictionary<string, string>
         {
             ["root"] = romPath,
             ["data"] = dataPath,
-            // TODO: Ajouter les chemins spécifiques selon la version du jeu
-            // Ces chemins varient selon Diamond/Pearl/Platinum/HGSS
+            // TODO: Add specific paths according to the game version
         };
     }
 
     /// <summary>
-    /// Décharge la ROM actuelle.
+    /// Unloads the current ROM.
     /// </summary>
     public void UnloadRom()
     {
