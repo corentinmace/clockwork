@@ -14,6 +14,10 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
             A = a;
         }
 
+        public static Color White => new Color(255, 255, 255, 255);
+        public static Color Black => new Color(0, 0, 0, 255);
+        public static Color Transparent => new Color(0, 0, 0, 0);
+
         public static Color FromArgb(int argb)
         {
             return new Color(
@@ -27,6 +31,11 @@ namespace Clockwork.Core.Formats.NDS.NSBMD
         public static Color FromArgb(byte a, byte r, byte g, byte b)
         {
             return new Color(r, g, b, a);
+        }
+
+        public static Color FromArgb(int a, int r, int g, int b)
+        {
+            return new Color((byte)r, (byte)g, (byte)b, (byte)a);
         }
 
         public int ToArgb()
