@@ -198,17 +198,29 @@ public class MainWindow : GameWindow
                 {
                     if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
                     {
+                        var dragDelta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Left);
+
                         if (!_isDraggingWindow)
                         {
                             _isDraggingWindow = true;
                             _dragStartWindowPos = Location;
                         }
 
-                        var dragDelta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Left);
-                        Location = new OpenTK.Mathematics.Vector2i(
+                        // Calculer la nouvelle position
+                        var newPos = new OpenTK.Mathematics.Vector2i(
                             _dragStartWindowPos.X + (int)dragDelta.X,
                             _dragStartWindowPos.Y + (int)dragDelta.Y
                         );
+
+                        // Mettre à jour seulement si la position a changé
+                        if (newPos != Location)
+                        {
+                            Location = newPos;
+                            // Mettre à jour la position de référence pour éviter l'accumulation
+                            _dragStartWindowPos = Location;
+                            // Réinitialiser le delta
+                            ImGui.ResetMouseDragDelta(ImGuiMouseButton.Left);
+                        }
                     }
                 }
                 else
