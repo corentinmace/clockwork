@@ -15,7 +15,7 @@ public enum GameVersion
 public enum GameLanguage
 {
     Unknown,
-    Italian
+    English
 }
 
 /// <summary>

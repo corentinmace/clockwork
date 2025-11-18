@@ -125,7 +125,7 @@ public class RomService : IApplicationService
 
         return gameCode[3] switch
         {
-            'T' => GameLanguage.Italian,
+            'T' => GameLanguage.English,
             _ => GameLanguage.Unknown
         };
     }
