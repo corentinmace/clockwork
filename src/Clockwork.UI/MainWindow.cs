@@ -14,8 +14,6 @@ public class MainWindow : GameWindow
 {
     private ImGuiController? _imguiController;
     private ApplicationContext _appContext;
-    private bool _isDraggingWindow = false;
-    private OpenTK.Mathematics.Vector2i _dragStartWindowPos;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -149,10 +147,6 @@ public class MainWindow : GameWindow
         // Menu principal
         if (ImGui.BeginMenuBar())
         {
-            // Titre de l'application
-            ImGui.Text("Clockwork");
-            ImGui.Spacing();
-
             if (ImGui.BeginMenu("Fichier"))
             {
                 if (ImGui.MenuItem("Quitter", "Alt+F4"))
@@ -162,125 +156,39 @@ public class MainWindow : GameWindow
                 ImGui.EndMenu();
             }
 
-            if (ImGui.BeginMenu("Affichage"))
-            {
-                ImGui.MenuItem("Bienvenue", null, ref _showWelcomeWindow);
-                ImGui.MenuItem("Propriétés", null, ref _showPropertiesWindow);
-                ImGui.MenuItem("Console", null, ref _showConsoleWindow);
-                ImGui.MenuItem("Hiérarchie", null, ref _showHierarchyWindow);
-                ImGui.Separator();
-                ImGui.MenuItem("Métriques ImGui", null, ref _showMetricsWindow);
-                ImGui.EndMenu();
-            }
-
             if (ImGui.BeginMenu("Aide"))
             {
                 if (ImGui.MenuItem("À propos"))
                 {
                     _showAboutWindow = true;
                 }
+                if (ImGui.MenuItem("Métriques ImGui"))
+                {
+                    _showMetricsWindow = !_showMetricsWindow;
+                }
                 ImGui.EndMenu();
             }
-
-            // Zone draggable pour déplacer la fenêtre
-            float menuBarHeight = ImGui.GetFrameHeight();
-            float windowWidth = ImGui.GetWindowWidth();
-            float buttonWidth = 46.0f;
-            float currentPosX = ImGui.GetCursorPosX();
-            float availableWidth = windowWidth - currentPosX - (buttonWidth * 3) - 20;
-
-            // Bouton invisible pour draguer la fenêtre
-            if (availableWidth > 0)
-            {
-                ImGui.InvisibleButton("##DragZone", new System.Numerics.Vector2(availableWidth, menuBarHeight));
-
-                if (ImGui.IsItemActive())
-                {
-                    if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
-                    {
-                        var dragDelta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Left);
-
-                        if (!_isDraggingWindow)
-                        {
-                            _isDraggingWindow = true;
-                            _dragStartWindowPos = Location;
-                        }
-
-                        // Calculer la nouvelle position
-                        var newPos = new OpenTK.Mathematics.Vector2i(
-                            _dragStartWindowPos.X + (int)dragDelta.X,
-                            _dragStartWindowPos.Y + (int)dragDelta.Y
-                        );
-
-                        // Mettre à jour seulement si la position a changé
-                        if (newPos != Location)
-                        {
-                            Location = newPos;
-                            // Mettre à jour la position de référence pour éviter l'accumulation
-                            _dragStartWindowPos = Location;
-                            // Réinitialiser le delta
-                            ImGui.ResetMouseDragDelta(ImGuiMouseButton.Left);
-                        }
-                    }
-                }
-                else
-                {
-                    _isDraggingWindow = false;
-                }
-
-                ImGui.SameLine();
-            }
-
-            // Position des boutons à droite
-            ImGui.SetCursorPosX(windowWidth - (buttonWidth * 3) - 10);
-
-            // Bouton Minimiser
-            if (ImGui.Button("-", new System.Numerics.Vector2(buttonWidth, menuBarHeight)))
-            {
-                WindowState = OpenTK.Windowing.Common.WindowState.Minimized;
-            }
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Minimiser");
-
-            ImGui.SameLine(0, 0);
-
-            // Bouton Maximiser/Restaurer
-            bool isMaximized = WindowState == OpenTK.Windowing.Common.WindowState.Maximized;
-            string maximizeIcon = isMaximized ? "◱" : "□";
-            if (ImGui.Button(maximizeIcon, new System.Numerics.Vector2(buttonWidth, menuBarHeight)))
-            {
-                WindowState = isMaximized
-                    ? OpenTK.Windowing.Common.WindowState.Normal
-                    : OpenTK.Windowing.Common.WindowState.Maximized;
-            }
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip(isMaximized ? "Restaurer" : "Maximiser");
-
-            ImGui.SameLine(0, 0);
-
-            // Bouton Fermer
-            ImGui.PushStyleColor(ImGuiCol.Button, new System.Numerics.Vector4(0.8f, 0.2f, 0.2f, 1.0f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.9f, 0.3f, 0.3f, 1.0f));
-            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(1.0f, 0.1f, 0.1f, 1.0f));
-            if (ImGui.Button("X", new System.Numerics.Vector2(buttonWidth, menuBarHeight)))
-            {
-                _appContext.IsRunning = false;
-            }
-            if (ImGui.IsItemHovered())
-                ImGui.SetTooltip("Fermer");
-            ImGui.PopStyleColor(3);
 
             ImGui.EndMenuBar();
         }
 
         ImGui.End();
 
-        // Dessiner toutes les fenêtres dockables
+        // Menu latéral
+        DrawSidebar();
+
+        // Dessiner toutes les fenêtres
         DrawWelcomeWindow();
         DrawPropertiesWindow();
         DrawConsoleWindow();
         DrawHierarchyWindow();
         DrawAboutWindow();
+        DrawDashboardWindow();
+        DrawSettingsWindow();
+        DrawUserManagementWindow();
+        DrawDataViewWindow();
+        DrawReportsWindow();
+        DrawAnalyticsWindow();
 
         if (_showMetricsWindow)
         {
@@ -288,13 +196,101 @@ public class MainWindow : GameWindow
         }
     }
 
+    private void DrawSidebar()
+    {
+        ImGui.SetNextWindowPos(new System.Numerics.Vector2(0, ImGui.GetFrameHeight()));
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(250, ImGui.GetIO().DisplaySize.Y - ImGui.GetFrameHeight()));
+
+        ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse;
+
+        ImGui.Begin("Sidebar", sidebarFlags);
+
+        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "NAVIGATION");
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        // Section: Général
+        if (ImGui.CollapsingHeader("Général", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            if (ImGui.Selectable("  Tableau de bord", _showDashboardWindow))
+            {
+                _showDashboardWindow = !_showDashboardWindow;
+            }
+            if (ImGui.Selectable("  Bienvenue", _showWelcomeWindow))
+            {
+                _showWelcomeWindow = !_showWelcomeWindow;
+            }
+            if (ImGui.Selectable("  Propriétés", _showPropertiesWindow))
+            {
+                _showPropertiesWindow = !_showPropertiesWindow;
+            }
+        }
+
+        ImGui.Spacing();
+
+        // Section: Développement
+        if (ImGui.CollapsingHeader("Développement", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            if (ImGui.Selectable("  Console", _showConsoleWindow))
+            {
+                _showConsoleWindow = !_showConsoleWindow;
+            }
+            if (ImGui.Selectable("  Hiérarchie", _showHierarchyWindow))
+            {
+                _showHierarchyWindow = !_showHierarchyWindow;
+            }
+        }
+
+        ImGui.Spacing();
+
+        // Section: Données
+        if (ImGui.CollapsingHeader("Données"))
+        {
+            if (ImGui.Selectable("  Vue des données", _showDataViewWindow))
+            {
+                _showDataViewWindow = !_showDataViewWindow;
+            }
+            if (ImGui.Selectable("  Rapports", _showReportsWindow))
+            {
+                _showReportsWindow = !_showReportsWindow;
+            }
+            if (ImGui.Selectable("  Analytiques", _showAnalyticsWindow))
+            {
+                _showAnalyticsWindow = !_showAnalyticsWindow;
+            }
+        }
+
+        ImGui.Spacing();
+
+        // Section: Système
+        if (ImGui.CollapsingHeader("Système"))
+        {
+            if (ImGui.Selectable("  Paramètres", _showSettingsWindow))
+            {
+                _showSettingsWindow = !_showSettingsWindow;
+            }
+            if (ImGui.Selectable("  Gestion utilisateurs", _showUserManagementWindow))
+            {
+                _showUserManagementWindow = !_showUserManagementWindow;
+            }
+        }
+
+        ImGui.End();
+    }
+
     // États des fenêtres
-    private bool _showWelcomeWindow = true;
-    private bool _showPropertiesWindow = true;
-    private bool _showConsoleWindow = true;
-    private bool _showHierarchyWindow = true;
+    private bool _showWelcomeWindow = false;
+    private bool _showPropertiesWindow = false;
+    private bool _showConsoleWindow = false;
+    private bool _showHierarchyWindow = false;
     private bool _showMetricsWindow = false;
     private bool _showAboutWindow = false;
+    private bool _showDashboardWindow = true;
+    private bool _showSettingsWindow = false;
+    private bool _showUserManagementWindow = false;
+    private bool _showDataViewWindow = false;
+    private bool _showReportsWindow = false;
+    private bool _showAnalyticsWindow = false;
 
     private void DrawWelcomeWindow()
     {
@@ -436,6 +432,259 @@ public class MainWindow : GameWindow
         {
             _showAboutWindow = false;
         }
+
+        ImGui.End();
+    }
+
+    private void DrawDashboardWindow()
+    {
+        if (!_showDashboardWindow) return;
+
+        ImGui.Begin("Tableau de bord", ref _showDashboardWindow);
+
+        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Tableau de bord principal");
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        // Statistiques
+        ImGui.Text("Statistiques rapides:");
+        ImGui.Columns(3, "stats", false);
+
+        ImGui.BeginChild("stat1", new System.Numerics.Vector2(0, 80), true);
+        ImGui.TextColored(new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f), "Utilisateurs");
+        ImGui.Text("1,234");
+        ImGui.EndChild();
+
+        ImGui.NextColumn();
+
+        ImGui.BeginChild("stat2", new System.Numerics.Vector2(0, 80), true);
+        ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Projets");
+        ImGui.Text("42");
+        ImGui.EndChild();
+
+        ImGui.NextColumn();
+
+        ImGui.BeginChild("stat3", new System.Numerics.Vector2(0, 80), true);
+        ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f), "Tâches");
+        ImGui.Text("789");
+        ImGui.EndChild();
+
+        ImGui.Columns(1);
+        ImGui.Spacing();
+
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        ImGui.Text($"FPS: {ImGui.GetIO().Framerate:F1}");
+        ImGui.Text($"Frame Time: {1000.0f / ImGui.GetIO().Framerate:F2} ms");
+
+        ImGui.End();
+    }
+
+    private void DrawSettingsWindow()
+    {
+        if (!_showSettingsWindow) return;
+
+        ImGui.Begin("Paramètres", ref _showSettingsWindow);
+
+        ImGui.Text("Paramètres de l'application");
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        if (ImGui.CollapsingHeader("Général", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            bool autoSave = true;
+            ImGui.Checkbox("Sauvegarde automatique", ref autoSave);
+
+            int interval = 5;
+            ImGui.SliderInt("Intervalle (min)", ref interval, 1, 30);
+        }
+
+        ImGui.Spacing();
+
+        if (ImGui.CollapsingHeader("Apparence"))
+        {
+            ImGui.Text("Thème:");
+            string[] themes = { "Sombre", "Clair", "Système" };
+            int currentTheme = 0;
+            ImGui.Combo("##theme", ref currentTheme, themes, themes.Length);
+        }
+
+        ImGui.Spacing();
+
+        if (ImGui.CollapsingHeader("Avancé"))
+        {
+            bool debugMode = false;
+            ImGui.Checkbox("Mode debug", ref debugMode);
+
+            bool showFps = true;
+            ImGui.Checkbox("Afficher les FPS", ref showFps);
+        }
+
+        ImGui.End();
+    }
+
+    private void DrawUserManagementWindow()
+    {
+        if (!_showUserManagementWindow) return;
+
+        ImGui.Begin("Gestion des utilisateurs", ref _showUserManagementWindow);
+
+        ImGui.Text("Liste des utilisateurs");
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        if (ImGui.Button("Ajouter utilisateur"))
+        {
+            // Action d'ajout
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        // Table des utilisateurs
+        if (ImGui.BeginTable("users_table", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        {
+            ImGui.TableSetupColumn("Nom");
+            ImGui.TableSetupColumn("Email");
+            ImGui.TableSetupColumn("Rôle");
+            ImGui.TableHeadersRow();
+
+            for (int i = 0; i < 5; i++)
+            {
+                ImGui.TableNextRow();
+                ImGui.TableSetColumnIndex(0);
+                ImGui.Text($"Utilisateur {i + 1}");
+                ImGui.TableSetColumnIndex(1);
+                ImGui.Text($"user{i + 1}@example.com");
+                ImGui.TableSetColumnIndex(2);
+                ImGui.Text(i == 0 ? "Admin" : "Utilisateur");
+            }
+
+            ImGui.EndTable();
+        }
+
+        ImGui.End();
+    }
+
+    private void DrawDataViewWindow()
+    {
+        if (!_showDataViewWindow) return;
+
+        ImGui.Begin("Vue des données", ref _showDataViewWindow);
+
+        ImGui.Text("Exploration des données");
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        // Filtres
+        ImGui.Text("Filtres:");
+        string searchText = "";
+        ImGui.InputText("Recherche", ref searchText, 256);
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        // Données
+        ImGui.BeginChild("DataContent", new System.Numerics.Vector2(0, -30), true);
+
+        for (int i = 0; i < 20; i++)
+        {
+            if (ImGui.TreeNode($"Élément {i + 1}"))
+            {
+                ImGui.Text($"ID: {i + 1}");
+                ImGui.Text($"Timestamp: 2024-01-{(i % 30) + 1:D2}");
+                ImGui.Text($"Valeur: {(i * 123) % 1000}");
+                ImGui.TreePop();
+            }
+        }
+
+        ImGui.EndChild();
+
+        ImGui.Text($"Total: 20 éléments");
+
+        ImGui.End();
+    }
+
+    private void DrawReportsWindow()
+    {
+        if (!_showReportsWindow) return;
+
+        ImGui.Begin("Rapports", ref _showReportsWindow);
+
+        ImGui.Text("Génération de rapports");
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        if (ImGui.Button("Générer rapport mensuel"))
+        {
+            // Action de génération
+        }
+
+        ImGui.SameLine();
+
+        if (ImGui.Button("Générer rapport annuel"))
+        {
+            // Action de génération
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        ImGui.Text("Rapports disponibles:");
+
+        ImGui.BeginChild("ReportsList");
+
+        string[] reportTypes = { "Rapport mensuel - Janvier 2024", "Rapport mensuel - Février 2024",
+                                "Rapport annuel - 2023", "Rapport personnalisé - Q4 2023" };
+
+        foreach (var report in reportTypes)
+        {
+            if (ImGui.Selectable(report))
+            {
+                // Ouvrir le rapport
+            }
+        }
+
+        ImGui.EndChild();
+
+        ImGui.End();
+    }
+
+    private void DrawAnalyticsWindow()
+    {
+        if (!_showAnalyticsWindow) return;
+
+        ImGui.Begin("Analytiques", ref _showAnalyticsWindow);
+
+        ImGui.Text("Analyse des données");
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        ImGui.Text("Métriques clés:");
+        ImGui.Spacing();
+
+        // Graphique simple (simulé avec des barres de progression)
+        ImGui.Text("Utilisation CPU:");
+        ImGui.ProgressBar(0.45f, new System.Numerics.Vector2(-1, 0), "45%");
+
+        ImGui.Text("Utilisation Mémoire:");
+        ImGui.ProgressBar(0.67f, new System.Numerics.Vector2(-1, 0), "67%");
+
+        ImGui.Text("Stockage:");
+        ImGui.ProgressBar(0.23f, new System.Numerics.Vector2(-1, 0), "23%");
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        ImGui.Text("Tendances:");
+        ImGui.BulletText("Augmentation de 15% de l'utilisation");
+        ImGui.BulletText("Performance stable sur 7 jours");
+        ImGui.BulletText("3 alertes cette semaine");
 
         ImGui.End();
     }

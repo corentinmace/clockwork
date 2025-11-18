@@ -28,7 +28,7 @@ internal class Program
             ClientSize = new Vector2i(1280, 720),
             Title = "Clockwork",
             Flags = ContextFlags.ForwardCompatible,
-            WindowBorder = WindowBorder.Hidden, // Pas de barre de titre Windows
+            WindowBorder = WindowBorder.Resizable,
             WindowState = WindowState.Normal,
             StartVisible = true,
         };
