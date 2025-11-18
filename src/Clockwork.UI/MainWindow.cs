@@ -15,7 +15,6 @@ public class MainWindow : GameWindow
     private ImGuiController? _imguiController;
     private ApplicationContext _appContext;
     private bool _isDraggingWindow = false;
-    private System.Numerics.Vector2 _dragStartMousePos;
     private OpenTK.Mathematics.Vector2i _dragStartWindowPos;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
@@ -193,19 +192,28 @@ public class MainWindow : GameWindow
             // Bouton invisible pour draguer la fenêtre
             if (availableWidth > 0)
             {
-                if (ImGui.InvisibleButton("##DragZone", new System.Numerics.Vector2(availableWidth, menuBarHeight)))
-                {
-                    // Click handled
-                }
+                ImGui.InvisibleButton("##DragZone", new System.Numerics.Vector2(availableWidth, menuBarHeight));
 
-                if (ImGui.IsItemActive() && ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+                if (ImGui.IsItemActive())
                 {
-                    if (!_isDraggingWindow)
+                    if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
                     {
-                        _isDraggingWindow = true;
-                        _dragStartMousePos = ImGui.GetMousePos();
-                        _dragStartWindowPos = Location;
+                        if (!_isDraggingWindow)
+                        {
+                            _isDraggingWindow = true;
+                            _dragStartWindowPos = Location;
+                        }
+
+                        var dragDelta = ImGui.GetMouseDragDelta(ImGuiMouseButton.Left);
+                        Location = new OpenTK.Mathematics.Vector2i(
+                            _dragStartWindowPos.X + (int)dragDelta.X,
+                            _dragStartWindowPos.Y + (int)dragDelta.Y
+                        );
                     }
+                }
+                else
+                {
+                    _isDraggingWindow = false;
                 }
 
                 ImGui.SameLine();
@@ -251,24 +259,6 @@ public class MainWindow : GameWindow
             ImGui.PopStyleColor(3);
 
             ImGui.EndMenuBar();
-        }
-
-        // Gestion du drag de la fenêtre
-        if (_isDraggingWindow)
-        {
-            if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
-            {
-                var currentMousePos = ImGui.GetMousePos();
-                var delta = currentMousePos - _dragStartMousePos;
-                Location = new OpenTK.Mathematics.Vector2i(
-                    _dragStartWindowPos.X + (int)delta.X,
-                    _dragStartWindowPos.Y + (int)delta.Y
-                );
-            }
-            else
-            {
-                _isDraggingWindow = false;
-            }
         }
 
         ImGui.End();
