@@ -372,12 +372,10 @@ public class MatrixEditorView : IView
                     }
                     else
                     {
-                        // Display mode
-                        ImGui.Text(displayValue);
-
-                        // Check for click to edit
-                        if (ImGui.IsItemClicked())
+                        // Display mode - use Selectable to make it clickable
+                        if (ImGui.Selectable(displayValue, false, ImGuiSelectableFlags.None, new Vector2(50, 0)))
                         {
+                            // Single click - enter edit mode
                             _editingRow = row;
                             _editingCol = col;
                             _editBuffer = displayValue == "-" ? "" : displayValue;
