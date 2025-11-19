@@ -1,4 +1,5 @@
 using Clockwork.Core;
+using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.UI.Views;
 using ImGuiNET;
@@ -30,6 +31,10 @@ public class MainWindow : GameWindow
         : base(gameWindowSettings, nativeWindowSettings)
     {
         _appContext = appContext;
+
+        // Initialize logger
+        AppLogger.Initialize();
+        AppLogger.Info("Clockwork application starting...");
 
         // Initialize views
         _aboutView = new AboutView(_appContext);
