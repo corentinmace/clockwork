@@ -266,9 +266,9 @@ public static class ThemeManager
             colors[(int)ImGuiCol.ResizeGripActive] = theme.ResizeGripActive;
             colors[(int)ImGuiCol.Tab] = theme.Tab;
             colors[(int)ImGuiCol.TabHovered] = theme.TabHovered;
-            colors[(int)ImGuiCol.TabActive] = theme.TabActive;
-            colors[(int)ImGuiCol.TabUnfocused] = theme.TabUnfocused;
-            colors[(int)ImGuiCol.TabUnfocusedActive] = theme.TabUnfocusedActive;
+            colors[(int)ImGuiCol.TabSelected] = theme.TabActive;
+            colors[(int)ImGuiCol.TabDimmed] = theme.TabUnfocused;
+            colors[(int)ImGuiCol.TabDimmedSelected] = theme.TabUnfocusedActive;
             colors[(int)ImGuiCol.DockingPreview] = theme.DockingPreview;
             colors[(int)ImGuiCol.DockingEmptyBg] = theme.DockingEmptyBg;
             colors[(int)ImGuiCol.PlotLines] = theme.PlotLines;
@@ -284,7 +284,7 @@ public static class ThemeManager
             colors[(int)ImGuiCol.TextDisabled] = theme.TextDisabled;
             colors[(int)ImGuiCol.TextSelectedBg] = theme.TextSelectedBg;
             colors[(int)ImGuiCol.DragDropTarget] = theme.DragDropTarget;
-            colors[(int)ImGuiCol.NavHighlight] = theme.NavHighlight;
+            colors[(int)ImGuiCol.NavCursor] = theme.NavHighlight;
             colors[(int)ImGuiCol.NavWindowingHighlight] = theme.NavWindowingHighlight;
             colors[(int)ImGuiCol.NavWindowingDimBg] = theme.NavWindowingDimBg;
             colors[(int)ImGuiCol.ModalWindowDimBg] = theme.ModalWindowDimBg;

@@ -191,7 +191,7 @@ public class HeaderEditorView : IView
         ImGui.Spacing();
 
         // Header list with scrolling
-        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, -60), ImGuiChildFlags.Border);
+        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, -60), ImGuiChildFlags.Borders);
 
         var headers = _headerService.Headers;
         foreach (var header in headers)

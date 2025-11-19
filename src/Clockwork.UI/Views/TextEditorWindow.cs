@@ -328,7 +328,7 @@ namespace Clockwork.UI.Views
             float editorWidth = availableRegion.X * 0.7f - 10;
 
             // Left panel: Message list
-            ImGui.BeginChild("MessageList", new Vector2(listWidth, -30), ImGuiChildFlags.Border);
+            ImGui.BeginChild("MessageList", new Vector2(listWidth, -30), ImGuiChildFlags.Borders);
             {
                 ImGui.Text($"Messages ({messages.Count})");
                 ImGui.Separator();
@@ -405,7 +405,7 @@ namespace Clockwork.UI.Views
             ImGui.SameLine();
 
             // Right panel: Message editor
-            ImGui.BeginChild("MessageEditor", new Vector2(editorWidth, -30), ImGuiChildFlags.Border);
+            ImGui.BeginChild("MessageEditor", new Vector2(editorWidth, -30), ImGuiChildFlags.Borders);
             {
                 if (selectedMessageIndex >= 0 && selectedMessageIndex < messages.Count)
                 {

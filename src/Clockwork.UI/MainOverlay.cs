@@ -35,7 +35,6 @@ public class MainOverlay : Overlay
     // ROM Save state
     private bool _isShowingSaveRomDialog = false;
     private string _saveRomLog = "";
-    private bool _isSavingRom = false;
 
     private double _deltaTime = 1.0 / 60.0;
 
@@ -129,9 +128,9 @@ public class MainOverlay : Overlay
         colors[(int)ImGuiCol.ResizeGripActive] = new System.Numerics.Vector4(0.40f, 0.44f, 0.47f, 1.00f);
         colors[(int)ImGuiCol.Tab] = new System.Numerics.Vector4(0.00f, 0.00f, 0.00f, 0.52f);
         colors[(int)ImGuiCol.TabHovered] = new System.Numerics.Vector4(0.14f, 0.14f, 0.14f, 1.00f);
-        colors[(int)ImGuiCol.TabActive] = new System.Numerics.Vector4(0.20f, 0.20f, 0.20f, 0.36f);
-        colors[(int)ImGuiCol.TabUnfocused] = new System.Numerics.Vector4(0.00f, 0.00f, 0.00f, 0.52f);
-        colors[(int)ImGuiCol.TabUnfocusedActive] = new System.Numerics.Vector4(0.14f, 0.14f, 0.14f, 1.00f);
+        colors[(int)ImGuiCol.TabSelected] = new System.Numerics.Vector4(0.20f, 0.20f, 0.20f, 0.36f);
+        colors[(int)ImGuiCol.TabDimmed] = new System.Numerics.Vector4(0.00f, 0.00f, 0.00f, 0.52f);
+        colors[(int)ImGuiCol.TabDimmedSelected] = new System.Numerics.Vector4(0.14f, 0.14f, 0.14f, 1.00f);
         colors[(int)ImGuiCol.DockingPreview] = new System.Numerics.Vector4(0.33f, 0.67f, 0.86f, 1.00f);
         colors[(int)ImGuiCol.DockingEmptyBg] = new System.Numerics.Vector4(0.10f, 0.10f, 0.10f, 1.00f);
         colors[(int)ImGuiCol.PlotLines] = new System.Numerics.Vector4(1.00f, 0.00f, 0.00f, 1.00f);
@@ -145,7 +144,7 @@ public class MainOverlay : Overlay
         colors[(int)ImGuiCol.TableRowBgAlt] = new System.Numerics.Vector4(1.00f, 1.00f, 1.00f, 0.06f);
         colors[(int)ImGuiCol.TextSelectedBg] = new System.Numerics.Vector4(0.20f, 0.22f, 0.23f, 1.00f);
         colors[(int)ImGuiCol.DragDropTarget] = new System.Numerics.Vector4(0.33f, 0.67f, 0.86f, 1.00f);
-        colors[(int)ImGuiCol.NavHighlight] = new System.Numerics.Vector4(1.00f, 0.00f, 0.00f, 1.00f);
+        colors[(int)ImGuiCol.NavCursor] = new System.Numerics.Vector4(1.00f, 0.00f, 0.00f, 1.00f);
         colors[(int)ImGuiCol.NavWindowingHighlight] = new System.Numerics.Vector4(1.00f, 0.00f, 0.00f, 0.70f);
         colors[(int)ImGuiCol.NavWindowingDimBg] = new System.Numerics.Vector4(1.00f, 0.00f, 0.00f, 0.20f);
         colors[(int)ImGuiCol.ModalWindowDimBg] = new System.Numerics.Vector4(0.10f, 0.10f, 0.10f, 0.70f);
