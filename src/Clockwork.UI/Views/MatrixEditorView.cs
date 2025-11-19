@@ -45,6 +45,9 @@ public class MatrixEditorView : IView
     private int _cachedMatrixCount = -1;
     private bool _hasLoggedMatrixPath = false;
 
+    // Cache for matrix names to avoid reading all files multiple times
+    private Dictionary<int, string> _matrixNamesCache = new();
+
     public void Initialize(ApplicationContext appContext)
     {
         _appContext = appContext;
@@ -99,7 +102,7 @@ public class MatrixEditorView : IView
         // Matrix selection
         ImGui.Text("Matrice:");
         ImGui.SameLine();
-        ImGui.SetNextItemWidth(200);
+        ImGui.SetNextItemWidth(300);
 
         // Get matrix count from directory
         int matrixCount = GetMatrixCount();
@@ -111,9 +114,15 @@ public class MatrixEditorView : IView
                 LoadMatrix(0);
             }
 
-            if (ImGui.Combo("##matrix", ref _selectedMatrixIndex,
-                Enumerable.Range(0, matrixCount).Select(i => $"Matrix {i}").ToArray(),
-                matrixCount))
+            // Build combo items with matrix names from cache
+            string[] comboItems = Enumerable.Range(0, matrixCount)
+                .Select(i => {
+                    string name = GetMatrixName(i);
+                    return string.IsNullOrEmpty(name) ? $"Matrix {i}" : $"{i}: {name}";
+                })
+                .ToArray();
+
+            if (ImGui.Combo("##matrix", ref _selectedMatrixIndex, comboItems, matrixCount))
             {
                 LoadMatrix(_selectedMatrixIndex);
             }
@@ -252,10 +261,12 @@ public class MatrixEditorView : IView
         ImGui.Separator();
 
         // Arrays use [row, col] indexing
+        // Color based on corresponding MapFiles cell
         DrawGrid(_currentMatrix.Headers, "Headers",
             (row, col) => _currentMatrix.Headers[row, col],
             (row, col, value) => _currentMatrix.Headers[row, col] = value,
-            isUShort: true);
+            isUShort: true,
+            useMapColoring: true);
     }
 
     private void DrawHeightsGrid()
@@ -266,10 +277,12 @@ public class MatrixEditorView : IView
         ImGui.Separator();
 
         // Arrays use [row, col] indexing
+        // Color based on corresponding MapFiles cell
         DrawGrid(_currentMatrix.Altitudes, "Altitudes",
             (row, col) => _currentMatrix.Altitudes[row, col],
             (row, col, value) => _currentMatrix.Altitudes[row, col] = (byte)value,
-            isUShort: false);
+            isUShort: false,
+            useMapColoring: true);
     }
 
     private void DrawMapFilesGrid()
@@ -283,13 +296,15 @@ public class MatrixEditorView : IView
         DrawGrid(_currentMatrix.Maps, "MapFiles",
             (row, col) => _currentMatrix.Maps[row, col],
             (row, col, value) => _currentMatrix.Maps[row, col] = value,
-            isUShort: true);
+            isUShort: true,
+            useMapColoring: true);
     }
 
     private void DrawGrid(Array data, string gridName,
         Func<int, int, ushort> getValue,
         Action<int, int, ushort> setValue,
-        bool isUShort)
+        bool isUShort,
+        bool useMapColoring = false)
     {
         if (_currentMatrix == null) return;
 
@@ -299,9 +314,8 @@ public class MatrixEditorView : IView
         // Table with borders
         ImGuiTableFlags flags = ImGuiTableFlags.Borders |
                                 ImGuiTableFlags.RowBg |
-                                ImGuiTableFlags.ScrollX |
-                                ImGuiTableFlags.ScrollY |
-                                ImGuiTableFlags.SizingFixedFit;
+                                ImGuiTableFlags.ScrollY | // Only vertical scroll
+                                ImGuiTableFlags.SizingStretchProp; // Stretch to fit width
 
         // Calculate available size
         Vector2 availSize = ImGui.GetContentRegionAvail();
@@ -309,11 +323,16 @@ public class MatrixEditorView : IView
 
         if (ImGui.BeginTable($"##grid_{gridName}", width + 1, flags, availSize))
         {
+            // Calculate column width to fit available space
+            float availableWidth = availSize.X - 40; // Subtract row label column width
+            float columnWidth = availableWidth / width;
+            columnWidth = Math.Max(columnWidth, 40); // Minimum 40 pixels per column
+
             // Setup columns
             ImGui.TableSetupColumn("Row", ImGuiTableColumnFlags.WidthFixed, 40);
             for (int col = 0; col < width; col++)
             {
-                ImGui.TableSetupColumn($"{col}", ImGuiTableColumnFlags.WidthFixed, 60);
+                ImGui.TableSetupColumn($"{col}", ImGuiTableColumnFlags.WidthStretch);
             }
 
             // Header row
@@ -340,7 +359,8 @@ public class MatrixEditorView : IView
                     string cellId = "##input";
 
                     // Color code cells using TableSetBgColor for proper cell background
-                    Vector4 cellColor = GetCellColor(value, gridName == "MapFiles");
+                    // If useMapColoring, get color based on corresponding map cell
+                    Vector4 cellColor = GetCellColor(value, row, col, useMapColoring);
                     if (cellColor.W > 0) // If color has alpha
                     {
                         ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.ColorConvertFloat4ToU32(cellColor));
@@ -353,8 +373,8 @@ public class MatrixEditorView : IView
 
                     if (_editingRow == row && _editingCol == col)
                     {
-                        // Edit mode
-                        ImGui.SetNextItemWidth(60);
+                        // Edit mode - use full column width
+                        ImGui.SetNextItemWidth(-1);
 
                         // Only set focus on first frame of editing
                         bool shouldSetFocus = _justStartedEditing;
@@ -437,15 +457,23 @@ public class MatrixEditorView : IView
             "[i] Cliquez sur une cellule pour éditer, double-cliquez sur MapFiles pour ouvrir la carte");
     }
 
-    private Vector4 GetCellColor(ushort value, bool isMapFiles)
+    private Vector4 GetCellColor(ushort value, int row, int col, bool useMapColoring)
     {
-        if (!isMapFiles)
-            return new Vector4(0, 0, 0, 0); // No color for non-MapFiles grids
+        if (!useMapColoring)
+            return new Vector4(0, 0, 0, 0); // No color
+
+        // Get the map ID at this position for coloring
+        ushort mapID = value;
+        if (_currentMatrix != null && useMapColoring)
+        {
+            // Use the corresponding Maps cell for color lookup
+            mapID = _currentMatrix.Maps[row, col];
+        }
 
         // Try to get color from ColorTable if available
         if (_colorTableService != null && _colorTableService.HasColorTable)
         {
-            var colorPair = _colorTableService.GetColorForMapID(value);
+            var colorPair = _colorTableService.GetColorForMapID(mapID);
             if (colorPair.HasValue)
             {
                 // Convert System.Drawing.Color to ImGui Vector4
@@ -460,7 +488,7 @@ public class MatrixEditorView : IView
         }
 
         // Fallback colors if no ColorTable
-        if (value == GameMatrix.EMPTY_CELL)
+        if (mapID == GameMatrix.EMPTY_CELL)
         {
             // Empty cell - gray
             return new Vector4(0.3f, 0.3f, 0.3f, 0.5f);
@@ -792,5 +820,58 @@ public class MatrixEditorView : IView
         _hasLoggedMatrixPath = false;
 
         AppLogger.Info("ColorTable reset to defaults");
+    }
+
+    /// <summary>
+    /// Get the name of a matrix from cache or file.
+    /// Only reads the minimal data needed (first 5 bytes + name length + name).
+    /// </summary>
+    private string GetMatrixName(int matrixIndex)
+    {
+        // Check cache first
+        if (_matrixNamesCache.TryGetValue(matrixIndex, out string? cachedName))
+        {
+            return cachedName;
+        }
+
+        // Read from file
+        if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+            return string.Empty;
+
+        try
+        {
+            string matrixFileName = matrixIndex.ToString("D4");
+            string matrixPath = Path.Combine(
+                _romService.CurrentRom.RomPath,
+                "unpacked",
+                "matrices",
+                matrixFileName
+            );
+
+            if (!File.Exists(matrixPath))
+                return string.Empty;
+
+            // Read only the name field (skip width, height, hasHeaders, hasAltitudes)
+            using var fs = new FileStream(matrixPath, FileMode.Open, FileAccess.Read);
+            using var reader = new BinaryReader(fs);
+
+            reader.ReadByte(); // width
+            reader.ReadByte(); // height
+            reader.ReadByte(); // hasHeaders
+            reader.ReadByte(); // hasAltitudes
+
+            // Read name
+            byte nameLength = reader.ReadByte();
+            string name = System.Text.Encoding.UTF8.GetString(reader.ReadBytes(nameLength));
+
+            // Cache it
+            _matrixNamesCache[matrixIndex] = name;
+
+            return name;
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 }
