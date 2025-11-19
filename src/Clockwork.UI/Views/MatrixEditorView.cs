@@ -90,12 +90,22 @@ public class MatrixEditorView : IView
         int matrixCount = GetMatrixCount();
         if (matrixCount > 0)
         {
+            // Auto-load first matrix if none is loaded
+            if (!_matrixLoaded && _selectedMatrixIndex == 0)
+            {
+                LoadMatrix(0);
+            }
+
             if (ImGui.Combo("##matrix", ref _selectedMatrixIndex,
                 Enumerable.Range(0, matrixCount).Select(i => $"Matrix {i}").ToArray(),
                 matrixCount))
             {
                 LoadMatrix(_selectedMatrixIndex);
             }
+        }
+        else
+        {
+            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Aucune matrice disponible");
         }
 
         ImGui.SameLine();
@@ -127,7 +137,17 @@ public class MatrixEditorView : IView
     {
         if (!_matrixLoaded || _currentMatrix == null)
         {
-            ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1), "Aucune matrice chargée");
+            int matrixCount = GetMatrixCount();
+            if (matrixCount > 0)
+            {
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1),
+                    $"Aucune matrice chargée ({matrixCount} matrice(s) disponible(s) - cliquez sur 'Charger')");
+            }
+            else
+            {
+                ImGui.TextColored(new Vector4(1, 0.5f, 0, 1),
+                    "Aucune matrice trouvée dans le dossier unpacked/matrices/");
+            }
             return;
         }
 
@@ -374,8 +394,13 @@ public class MatrixEditorView : IView
 
     private void LoadMatrix(int matrixIndex)
     {
+        Console.WriteLine($"[MatrixEditor] LoadMatrix called for index {matrixIndex}");
+
         if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+        {
+            Console.WriteLine("[MatrixEditor] LoadMatrix: ROM not loaded");
             return;
+        }
 
         try
         {
@@ -386,13 +411,17 @@ public class MatrixEditorView : IView
                 $"{matrixIndex}.bin"
             );
 
+            Console.WriteLine($"[MatrixEditor] Attempting to load from: {matrixPath}");
+
             if (!File.Exists(matrixPath))
             {
-                Console.WriteLine($"Matrix file not found: {matrixPath}");
+                Console.WriteLine($"[MatrixEditor] Matrix file not found: {matrixPath}");
                 return;
             }
 
             byte[] data = File.ReadAllBytes(matrixPath);
+            Console.WriteLine($"[MatrixEditor] Read {data.Length} bytes from file");
+
             _currentMatrix = GameMatrix.ReadFromBytes(data, matrixIndex);
 
             if (_currentMatrix != null)
@@ -403,12 +432,18 @@ public class MatrixEditorView : IView
                 _matrixLoaded = true;
                 _selectedMatrixIndex = matrixIndex;
 
-                Console.WriteLine($"Matrix {matrixIndex} loaded: {_matrixWidth}x{_matrixHeight}");
+                Console.WriteLine($"[MatrixEditor] Matrix {matrixIndex} loaded successfully: {_matrixWidth}x{_matrixHeight}");
+            }
+            else
+            {
+                Console.WriteLine($"[MatrixEditor] GameMatrix.ReadFromBytes returned null");
+                _matrixLoaded = false;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading matrix {matrixIndex}: {ex.Message}");
+            Console.WriteLine($"[MatrixEditor] Error loading matrix {matrixIndex}: {ex.Message}");
+            Console.WriteLine($"[MatrixEditor] Stack trace: {ex.StackTrace}");
             _matrixLoaded = false;
         }
     }
@@ -521,7 +556,10 @@ public class MatrixEditorView : IView
     private int GetMatrixCount()
     {
         if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+        {
+            Console.WriteLine("[MatrixEditor] GetMatrixCount: ROM not loaded");
             return 0;
+        }
 
         try
         {
@@ -531,14 +569,22 @@ public class MatrixEditorView : IView
                 "matrices"
             );
 
+            Console.WriteLine($"[MatrixEditor] Looking for matrices in: {matricesPath}");
+
             if (!Directory.Exists(matricesPath))
+            {
+                Console.WriteLine($"[MatrixEditor] Directory does not exist: {matricesPath}");
                 return 0;
+            }
 
             // Count .bin files in matrices directory
-            return Directory.GetFiles(matricesPath, "*.bin").Length;
+            var files = Directory.GetFiles(matricesPath, "*.bin");
+            Console.WriteLine($"[MatrixEditor] Found {files.Length} matrix files");
+            return files.Length;
         }
-        catch
+        catch (Exception ex)
         {
+            Console.WriteLine($"[MatrixEditor] Error in GetMatrixCount: {ex.Message}");
             return 0;
         }
     }
