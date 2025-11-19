@@ -48,6 +48,9 @@ public class ScriptEditorWindow : IView
     private Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
     private float _statusTimer = 0f;
 
+    // Focus management
+    private bool _shouldFocus = false;
+
     // Autocomplete colors
     private static readonly Vector4 CommandColor = new(0.4f, 0.8f, 1.0f, 1.0f);      // Light blue for commands
 
@@ -78,6 +81,13 @@ public class ScriptEditorWindow : IView
         ImGui.SetNextWindowSize(new Vector2(1200, 800), ImGuiCond.FirstUseEver);
         if (ImGui.Begin("Script Editor", ref isVisible, ImGuiWindowFlags.MenuBar))
         {
+            // Apply focus if requested
+            if (_shouldFocus)
+            {
+                ImGui.SetWindowFocus();
+                _shouldFocus = false;
+            }
+
             DrawMenuBar();
             DrawToolbar();
 
@@ -308,7 +318,16 @@ public class ScriptEditorWindow : IView
     /// <param name="scriptID">The script file ID to load</param>
     public void OpenWithScriptID(int scriptID)
     {
+        // Always open the window and request focus
         IsVisible = true;
+        _shouldFocus = true;
+
+        // Check if ROM is loaded
+        if (_romService?.CurrentRom?.IsLoaded != true)
+        {
+            SetStatus("No ROM loaded. Please load a ROM first.", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+            return;
+        }
 
         // Refresh script files list if not already loaded
         if (_scriptCount == 0)

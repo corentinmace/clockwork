@@ -37,6 +37,9 @@ namespace Clockwork.UI.Views
         private List<int> searchResults = new List<int>();
         private int currentSearchIndex = -1;
 
+        // Focus management
+        private bool _shouldFocus = false;
+
         public bool IsVisible { get; set; } = false;
 
         public TextEditorWindow(ApplicationContext appContext)
@@ -93,7 +96,9 @@ namespace Clockwork.UI.Views
         /// <param name="archiveID">The text archive ID to load (e.g., 433 for location names)</param>
         public void OpenWithArchiveID(int archiveID)
         {
+            // Always open the window and request focus
             IsVisible = true;
+            _shouldFocus = true;
 
             // Refresh archive list if not already loaded
             if (availableTextArchives.Count == 0)
@@ -101,11 +106,18 @@ namespace Clockwork.UI.Views
                 RefreshTextArchivesList();
             }
 
+            // Check if ROM is loaded
             if (_romService?.CurrentRom?.GameDirectories == null)
+            {
+                SetStatusMessage("No ROM loaded. Please load a ROM first.");
                 return;
+            }
 
             if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out string? textArchivesPath))
+            {
+                SetStatusMessage("Text archives directory not found in ROM.");
                 return;
+            }
 
             // Build the file path for this archive ID (format: 0000.txt, 0001.txt, etc.)
             string fileName = $"{archiveID:D4}.txt";
@@ -122,7 +134,7 @@ namespace Clockwork.UI.Views
             }
             else
             {
-                SetStatusMessage($"Text archive {archiveID} not found");
+                SetStatusMessage($"Text archive {archiveID} not found at: {filePath}");
             }
         }
 
@@ -245,6 +257,13 @@ namespace Clockwork.UI.Views
             bool isVisible = IsVisible;
             if (ImGui.Begin("Text Editor", ref isVisible))
             {
+                // Apply focus if requested
+                if (_shouldFocus)
+                {
+                    ImGui.SetWindowFocus();
+                    _shouldFocus = false;
+                }
+
                 DrawToolbar();
                 ImGui.Separator();
 

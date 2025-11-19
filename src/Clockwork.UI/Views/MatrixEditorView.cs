@@ -52,6 +52,9 @@ public class MatrixEditorView : IView
     private bool _showDeleteConfirmation = false;
     private int _matrixToDelete = -1;
 
+    // Focus management
+    private bool _shouldFocus = false;
+
     public void Initialize(ApplicationContext appContext)
     {
         _appContext = appContext;
@@ -81,6 +84,13 @@ public class MatrixEditorView : IView
             return;
         }
         IsVisible = isVisible;
+
+        // Apply focus if requested
+        if (_shouldFocus)
+        {
+            ImGui.SetWindowFocus();
+            _shouldFocus = false;
+        }
 
         // Check if ROM is loaded
         if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
@@ -535,7 +545,11 @@ public class MatrixEditorView : IView
     /// <param name="matrixID">The matrix ID to load</param>
     public void OpenWithMatrixID(int matrixID)
     {
+        // Always open the window and request focus
         IsVisible = true;
+        _shouldFocus = true;
+
+        // Load the matrix
         LoadMatrix(matrixID);
     }
 
