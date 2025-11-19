@@ -74,8 +74,6 @@ public class ImGuiController : IDisposable
         CreateDeviceResources();
 
         SetPerFrameImGuiData(1f / 60f);
-
-        ImGui.NewFrame();
     }
 
     private void OnKeyChar(IKeyboard keyboard, char c)

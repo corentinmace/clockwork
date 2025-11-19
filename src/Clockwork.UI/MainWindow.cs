@@ -135,6 +135,8 @@ public class MainWindow
 
         // Render ImGui
         _imguiController?.Render();
+
+        // Note: Buffer swap is automatic (ShouldSwapAutomatically = true)
     }
 
     private void OnClosing()
@@ -146,6 +148,7 @@ public class MainWindow
         SettingsManager.Settings.WindowHeight = _window.Size.Y;
         SettingsManager.Settings.WindowMaximized = _window.WindowState == WindowState.Maximized;
         SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
+        SettingsManager.Save();
         AppLogger.Debug($"Window state saved: {_window.Size.X}x{_window.Size.Y}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
 
         _imguiController?.Dispose();

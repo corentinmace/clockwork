@@ -55,7 +55,7 @@ internal class Program
             options.Size = new Vector2D<int>(settings.WindowWidth, settings.WindowHeight);
             options.Title = "Clockwork - Pokémon ROM Editor";
             options.VSync = true;
-            options.ShouldSwapAutomatically = false; // We'll swap manually
+            options.ShouldSwapAutomatically = true;
             options.WindowState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
             options.API = new GraphicsAPI(
                 ContextAPI.OpenGL,
