@@ -178,6 +178,7 @@ public class RomService : IApplicationService
             ["eventFiles"] = Path.Combine(unpackedPath, "eventFiles"),
             ["matrices"] = Path.Combine(unpackedPath, "matrices"),
             ["maps"] = Path.Combine(unpackedPath, "maps"),
+            ["textArchives"] = Path.Combine(unpackedPath, "textArchives"),
 
             // Data directories (not unpacked)
             ["fielddata"] = Path.Combine(dataPath, "fielddata"),

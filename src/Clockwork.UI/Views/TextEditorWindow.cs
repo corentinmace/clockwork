@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using System.Linq;
 using ImGuiNET;
+using Clockwork.Core;
+using Clockwork.Core.Services;
 using Clockwork.Core.Formats.NDS.MessageEnc;
 
 namespace Clockwork.UI.Views
@@ -12,6 +15,9 @@ namespace Clockwork.UI.Views
     /// </summary>
     public class TextEditorWindow : IView
     {
+        private readonly ApplicationContext _appContext;
+        private RomService? _romService;
+
         private List<string> messages = new List<string>();
         private string currentFilePath = "";
         private int selectedMessageIndex = -1;
@@ -20,6 +26,11 @@ namespace Clockwork.UI.Views
         private string statusMessage = "";
         private float statusMessageTimer = 0f;
 
+        // ROM text archives
+        private List<string> availableTextArchives = new List<string>();
+        private int selectedArchiveIndex = -1;
+        private string[] archiveNames = Array.Empty<string>();
+
         // Search functionality
         private string searchQuery = "";
         private List<int> searchResults = new List<int>();
@@ -27,8 +38,53 @@ namespace Clockwork.UI.Views
 
         public bool IsVisible { get; set; } = false;
 
-        public TextEditorWindow()
+        public TextEditorWindow(ApplicationContext appContext)
         {
+            _appContext = appContext;
+            _romService = _appContext.GetService<RomService>();
+        }
+
+        /// <summary>
+        /// Refresh the list of available text archives from the loaded ROM
+        /// </summary>
+        private void RefreshTextArchivesList()
+        {
+            availableTextArchives.Clear();
+            archiveNames = Array.Empty<string>();
+            selectedArchiveIndex = -1;
+
+            if (_romService?.CurrentRom?.GameDirectories == null)
+                return;
+
+            if (!_romService.CurrentRom.GameDirectories.TryGetValue("textArchives", out string? textArchivesPath))
+                return;
+
+            if (!Directory.Exists(textArchivesPath))
+                return;
+
+            try
+            {
+                var files = Directory.GetFiles(textArchivesPath)
+                    .Where(f => !f.EndsWith(".txt")) // Exclude .txt files, only binary archives
+                    .OrderBy(f => f)
+                    .ToList();
+
+                availableTextArchives = files;
+                archiveNames = files.Select(f => Path.GetFileName(f)).ToArray();
+
+                if (availableTextArchives.Count > 0)
+                {
+                    SetStatusMessage($"Found {availableTextArchives.Count} text archives");
+                }
+                else
+                {
+                    SetStatusMessage("No text archives found in ROM");
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatusMessage($"Error listing text archives: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -129,6 +185,12 @@ namespace Clockwork.UI.Views
             if (!IsVisible)
                 return;
 
+            // Refresh text archives list when window becomes visible
+            if (availableTextArchives.Count == 0 && _romService?.CurrentRom?.IsLoaded == true)
+            {
+                RefreshTextArchivesList();
+            }
+
             // Update status message timer
             if (statusMessageTimer > 0f)
             {
@@ -160,10 +222,40 @@ namespace Clockwork.UI.Views
 
         private void DrawToolbar()
         {
-            if (ImGui.Button("Load"))
+            // Text Archive selector (if ROM is loaded)
+            if (_romService?.CurrentRom?.IsLoaded == true && archiveNames.Length > 0)
             {
-                // TODO: Open file dialog
-                SetStatusMessage("File dialog not implemented yet - use LoadFile() method");
+                ImGui.Text("Text Archive:");
+                ImGui.SameLine();
+                ImGui.SetNextItemWidth(150);
+                if (ImGui.Combo("##archive", ref selectedArchiveIndex, archiveNames, archiveNames.Length))
+                {
+                    // Archive selection changed
+                }
+
+                ImGui.SameLine();
+                if (ImGui.Button("Load Selected") && selectedArchiveIndex >= 0 && selectedArchiveIndex < availableTextArchives.Count)
+                {
+                    string archivePath = availableTextArchives[selectedArchiveIndex];
+                    LoadFile(archivePath);
+                }
+
+                ImGui.SameLine();
+            }
+            else if (_romService?.CurrentRom?.IsLoaded == true)
+            {
+                ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.0f, 1.0f), "No text archives found");
+                ImGui.SameLine();
+                if (ImGui.Button("Refresh"))
+                {
+                    RefreshTextArchivesList();
+                }
+                ImGui.SameLine();
+            }
+            else
+            {
+                ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.0f, 1.0f), "No ROM loaded");
+                ImGui.SameLine();
             }
 
             ImGui.SameLine();

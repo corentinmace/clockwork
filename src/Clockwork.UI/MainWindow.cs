@@ -33,7 +33,7 @@ public class MainWindow : GameWindow
         _romLoaderView = new RomLoaderView(_appContext);
         _headerEditorView = new HeaderEditorView(_appContext);
         _mapEditorView = new MapEditorView(_appContext);
-        _textEditorWindow = new TextEditorWindow();
+        _textEditorWindow = new TextEditorWindow(_appContext);
     }
 
     protected override void OnLoad()
