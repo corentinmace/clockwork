@@ -27,8 +27,7 @@ public class MatrixEditorView : IView
     private int _matrixHeight = 1;
     private string _matrixName = "";
 
-    // Tab selection
-    private int _selectedTab = 0;
+    // Tab names (for reference)
     private readonly string[] _tabNames = { "Headers", "Heights", "MapFiles" };
 
     // Edit state
@@ -51,14 +50,18 @@ public class MatrixEditorView : IView
         if (!IsVisible) return;
 
         ImGui.SetNextWindowSize(new Vector2(900, 700), ImGuiCond.FirstUseEver);
-        if (!ImGui.Begin("Matrix Editor", ref IsVisible))
+
+        bool isVisible = IsVisible;
+        if (!ImGui.Begin("Matrix Editor", ref isVisible))
         {
+            IsVisible = isVisible;
             ImGui.End();
             return;
         }
+        IsVisible = isVisible;
 
         // Check if ROM is loaded
-        if (_romService == null || !_romService.IsLoaded)
+        if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
         {
             ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Veuillez d'abord charger une ROM.");
             ImGui.End();
@@ -83,9 +86,10 @@ public class MatrixEditorView : IView
         ImGui.SameLine();
         ImGui.SetNextItemWidth(200);
 
-        if (_romService!.RomInfo != null)
+        // Get matrix count from directory
+        int matrixCount = GetMatrixCount();
+        if (matrixCount > 0)
         {
-            int matrixCount = _romService.RomInfo.MatrixCount;
             if (ImGui.Combo("##matrix", ref _selectedMatrixIndex,
                 Enumerable.Range(0, matrixCount).Select(i => $"Matrix {i}").ToArray(),
                 matrixCount))
@@ -161,21 +165,18 @@ public class MatrixEditorView : IView
         {
             if (ImGui.BeginTabItem("Headers"))
             {
-                _selectedTab = 0;
                 DrawHeadersGrid();
                 ImGui.EndTabItem();
             }
 
-            if (ImGui.BeginTabItem("Heights"))
+            if (ImGui.BeginTabItem("Altitudes"))
             {
-                _selectedTab = 1;
                 DrawHeightsGrid();
                 ImGui.EndTabItem();
             }
 
             if (ImGui.BeginTabItem("MapFiles"))
             {
-                _selectedTab = 2;
                 DrawMapFilesGrid();
                 ImGui.EndTabItem();
             }
@@ -192,8 +193,8 @@ public class MatrixEditorView : IView
         ImGui.Separator();
 
         DrawGrid(_currentMatrix.Headers, "Headers",
-            (row, col) => _currentMatrix.GetHeader(col, row),
-            (row, col, value) => _currentMatrix.SetHeader(col, row, value),
+            (row, col) => _currentMatrix.Headers[col, row],
+            (row, col, value) => _currentMatrix.Headers[col, row] = value,
             isUShort: true);
     }
 
@@ -201,12 +202,12 @@ public class MatrixEditorView : IView
     {
         if (_currentMatrix == null) return;
 
-        ImGui.Text("Heights (Altitudes des cartes)");
+        ImGui.Text("Altitudes (Altitudes des cartes)");
         ImGui.Separator();
 
-        DrawGrid(_currentMatrix.Heights, "Heights",
-            (row, col) => _currentMatrix.GetHeight(col, row),
-            (row, col, value) => _currentMatrix.SetHeight(col, row, (byte)value),
+        DrawGrid(_currentMatrix.Altitudes, "Altitudes",
+            (row, col) => _currentMatrix.Altitudes[col, row],
+            (row, col, value) => _currentMatrix.Altitudes[col, row] = (byte)value,
             isUShort: false);
     }
 
@@ -218,12 +219,12 @@ public class MatrixEditorView : IView
         ImGui.Separator();
 
         DrawGrid(_currentMatrix.Maps, "MapFiles",
-            (row, col) => _currentMatrix.GetMap(col, row),
-            (row, col, value) => _currentMatrix.SetMap(col, row, value),
+            (row, col) => _currentMatrix.Maps[col, row],
+            (row, col, value) => _currentMatrix.Maps[col, row] = value,
             isUShort: true);
     }
 
-    private void DrawGrid(ushort[,] data, string gridName,
+    private void DrawGrid(Array data, string gridName,
         Func<int, int, ushort> getValue,
         Action<int, int, ushort> setValue,
         bool isUShort)
@@ -281,7 +282,7 @@ public class MatrixEditorView : IView
                     }
 
                     // Display value or edit field
-                    string displayValue = gridName == "MapFiles" && value == GameMatrix.EMPTY
+                    string displayValue = gridName == "MapFiles" && value == GameMatrix.EMPTY_CELL
                         ? "-"
                         : value.ToString();
 
@@ -324,7 +325,7 @@ public class MatrixEditorView : IView
                         // Double-click to open map editor (MapFiles only)
                         if (gridName == "MapFiles" && ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
                         {
-                            if (value != GameMatrix.EMPTY)
+                            if (value != GameMatrix.EMPTY_CELL)
                             {
                                 OpenMapEditor(value);
                             }
@@ -355,7 +356,7 @@ public class MatrixEditorView : IView
     {
         if (isMapFiles)
         {
-            if (value == GameMatrix.EMPTY)
+            if (value == GameMatrix.EMPTY_CELL)
             {
                 // Empty cell - gray
                 return new Vector4(0.3f, 0.3f, 0.3f, 0.5f);
@@ -373,13 +374,13 @@ public class MatrixEditorView : IView
 
     private void LoadMatrix(int matrixIndex)
     {
-        if (_romService == null || !_romService.IsLoaded)
+        if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
             return;
 
         try
         {
             string matrixPath = Path.Combine(
-                _romService.RomDirectory!,
+                _romService.CurrentRom.RomPath,
                 "unpacked",
                 "matrices",
                 $"{matrixIndex}.bin"
@@ -392,14 +393,18 @@ public class MatrixEditorView : IView
             }
 
             byte[] data = File.ReadAllBytes(matrixPath);
-            _currentMatrix = GameMatrix.ReadFromBytes(data);
-            _matrixWidth = _currentMatrix.Width;
-            _matrixHeight = _currentMatrix.Height;
-            _matrixName = $"Matrix {matrixIndex}";
-            _matrixLoaded = true;
-            _selectedMatrixIndex = matrixIndex;
+            _currentMatrix = GameMatrix.ReadFromBytes(data, matrixIndex);
 
-            Console.WriteLine($"Matrix {matrixIndex} loaded: {_matrixWidth}x{_matrixHeight}");
+            if (_currentMatrix != null)
+            {
+                _matrixWidth = _currentMatrix.Width;
+                _matrixHeight = _currentMatrix.Height;
+                _matrixName = $"Matrix {matrixIndex}";
+                _matrixLoaded = true;
+                _selectedMatrixIndex = matrixIndex;
+
+                Console.WriteLine($"Matrix {matrixIndex} loaded: {_matrixWidth}x{_matrixHeight}");
+            }
         }
         catch (Exception ex)
         {
@@ -410,13 +415,13 @@ public class MatrixEditorView : IView
 
     private void SaveMatrix()
     {
-        if (_currentMatrix == null || _romService == null || !_romService.IsLoaded)
+        if (_currentMatrix == null || _romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
             return;
 
         try
         {
             string matrixPath = Path.Combine(
-                _romService.RomDirectory!,
+                _romService.CurrentRom.RomPath,
                 "unpacked",
                 "matrices",
                 $"{_selectedMatrixIndex}.bin"
@@ -448,13 +453,17 @@ public class MatrixEditorView : IView
             try
             {
                 byte[] data = File.ReadAllBytes(filePath);
-                _currentMatrix = GameMatrix.ReadFromBytes(data);
-                _matrixWidth = _currentMatrix.Width;
-                _matrixHeight = _currentMatrix.Height;
-                _matrixName = Path.GetFileNameWithoutExtension(filePath);
-                _matrixLoaded = true;
+                _currentMatrix = GameMatrix.ReadFromBytes(data, -1);
 
-                Console.WriteLine($"Matrix imported from {filePath}");
+                if (_currentMatrix != null)
+                {
+                    _matrixWidth = _currentMatrix.Width;
+                    _matrixHeight = _currentMatrix.Height;
+                    _matrixName = Path.GetFileNameWithoutExtension(filePath);
+                    _matrixLoaded = true;
+
+                    Console.WriteLine($"Matrix imported from {filePath}");
+                }
             }
             catch (Exception ex)
             {
@@ -507,5 +516,30 @@ public class MatrixEditorView : IView
     {
         // TODO: Open map editor with the specified map
         Console.WriteLine($"Opening map editor for map {mapId}");
+    }
+
+    private int GetMatrixCount()
+    {
+        if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+            return 0;
+
+        try
+        {
+            string matricesPath = Path.Combine(
+                _romService.CurrentRom.RomPath,
+                "unpacked",
+                "matrices"
+            );
+
+            if (!Directory.Exists(matricesPath))
+                return 0;
+
+            // Count .bin files in matrices directory
+            return Directory.GetFiles(matricesPath, "*.bin").Length;
+        }
+        catch
+        {
+            return 0;
+        }
     }
 }
