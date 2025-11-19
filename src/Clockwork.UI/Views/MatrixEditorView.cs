@@ -420,7 +420,7 @@ public class MatrixEditorView : IView
 
             if (!File.Exists(matrixPath))
             {
-                AppLogger.Warning($"[MatrixEditor] Matrix file not found: {matrixPath}");
+                AppLogger.Warn($"[MatrixEditor] Matrix file not found: {matrixPath}");
                 return;
             }
 
@@ -592,7 +592,7 @@ public class MatrixEditorView : IView
 
             if (!Directory.Exists(matricesPath))
             {
-                AppLogger.Warning($"[MatrixEditor] Directory does not exist: {matricesPath}");
+                AppLogger.Warn($"[MatrixEditor] Directory does not exist: {matricesPath}");
 
                 // Try to list what's in the unpacked directory
                 string unpackedPath = Path.Combine(romPath, "unpacked");
