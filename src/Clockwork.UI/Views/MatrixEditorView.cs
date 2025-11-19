@@ -319,8 +319,9 @@ public class MatrixEditorView : IView
         // Table with borders
         ImGuiTableFlags flags = ImGuiTableFlags.Borders |
                                 ImGuiTableFlags.RowBg |
-                                ImGuiTableFlags.ScrollY | // Only vertical scroll
-                                ImGuiTableFlags.SizingStretchProp | // Stretch to fit width
+                                ImGuiTableFlags.ScrollX | // Enable horizontal scroll for fixed width cells
+                                ImGuiTableFlags.ScrollY | // Vertical scroll
+                                ImGuiTableFlags.SizingFixedFit | // Fixed width columns
                                 ImGuiTableFlags.NoHostExtendY; // Don't expand row height for widgets
 
         // Calculate available size
@@ -329,16 +330,11 @@ public class MatrixEditorView : IView
 
         if (ImGui.BeginTable($"##grid_{gridName}", width + 1, flags, availSize))
         {
-            // Calculate column width to fit available space
-            float availableWidth = availSize.X - 40; // Subtract row label column width
-            float columnWidth = availableWidth / width;
-            columnWidth = Math.Max(columnWidth, 40); // Minimum 40 pixels per column
-
-            // Setup columns
+            // Setup columns with fixed width of 40px max
             ImGui.TableSetupColumn("Row", ImGuiTableColumnFlags.WidthFixed, 40);
             for (int col = 0; col < width; col++)
             {
-                ImGui.TableSetupColumn($"{col}", ImGuiTableColumnFlags.WidthStretch);
+                ImGui.TableSetupColumn($"{col}", ImGuiTableColumnFlags.WidthFixed, 40);
             }
 
             // Header row
@@ -427,12 +423,10 @@ public class MatrixEditorView : IView
                     }
                     else
                     {
-                        // Display mode - use text + invisible button to make it clickable
-                        ImGui.AlignTextToFramePadding(); // Align text height with InputText
-                        ImGui.Text(displayValue);
+                        // Display mode - use Selectable to make entire cell clickable
+                        ImGui.PushStyleVar(ImGuiStyleVar.SelectableTextAlign, new Vector2(0.5f, 0.5f)); // Center text
 
-                        // Check for click on the text
-                        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
+                        if (ImGui.Selectable(displayValue, false, ImGuiSelectableFlags.None, new Vector2(0, 0)))
                         {
                             AppLogger.Debug($"[MatrixEditor] Cell clicked: ({row}, {col})");
                             // Single click - enter edit mode
@@ -441,6 +435,8 @@ public class MatrixEditorView : IView
                             _editBuffer = displayValue == "-" ? "" : displayValue;
                             _justStartedEditing = true;
                         }
+
+                        ImGui.PopStyleVar();
 
                         // Double-click to open map editor (MapFiles only)
                         if (gridName == "MapFiles" && ImGui.IsItemHovered() && ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
