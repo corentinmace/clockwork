@@ -203,7 +203,8 @@ namespace Clockwork.UI.Views
                 statusMessageTimer -= ImGui.GetIO().DeltaTime;
             }
 
-            if (ImGui.Begin("Text Editor", ref IsVisible))
+            bool isVisible = IsVisible;
+            if (ImGui.Begin("Text Editor", ref isVisible))
             {
                 DrawToolbar();
                 ImGui.Separator();
