@@ -17,7 +17,7 @@ public class MainWindow
 {
     private readonly Sdl2Window _window;
     private readonly GraphicsDevice _graphicsDevice;
-    private Veldrid.ImGuiRenderer? _imguiRenderer;
+    private ImGuiRenderer? _imguiRenderer;
     private ApplicationContext _appContext;
     private CommandList? _commandList;
 
@@ -101,7 +101,7 @@ public class MainWindow
         AppLogger.Debug("CommandList created");
 
         // Initialize ImGui renderer
-        _imguiRenderer = new Veldrid.ImGuiRenderer(
+        _imguiRenderer = new ImGuiRenderer(
             _graphicsDevice,
             _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
             (int)_window.Width,
