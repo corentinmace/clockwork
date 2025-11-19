@@ -61,9 +61,9 @@ public class MainOverlay : Overlay
         AppLogger.Info("MainOverlay created");
     }
 
-    protected override void PostInitialized()
+    protected override async Task PostInitialized()
     {
-        base.PostInitialized();
+        await base.PostInitialized();
 
         // Configure ImGui after overlay and ImGui context are fully initialized
         ConfigureImGui();
