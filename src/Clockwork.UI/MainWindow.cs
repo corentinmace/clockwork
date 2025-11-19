@@ -5,20 +5,21 @@ using Clockwork.Core.Settings;
 using Clockwork.UI.Themes;
 using Clockwork.UI.Views;
 using ImGuiNET;
-using Silk.NET.OpenGL;
-using Silk.NET.Windowing;
+using Veldrid;
+using Veldrid.Sdl2;
 
 namespace Clockwork.UI;
 
 /// <summary>
-/// Main application window using Silk.NET and ImGui.
+/// Main application window using Veldrid and ImGui.
 /// </summary>
 public class MainWindow
 {
-    private readonly IWindow _window;
-    private GL? _gl;
-    private ImGuiController? _imguiController;
+    private readonly Sdl2Window _window;
+    private readonly GraphicsDevice _graphicsDevice;
+    private Veldrid.ImGuiRenderer? _imguiRenderer;
     private ApplicationContext _appContext;
+    private CommandList? _commandList;
 
     // Views
     private readonly AboutView _aboutView;
@@ -41,10 +42,11 @@ public class MainWindow
     private string _saveRomLog = "";
     private bool _isSavingRom = false;
 
-    public MainWindow(ApplicationContext appContext, IWindow window)
+    public MainWindow(ApplicationContext appContext, Sdl2Window window, GraphicsDevice graphicsDevice)
     {
         _appContext = appContext;
         _window = window;
+        _graphicsDevice = graphicsDevice;
 
         // Initialize views
         _aboutView = new AboutView(_appContext);
@@ -62,29 +64,54 @@ public class MainWindow
         _settingsWindow.SetThemeEditorView(_themeEditorView);
 
         // Set up event handlers
-        _window.Load += OnLoad;
-        _window.Render += OnRender;
-        _window.Update += OnUpdate;
-        _window.Resize += OnResize;
-        _window.Closing += OnClosing;
+        _window.Resized += OnResize;
+        _window.Closed += OnClosing;
+
+        // Initialize
+        OnLoad();
     }
 
     public void Run()
     {
-        _window.Run();
+        AppLogger.Debug("Starting main render loop");
+
+        // Main render loop
+        while (_window.Exists)
+        {
+            var snapshot = _window.PumpEvents();
+            if (!_window.Exists)
+                break;
+
+            double deltaTime = 1.0 / 60.0; // Approximate deltatime (can be improved with actual timing)
+
+            // Update
+            OnUpdate(deltaTime);
+
+            // Render
+            OnRender(deltaTime);
+        }
     }
 
     private void OnLoad()
     {
-        AppLogger.Info("MainWindow OnLoad: Initializing OpenGL and ImGui");
+        AppLogger.Info("MainWindow OnLoad: Initializing Veldrid and ImGui");
 
-        // Get OpenGL context
-        _gl = _window.CreateOpenGL();
-        AppLogger.Debug("OpenGL context created");
+        // Create command list for submitting rendering commands
+        _commandList = _graphicsDevice.ResourceFactory.CreateCommandList();
+        AppLogger.Debug("CommandList created");
 
-        // Initialize ImGui controller
-        _imguiController = new ImGuiController(_gl, _window, _window.Size.X, _window.Size.Y);
-        AppLogger.Debug("ImGuiController created");
+        // Initialize ImGui renderer
+        _imguiRenderer = new Veldrid.ImGuiRenderer(
+            _graphicsDevice,
+            _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
+            (int)_window.Width,
+            (int)_window.Height);
+        AppLogger.Debug("ImGuiRenderer created");
+
+        // Configure ImGui
+        var io = ImGui.GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
         // Initialize theme manager
         ThemeManager.Initialize();
@@ -109,15 +136,17 @@ public class MainWindow
         Console.WriteLine("Application started successfully!");
     }
 
-    private void OnResize(Silk.NET.Maths.Vector2D<int> size)
+    private void OnResize()
     {
-        _gl?.Viewport(0, 0, (uint)size.X, (uint)size.Y);
-        _imguiController?.WindowResized(size.X, size.Y);
+        _graphicsDevice.MainSwapchain.Resize((uint)_window.Width, (uint)_window.Height);
+        _imguiRenderer?.WindowResized((int)_window.Width, (int)_window.Height);
     }
 
     private void OnUpdate(double deltaTime)
     {
-        _imguiController?.Update((float)deltaTime);
+        // Update ImGui input
+        var snapshot = _window.PumpEvents();
+        _imguiRenderer?.Update((float)deltaTime, snapshot);
 
         // Update application context
         _appContext.Update(deltaTime);
@@ -131,17 +160,29 @@ public class MainWindow
 
     private void OnRender(double deltaTime)
     {
+        if (_commandList == null || _imguiRenderer == null)
+            return;
+
+        // Begin command recording
+        _commandList.Begin();
+
         // Clear screen
-        _gl?.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        _gl?.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        _commandList.SetFramebuffer(_graphicsDevice.MainSwapchain.Framebuffer);
+        _commandList.ClearColorTarget(0, new RgbaFloat(0.1f, 0.1f, 0.1f, 1.0f));
+        _commandList.ClearDepthStencil(1f);
 
         // Draw ImGui UI
         DrawUI();
 
         // Render ImGui
-        _imguiController?.Render();
+        _imguiRenderer.Render(_graphicsDevice, _commandList);
 
-        // Note: Buffer swap is automatic (ShouldSwapAutomatically = true)
+        // End command recording and submit
+        _commandList.End();
+        _graphicsDevice.SubmitCommands(_commandList);
+
+        // Swap buffers
+        _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
     }
 
     private void OnClosing()
@@ -149,20 +190,21 @@ public class MainWindow
         AppLogger.Info("MainWindow OnClosing: Cleaning up resources");
 
         // Save window state to settings
-        SettingsManager.Settings.WindowWidth = _window.Size.X;
-        SettingsManager.Settings.WindowHeight = _window.Size.Y;
+        SettingsManager.Settings.WindowWidth = (int)_window.Width;
+        SettingsManager.Settings.WindowHeight = (int)_window.Height;
         SettingsManager.Settings.WindowMaximized = _window.WindowState == WindowState.Maximized;
         SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
         SettingsManager.Save();
-        AppLogger.Debug($"Window state saved: {_window.Size.X}x{_window.Size.Y}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
+        AppLogger.Debug($"Window state saved: {_window.Width}x{_window.Height}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
 
-        _imguiController?.Dispose();
-        AppLogger.Debug("ImGuiController disposed");
+        _imguiRenderer?.Dispose();
+        AppLogger.Debug("ImGuiRenderer disposed");
+
+        _commandList?.Dispose();
+        AppLogger.Debug("CommandList disposed");
 
         _appContext.Shutdown();
         AppLogger.Info("MainWindow closed");
-
-        _gl?.Dispose();
     }
 
     private void HandleKeyboardShortcuts()
