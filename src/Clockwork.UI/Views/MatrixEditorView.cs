@@ -630,7 +630,7 @@ public class MatrixEditorView : IView
             }
             else
             {
-                AppLogger.Warning($"[MatrixEditor] No matrix files found. Total files in directory: {allFiles.Length}");
+                AppLogger.Warn($"[MatrixEditor] No matrix files found. Total files in directory: {allFiles.Length}");
                 if (allFiles.Length > 0)
                 {
                     var examples = allFiles.Take(10).Select(f => $"{Path.GetFileName(f)} (ext: '{Path.GetExtension(f)}')");
