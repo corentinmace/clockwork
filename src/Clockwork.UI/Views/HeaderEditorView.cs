@@ -542,6 +542,7 @@ public class HeaderEditorView : IView
 
         if (ImGui.Button("→"))
         {
+            AppLogger.Info($"[HeaderEditor] Navigation button clicked: {tooltip}");
             openAction();
         }
 

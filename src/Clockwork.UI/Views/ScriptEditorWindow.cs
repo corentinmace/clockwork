@@ -318,6 +318,8 @@ public class ScriptEditorWindow : IView
     /// <param name="scriptID">The script file ID to load</param>
     public void OpenWithScriptID(int scriptID)
     {
+        AppLogger.Info($"[ScriptEditor] OpenWithScriptID called with ID: {scriptID}");
+
         // Always open the window and request focus
         IsVisible = true;
         _shouldFocus = true;
@@ -325,6 +327,7 @@ public class ScriptEditorWindow : IView
         // Check if ROM is loaded
         if (_romService?.CurrentRom?.IsLoaded != true)
         {
+            AppLogger.Warn("[ScriptEditor] No ROM loaded");
             SetStatus("No ROM loaded. Please load a ROM first.", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
             return;
         }
@@ -332,16 +335,25 @@ public class ScriptEditorWindow : IView
         // Refresh script files list if not already loaded
         if (_scriptCount == 0)
         {
+            AppLogger.Debug("[ScriptEditor] Refreshing script files list...");
             RefreshScriptFilesList();
         }
+
+        AppLogger.Debug($"[ScriptEditor] Script count: {_scriptCount}");
 
         // Update the selected index to match the script ID (if valid)
         if (scriptID >= 0 && scriptID < _scriptCount)
         {
             _selectedFileIndex = scriptID;
+            AppLogger.Debug($"[ScriptEditor] Selected file index set to: {_selectedFileIndex}");
+        }
+        else
+        {
+            AppLogger.Warn($"[ScriptEditor] Script ID {scriptID} is out of range (0-{_scriptCount - 1})");
         }
 
         // Load the script file
+        AppLogger.Debug($"[ScriptEditor] Loading script file {scriptID}...");
         LoadScriptFile(scriptID);
     }
 

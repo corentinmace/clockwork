@@ -96,6 +96,8 @@ namespace Clockwork.UI.Views
         /// <param name="archiveID">The text archive ID to load (e.g., 433 for location names)</param>
         public void OpenWithArchiveID(int archiveID)
         {
+            AppLogger.Info($"[TextEditor] OpenWithArchiveID called with ID: {archiveID}");
+
             // Always open the window and request focus
             IsVisible = true;
             _shouldFocus = true;
@@ -103,18 +105,21 @@ namespace Clockwork.UI.Views
             // Refresh archive list if not already loaded
             if (availableTextArchives.Count == 0)
             {
+                AppLogger.Debug("[TextEditor] Refreshing text archives list...");
                 RefreshTextArchivesList();
             }
 
             // Check if ROM is loaded
             if (_romService?.CurrentRom?.GameDirectories == null)
             {
+                AppLogger.Warn("[TextEditor] No ROM loaded or GameDirectories is null");
                 SetStatusMessage("No ROM loaded. Please load a ROM first.");
                 return;
             }
 
             if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out string? textArchivesPath))
             {
+                AppLogger.Warn("[TextEditor] expandedTextArchives directory not found in GameDirectories");
                 SetStatusMessage("Text archives directory not found in ROM.");
                 return;
             }
@@ -123,17 +128,23 @@ namespace Clockwork.UI.Views
             string fileName = $"{archiveID:D4}.txt";
             string filePath = Path.Combine(textArchivesPath, fileName);
 
+            AppLogger.Debug($"[TextEditor] Looking for file: {filePath}");
+            AppLogger.Debug($"[TextEditor] File exists: {File.Exists(filePath)}");
+
             if (File.Exists(filePath))
             {
                 // Find the index in the available archives list
                 selectedArchiveIndex = availableTextArchives.FindIndex(f =>
                     Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
 
+                AppLogger.Debug($"[TextEditor] Selected archive index: {selectedArchiveIndex}");
+
                 // Load the file
                 LoadFile(filePath);
             }
             else
             {
+                AppLogger.Error($"[TextEditor] Text archive {archiveID} not found at: {filePath}");
                 SetStatusMessage($"Text archive {archiveID} not found at: {filePath}");
             }
         }
