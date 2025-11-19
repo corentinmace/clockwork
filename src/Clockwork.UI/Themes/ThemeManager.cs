@@ -1,8 +1,9 @@
 using System.Text.Json;
 using Clockwork.Core.Logging;
+using Clockwork.Core.Themes;
 using ImGuiNET;
 
-namespace Clockwork.Core.Themes;
+namespace Clockwork.UI.Themes;
 
 /// <summary>
 /// Manages themes for the application (loading, saving, applying).

@@ -2,6 +2,7 @@ using ImGuiNET;
 using Clockwork.Core;
 using Clockwork.Core.Themes;
 using Clockwork.Core.Logging;
+using Clockwork.UI.Themes;
 using System.Numerics;
 
 namespace Clockwork.UI.Views;
@@ -390,15 +391,15 @@ public class ThemeEditorView : IView
     {
         if (_editingTheme == null) return;
 
-        if (ColorEdit("Fond fenêtre", ref _editingTheme.WindowBg)) _hasUnsavedChanges = true;
-        if (ColorEdit("Fond enfant", ref _editingTheme.ChildBg)) _hasUnsavedChanges = true;
-        if (ColorEdit("Fond popup", ref _editingTheme.PopupBg)) _hasUnsavedChanges = true;
-        if (ColorEdit("Bordure", ref _editingTheme.Border)) _hasUnsavedChanges = true;
-        if (ColorEdit("Ombre bordure", ref _editingTheme.BorderShadow)) _hasUnsavedChanges = true;
-        if (ColorEdit("Barre de titre", ref _editingTheme.TitleBg)) _hasUnsavedChanges = true;
-        if (ColorEdit("Barre de titre active", ref _editingTheme.TitleBgActive)) _hasUnsavedChanges = true;
-        if (ColorEdit("Barre de titre réduite", ref _editingTheme.TitleBgCollapsed)) _hasUnsavedChanges = true;
-        if (ColorEdit("Barre de menu", ref _editingTheme.MenuBarBg)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Fond fenêtre", () => _editingTheme.WindowBg, v => _editingTheme.WindowBg = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Fond enfant", () => _editingTheme.ChildBg, v => _editingTheme.ChildBg = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Fond popup", () => _editingTheme.PopupBg, v => _editingTheme.PopupBg = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Bordure", () => _editingTheme.Border, v => _editingTheme.Border = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Ombre bordure", () => _editingTheme.BorderShadow, v => _editingTheme.BorderShadow = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Barre de titre", () => _editingTheme.TitleBg, v => _editingTheme.TitleBg = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Barre de titre active", () => _editingTheme.TitleBgActive, v => _editingTheme.TitleBgActive = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Barre de titre réduite", () => _editingTheme.TitleBgCollapsed, v => _editingTheme.TitleBgCollapsed = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Barre de menu", () => _editingTheme.MenuBarBg, v => _editingTheme.MenuBarBg = v)) _hasUnsavedChanges = true;
     }
 
     private void DrawWidgetColorsTab()
@@ -406,44 +407,44 @@ public class ThemeEditorView : IView
         if (_editingTheme == null) return;
 
         ImGui.Text("Frames:");
-        if (ColorEdit("Frame", ref _editingTheme.FrameBg)) _hasUnsavedChanges = true;
-        if (ColorEdit("Frame survolé", ref _editingTheme.FrameBgHovered)) _hasUnsavedChanges = true;
-        if (ColorEdit("Frame actif", ref _editingTheme.FrameBgActive)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Frame", () => _editingTheme.FrameBg, v => _editingTheme.FrameBg = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Frame survolé", () => _editingTheme.FrameBgHovered, v => _editingTheme.FrameBgHovered = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Frame actif", () => _editingTheme.FrameBgActive, v => _editingTheme.FrameBgActive = v)) _hasUnsavedChanges = true;
 
         ImGui.Separator();
         ImGui.Text("Boutons:");
-        if (ColorEdit("Bouton", ref _editingTheme.Button)) _hasUnsavedChanges = true;
-        if (ColorEdit("Bouton survolé", ref _editingTheme.ButtonHovered)) _hasUnsavedChanges = true;
-        if (ColorEdit("Bouton actif", ref _editingTheme.ButtonActive)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Bouton", () => _editingTheme.Button, v => _editingTheme.Button = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Bouton survolé", () => _editingTheme.ButtonHovered, v => _editingTheme.ButtonHovered = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Bouton actif", () => _editingTheme.ButtonActive, v => _editingTheme.ButtonActive = v)) _hasUnsavedChanges = true;
 
         ImGui.Separator();
         ImGui.Text("En-têtes:");
-        if (ColorEdit("En-tête", ref _editingTheme.Header)) _hasUnsavedChanges = true;
-        if (ColorEdit("En-tête survolé", ref _editingTheme.HeaderHovered)) _hasUnsavedChanges = true;
-        if (ColorEdit("En-tête actif", ref _editingTheme.HeaderActive)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("En-tête", () => _editingTheme.Header, v => _editingTheme.Header = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("En-tête survolé", () => _editingTheme.HeaderHovered, v => _editingTheme.HeaderHovered = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("En-tête actif", () => _editingTheme.HeaderActive, v => _editingTheme.HeaderActive = v)) _hasUnsavedChanges = true;
 
         ImGui.Separator();
         ImGui.Text("Onglets:");
-        if (ColorEdit("Onglet", ref _editingTheme.Tab)) _hasUnsavedChanges = true;
-        if (ColorEdit("Onglet survolé", ref _editingTheme.TabHovered)) _hasUnsavedChanges = true;
-        if (ColorEdit("Onglet actif", ref _editingTheme.TabActive)) _hasUnsavedChanges = true;
-        if (ColorEdit("Onglet non focalisé", ref _editingTheme.TabUnfocused)) _hasUnsavedChanges = true;
-        if (ColorEdit("Onglet non focalisé actif", ref _editingTheme.TabUnfocusedActive)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Onglet", () => _editingTheme.Tab, v => _editingTheme.Tab = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Onglet survolé", () => _editingTheme.TabHovered, v => _editingTheme.TabHovered = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Onglet actif", () => _editingTheme.TabActive, v => _editingTheme.TabActive = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Onglet non focalisé", () => _editingTheme.TabUnfocused, v => _editingTheme.TabUnfocused = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Onglet non focalisé actif", () => _editingTheme.TabUnfocusedActive, v => _editingTheme.TabUnfocusedActive = v)) _hasUnsavedChanges = true;
 
         ImGui.Separator();
         ImGui.Text("Contrôles:");
-        if (ColorEdit("Case cochée", ref _editingTheme.CheckMark)) _hasUnsavedChanges = true;
-        if (ColorEdit("Slider", ref _editingTheme.SliderGrab)) _hasUnsavedChanges = true;
-        if (ColorEdit("Slider actif", ref _editingTheme.SliderGrabActive)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Case cochée", () => _editingTheme.CheckMark, v => _editingTheme.CheckMark = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Slider", () => _editingTheme.SliderGrab, v => _editingTheme.SliderGrab = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Slider actif", () => _editingTheme.SliderGrabActive, v => _editingTheme.SliderGrabActive = v)) _hasUnsavedChanges = true;
     }
 
     private void DrawTextColorsTab()
     {
         if (_editingTheme == null) return;
 
-        if (ColorEdit("Texte", ref _editingTheme.Text)) _hasUnsavedChanges = true;
-        if (ColorEdit("Texte désactivé", ref _editingTheme.TextDisabled)) _hasUnsavedChanges = true;
-        if (ColorEdit("Texte sélectionné", ref _editingTheme.TextSelectedBg)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Texte", () => _editingTheme.Text, v => _editingTheme.Text = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Texte désactivé", () => _editingTheme.TextDisabled, v => _editingTheme.TextDisabled = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Texte sélectionné", () => _editingTheme.TextSelectedBg, v => _editingTheme.TextSelectedBg = v)) _hasUnsavedChanges = true;
     }
 
     private void DrawAdvancedColorsTab()
@@ -451,40 +452,46 @@ public class ThemeEditorView : IView
         if (_editingTheme == null) return;
 
         ImGui.Text("Scrollbar:");
-        if (ColorEdit("Fond scrollbar", ref _editingTheme.ScrollbarBg)) _hasUnsavedChanges = true;
-        if (ColorEdit("Poignée scrollbar", ref _editingTheme.ScrollbarGrab)) _hasUnsavedChanges = true;
-        if (ColorEdit("Poignée scrollbar survolée", ref _editingTheme.ScrollbarGrabHovered)) _hasUnsavedChanges = true;
-        if (ColorEdit("Poignée scrollbar active", ref _editingTheme.ScrollbarGrabActive)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Fond scrollbar", () => _editingTheme.ScrollbarBg, v => _editingTheme.ScrollbarBg = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Poignée scrollbar", () => _editingTheme.ScrollbarGrab, v => _editingTheme.ScrollbarGrab = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Poignée scrollbar survolée", () => _editingTheme.ScrollbarGrabHovered, v => _editingTheme.ScrollbarGrabHovered = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Poignée scrollbar active", () => _editingTheme.ScrollbarGrabActive, v => _editingTheme.ScrollbarGrabActive = v)) _hasUnsavedChanges = true;
 
         ImGui.Separator();
         ImGui.Text("Séparateurs:");
-        if (ColorEdit("Séparateur", ref _editingTheme.Separator)) _hasUnsavedChanges = true;
-        if (ColorEdit("Séparateur survolé", ref _editingTheme.SeparatorHovered)) _hasUnsavedChanges = true;
-        if (ColorEdit("Séparateur actif", ref _editingTheme.SeparatorActive)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Séparateur", () => _editingTheme.Separator, v => _editingTheme.Separator = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Séparateur survolé", () => _editingTheme.SeparatorHovered, v => _editingTheme.SeparatorHovered = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Séparateur actif", () => _editingTheme.SeparatorActive, v => _editingTheme.SeparatorActive = v)) _hasUnsavedChanges = true;
 
         ImGui.Separator();
         ImGui.Text("Redimensionnement:");
-        if (ColorEdit("Poignée redimensionnement", ref _editingTheme.ResizeGrip)) _hasUnsavedChanges = true;
-        if (ColorEdit("Poignée redim. survolée", ref _editingTheme.ResizeGripHovered)) _hasUnsavedChanges = true;
-        if (ColorEdit("Poignée redim. active", ref _editingTheme.ResizeGripActive)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Poignée redimensionnement", () => _editingTheme.ResizeGrip, v => _editingTheme.ResizeGrip = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Poignée redim. survolée", () => _editingTheme.ResizeGripHovered, v => _editingTheme.ResizeGripHovered = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Poignée redim. active", () => _editingTheme.ResizeGripActive, v => _editingTheme.ResizeGripActive = v)) _hasUnsavedChanges = true;
 
         ImGui.Separator();
         ImGui.Text("Docking:");
-        if (ColorEdit("Aperçu docking", ref _editingTheme.DockingPreview)) _hasUnsavedChanges = true;
-        if (ColorEdit("Fond docking vide", ref _editingTheme.DockingEmptyBg)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Aperçu docking", () => _editingTheme.DockingPreview, v => _editingTheme.DockingPreview = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Fond docking vide", () => _editingTheme.DockingEmptyBg, v => _editingTheme.DockingEmptyBg = v)) _hasUnsavedChanges = true;
 
         ImGui.Separator();
         ImGui.Text("Tables:");
-        if (ColorEdit("En-tête table", ref _editingTheme.TableHeaderBg)) _hasUnsavedChanges = true;
-        if (ColorEdit("Bordure table forte", ref _editingTheme.TableBorderStrong)) _hasUnsavedChanges = true;
-        if (ColorEdit("Bordure table légère", ref _editingTheme.TableBorderLight)) _hasUnsavedChanges = true;
-        if (ColorEdit("Ligne table", ref _editingTheme.TableRowBg)) _hasUnsavedChanges = true;
-        if (ColorEdit("Ligne table alternée", ref _editingTheme.TableRowBgAlt)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("En-tête table", () => _editingTheme.TableHeaderBg, v => _editingTheme.TableHeaderBg = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Bordure table forte", () => _editingTheme.TableBorderStrong, v => _editingTheme.TableBorderStrong = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Bordure table légère", () => _editingTheme.TableBorderLight, v => _editingTheme.TableBorderLight = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Ligne table", () => _editingTheme.TableRowBg, v => _editingTheme.TableRowBg = v)) _hasUnsavedChanges = true;
+        if (ColorEditProperty("Ligne table alternée", () => _editingTheme.TableRowBgAlt, v => _editingTheme.TableRowBgAlt = v)) _hasUnsavedChanges = true;
     }
 
-    private bool ColorEdit(string label, ref Vector4 color)
+    private bool ColorEditProperty(string label, Func<Vector4> getter, Action<Vector4> setter)
     {
-        return ImGui.ColorEdit4(label, ref color, ImGuiColorEditFlags.AlphaBar | ImGuiColorEditFlags.AlphaPreviewHalf);
+        var color = getter();
+        if (ImGui.ColorEdit4(label, ref color, ImGuiColorEditFlags.AlphaBar | ImGuiColorEditFlags.AlphaPreviewHalf))
+        {
+            setter(color);
+            return true;
+        }
+        return false;
     }
 
     private void ShowStatusMessage(string message)

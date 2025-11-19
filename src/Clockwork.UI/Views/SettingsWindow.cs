@@ -1,7 +1,7 @@
 using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Settings;
-using Clockwork.Core.Themes;
+using Clockwork.UI.Themes;
 using ImGuiNET;
 using System.Numerics;
 

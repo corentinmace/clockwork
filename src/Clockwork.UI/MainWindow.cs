@@ -2,7 +2,7 @@ using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.Core.Settings;
-using Clockwork.Core.Themes;
+using Clockwork.UI.Themes;
 using Clockwork.UI.Views;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
