@@ -267,29 +267,29 @@ namespace Clockwork.UI
                 case GraphicsBackend.Direct3D11:
                 {
                     if (stage == ShaderStages.Vertex && colorSpaceHandling == ColorSpaceHandling.Legacy) { name += "-legacy"; }
-                    string resourceName = name + ".hlsl.bytes";
+                    string resourceName = "Clockwork.UI.Assets.GLSL." + name + ".hlsl.bytes";
                     return GetEmbeddedResourceBytes(resourceName);
                 }
                 case GraphicsBackend.OpenGL:
                 {
                     if (stage == ShaderStages.Vertex && colorSpaceHandling == ColorSpaceHandling.Legacy) { name += "-legacy"; }
-                    string resourceName = name + ".glsl";
+                    string resourceName = "Clockwork.UI.Assets.GLSL." + name + ".glsl";
                     return GetEmbeddedResourceBytes(resourceName);
                 }
                 case GraphicsBackend.OpenGLES:
                 {
                     if (stage == ShaderStages.Vertex && colorSpaceHandling == ColorSpaceHandling.Legacy) { name += "-legacy"; }
-                    string resourceName = name + ".glsles";
+                    string resourceName = "Clockwork.UI.Assets.GLSLES." + name + ".glsles";
                     return GetEmbeddedResourceBytes(resourceName);
                 }
                 case GraphicsBackend.Vulkan:
                 {
-                    string resourceName = name + ".spv";
+                    string resourceName = "Clockwork.UI.Assets.SPIRV." + name + ".spv";
                     return GetEmbeddedResourceBytes(resourceName);
                 }
                 case GraphicsBackend.Metal:
                 {
-                    string resourceName = name + ".metallib";
+                    string resourceName = "Clockwork.UI.Assets.Metal." + name + ".metallib";
                     return GetEmbeddedResourceBytes(resourceName);
                 }
                 default:
