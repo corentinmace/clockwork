@@ -106,8 +106,9 @@ public class RomService : IApplicationService
             // Initialize game directories
             InitializeGameDirectories(folderPath);
 
-            // Save last ROM path to settings
+            // Save last ROM path to settings and persist immediately
             SettingsManager.Settings.LastRomPath = folderPath;
+            SettingsManager.Save(); // Save immediately to avoid losing this on crash
             AppLogger.Debug($"Saved last ROM path to settings: {folderPath}");
 
             AppLogger.Info("ROM loaded successfully");
