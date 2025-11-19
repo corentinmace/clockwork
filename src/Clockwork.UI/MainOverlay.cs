@@ -38,7 +38,8 @@ public class MainOverlay : Overlay
 
     private double _deltaTime = 1.0 / 60.0;
 
-    public MainOverlay(ApplicationContext appContext) : base("Clockwork - Pokémon ROM Editor")
+    public MainOverlay(ApplicationContext appContext, int width, int height)
+        : base("Clockwork - Pokémon ROM Editor", width, height)
     {
         _appContext = appContext;
 
@@ -56,11 +57,6 @@ public class MainOverlay : Overlay
 
         // Connect theme editor to settings window
         _settingsWindow.SetThemeEditorView(_themeEditorView);
-
-        // Configure overlay window
-        var settings = SettingsManager.Settings;
-        this.Size = new System.Drawing.Size(settings.WindowWidth, settings.WindowHeight);
-        this.Position = new System.Drawing.Point(100, 100);
 
         AppLogger.Info("MainOverlay created");
 

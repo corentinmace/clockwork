@@ -49,7 +49,8 @@ internal class Program
 
             // Create and run main overlay
             AppLogger.Info("Creating main overlay with multi-viewport support");
-            var overlay = new MainOverlay(appContext);
+            var settings = SettingsManager.Settings;
+            var overlay = new MainOverlay(appContext, settings.WindowWidth, settings.WindowHeight);
             overlay.Run();
 
             // Save settings on exit
