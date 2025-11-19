@@ -1,0 +1,210 @@
+{
+  "platinum": {
+    "commands": [
+      {
+        "id": 2,
+        "name": "End",
+        "parameters": [],
+        "description": "Ends the script execution"
+      },
+      {
+        "id": 3,
+        "name": "FacePlayer",
+        "parameters": [],
+        "description": "Makes NPC face player"
+      },
+      {
+        "id": 4,
+        "name": "Nop",
+        "parameters": [],
+        "description": "No operation"
+      },
+      {
+        "id": 5,
+        "name": "Wait",
+        "parameters": ["Word"],
+        "description": "Waits for specified frames"
+      },
+      {
+        "id": 22,
+        "name": "Jump",
+        "parameters": ["Offset"],
+        "description": "Jumps to another location"
+      },
+      {
+        "id": 26,
+        "name": "Call",
+        "parameters": ["Offset"],
+        "description": "Calls a function"
+      },
+      {
+        "id": 27,
+        "name": "Return",
+        "parameters": [],
+        "description": "Returns from a function"
+      },
+      {
+        "id": 23,
+        "name": "JumpIfEqual",
+        "parameters": ["Byte", "Offset"],
+        "description": "Jump if equal"
+      },
+      {
+        "id": 24,
+        "name": "JumpIfNotEqual",
+        "parameters": ["Byte", "Offset"],
+        "description": "Jump if not equal"
+      },
+      {
+        "id": 25,
+        "name": "JumpIfGreater",
+        "parameters": ["Byte", "Offset"],
+        "description": "Jump if greater"
+      },
+      {
+        "id": 28,
+        "name": "JumpIfLess",
+        "parameters": ["Byte", "Offset"],
+        "description": "Jump if less"
+      },
+      {
+        "id": 29,
+        "name": "JumpIfGreaterOrEqual",
+        "parameters": ["Byte", "Offset"],
+        "description": "Jump if greater or equal"
+      },
+      {
+        "id": 30,
+        "name": "Lock",
+        "parameters": ["Word"],
+        "description": "Locks entity"
+      },
+      {
+        "id": 31,
+        "name": "Release",
+        "parameters": ["Word"],
+        "description": "Releases entity"
+      },
+      {
+        "id": 32,
+        "name": "AddFlag",
+        "parameters": ["Word"],
+        "description": "Sets a flag"
+      },
+      {
+        "id": 33,
+        "name": "SetVar",
+        "parameters": ["Word", "Word"],
+        "description": "Sets a variable value"
+      },
+      {
+        "id": 34,
+        "name": "CopyVar",
+        "parameters": ["Word", "Word"],
+        "description": "Copies variable value"
+      },
+      {
+        "id": 35,
+        "name": "SetVarFromWork",
+        "parameters": ["Word", "Word"],
+        "description": "Sets variable from work"
+      },
+      {
+        "id": 36,
+        "name": "SetWorkFromVar",
+        "parameters": ["Word", "Word"],
+        "description": "Sets work from variable"
+      },
+      {
+        "id": 37,
+        "name": "RemoveFlag",
+        "parameters": ["Word"],
+        "description": "Clears a flag"
+      },
+      {
+        "id": 38,
+        "name": "CheckFlag",
+        "parameters": ["Word"],
+        "description": "Checks if flag is set"
+      },
+      {
+        "id": 52,
+        "name": "Warp",
+        "parameters": ["Word", "Word", "Word", "Word", "Word"],
+        "description": "Warps the player"
+      },
+      {
+        "id": 94,
+        "name": "ApplyMovement",
+        "parameters": ["Word", "Offset"],
+        "description": "Applies movement to overworld"
+      },
+      {
+        "id": 95,
+        "name": "WaitMovement",
+        "parameters": [],
+        "description": "Waits for movement to finish"
+      },
+      {
+        "id": 104,
+        "name": "Message",
+        "parameters": ["Word"],
+        "description": "Displays a message"
+      },
+      {
+        "id": 148,
+        "name": "CloseMessage",
+        "parameters": [],
+        "description": "Closes the message box"
+      },
+      {
+        "id": 149,
+        "name": "WaitMessage",
+        "parameters": [],
+        "description": "Waits for message to close"
+      },
+      {
+        "id": 188,
+        "name": "GiveItem",
+        "parameters": ["Word", "Word"],
+        "description": "Gives an item to the player"
+      },
+      {
+        "id": 240,
+        "name": "PlayBGM",
+        "parameters": ["Word"],
+        "description": "Plays background music"
+      },
+      {
+        "id": 241,
+        "name": "StopBGM",
+        "parameters": [],
+        "description": "Stops background music"
+      },
+      {
+        "id": 242,
+        "name": "PlaySound",
+        "parameters": ["Word"],
+        "description": "Plays a sound effect"
+      },
+      {
+        "id": 403,
+        "name": "HealPokemon",
+        "parameters": [],
+        "description": "Heals all Pokémon"
+      },
+      {
+        "id": 463,
+        "name": "WildBattle",
+        "parameters": ["Word", "Byte"],
+        "description": "Starts a wild battle"
+      },
+      {
+        "id": 464,
+        "name": "TrainerBattle",
+        "parameters": ["Word", "Word"],
+        "description": "Starts a trainer battle"
+      }
+    ]
+  }
+}

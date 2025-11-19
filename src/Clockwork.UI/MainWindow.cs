@@ -23,6 +23,7 @@ public class MainWindow : GameWindow
     private readonly HeaderEditorView _headerEditorView;
     private readonly MapEditorView _mapEditorView;
     private readonly TextEditorWindow _textEditorWindow;
+    private readonly ScriptEditorWindow _scriptEditorWindow;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -35,6 +36,7 @@ public class MainWindow : GameWindow
         _headerEditorView = new HeaderEditorView(_appContext);
         _mapEditorView = new MapEditorView(_appContext);
         _textEditorWindow = new TextEditorWindow(_appContext);
+        _scriptEditorWindow = new ScriptEditorWindow(_appContext);
     }
 
     protected override void OnLoad()
@@ -219,6 +221,10 @@ public class MainWindow : GameWindow
                 {
                     _textEditorWindow.IsVisible = true;
                 }
+                if (ImGui.MenuItem("Script Editor"))
+                {
+                    _scriptEditorWindow.IsVisible = true;
+                }
                 ImGui.EndMenu();
             }
 
@@ -249,6 +255,7 @@ public class MainWindow : GameWindow
         _headerEditorView.Draw();
         _mapEditorView.Draw();
         _textEditorWindow.Draw();
+        _scriptEditorWindow.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();
@@ -302,6 +309,10 @@ public class MainWindow : GameWindow
                 if (ImGui.Selectable("  📄 Text Editor", _textEditorWindow.IsVisible))
                 {
                     _textEditorWindow.IsVisible = !_textEditorWindow.IsVisible;
+                }
+                if (ImGui.Selectable("  📜 Script Editor", _scriptEditorWindow.IsVisible))
+                {
+                    _scriptEditorWindow.IsVisible = !_scriptEditorWindow.IsVisible;
                 }
             }
         }
