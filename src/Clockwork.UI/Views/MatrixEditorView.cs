@@ -333,8 +333,11 @@ public class MatrixEditorView : IView
                 {
                     ImGui.TableNextColumn();
 
+                    // Create unique ID scope for this cell to avoid conflicts when values are the same
+                    ImGui.PushID(row * 10000 + col);
+
                     ushort value = getValue(row, col);
-                    string cellId = $"##cell_{row}_{col}";
+                    string cellId = "##input";
 
                     // Color code cells using TableSetBgColor for proper cell background
                     Vector4 cellColor = GetCellColor(value, gridName == "MapFiles");
@@ -421,6 +424,9 @@ public class MatrixEditorView : IView
                     {
                         ImGui.SetTooltip($"Position: ({col}, {row})\nValue: {value}\nClick: Éditer\nDouble-click: Ouvrir carte (MapFiles)");
                     }
+
+                    // Pop the unique ID scope
+                    ImGui.PopID();
                 }
             }
 
