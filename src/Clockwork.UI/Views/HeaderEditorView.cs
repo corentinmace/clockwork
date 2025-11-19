@@ -16,6 +16,11 @@ public class HeaderEditorView : IView
     private RomService? _romService;
     private HeaderService? _headerService;
 
+    // References to other editors for navigation
+    private TextEditorWindow? _textEditorWindow;
+    private ScriptEditorWindow? _scriptEditorWindow;
+    private MatrixEditorView? _matrixEditorView;
+
     private MapHeader? _currentHeader;
     private string _statusMessage = string.Empty;
     private System.Numerics.Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
@@ -33,6 +38,16 @@ public class HeaderEditorView : IView
         _appContext = appContext;
         _romService = _appContext.GetService<RomService>();
         _headerService = _appContext.GetService<HeaderService>();
+    }
+
+    /// <summary>
+    /// Set references to other editor windows for navigation
+    /// </summary>
+    public void SetEditorReferences(TextEditorWindow textEditor, ScriptEditorWindow scriptEditor, MatrixEditorView matrixEditor)
+    {
+        _textEditorWindow = textEditor;
+        _scriptEditorWindow = scriptEditor;
+        _matrixEditorView = matrixEditor;
     }
 
     public void Draw()
@@ -232,9 +247,19 @@ public class HeaderEditorView : IView
             ImGui.Text("Matrix ID:");
             ImGui.SameLine(150);
             int matrixID = _currentHeader.MatrixID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##matrixid", ref matrixID, 1, 10))
             {
                 _currentHeader.MatrixID = (ushort)Math.Clamp(matrixID, 0, ushort.MaxValue);
+            }
+
+            // Button to open Matrix Editor
+            if (_matrixEditorView != null)
+            {
+                DrawOpenEditorButton("Ouvrir dans l'éditeur de matrices", () =>
+                {
+                    _matrixEditorView.OpenWithMatrixID(_currentHeader.MatrixID);
+                });
             }
 
             ImGui.Text("Area Data ID:");
@@ -316,9 +341,19 @@ public class HeaderEditorView : IView
             ImGui.Text("Script File ID:");
             ImGui.SameLine(150);
             int scriptID = _currentHeader.ScriptFileID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##scriptid", ref scriptID, 1, 10))
             {
                 _currentHeader.ScriptFileID = (ushort)Math.Clamp(scriptID, 0, ushort.MaxValue);
+            }
+
+            // Button to open Script Editor
+            if (_scriptEditorWindow != null)
+            {
+                DrawOpenEditorButton("Ouvrir dans l'éditeur de scripts", () =>
+                {
+                    _scriptEditorWindow.OpenWithScriptID(_currentHeader.ScriptFileID);
+                });
             }
 
             ImGui.Text("Level Script ID:");
@@ -340,9 +375,19 @@ public class HeaderEditorView : IView
             ImGui.Text("Text Archive ID:");
             ImGui.SameLine(150);
             int textArchiveID = _currentHeader.TextArchiveID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##textarchiveid", ref textArchiveID, 1, 10))
             {
                 _currentHeader.TextArchiveID = (ushort)Math.Clamp(textArchiveID, 0, ushort.MaxValue);
+            }
+
+            // Button to open Text Editor
+            if (_textEditorWindow != null)
+            {
+                DrawOpenEditorButton("Ouvrir dans l'éditeur de textes", () =>
+                {
+                    _textEditorWindow.OpenWithArchiveID(_currentHeader.TextArchiveID);
+                });
             }
         }
 
@@ -481,5 +526,30 @@ public class HeaderEditorView : IView
         ImGui.PopStyleColor(3);
 
         ImGui.EndChild(); // End HeaderEditorScroll
+    }
+
+    /// <summary>
+    /// Draw a navigation button that opens an editor with a specific ID
+    /// </summary>
+    private void DrawOpenEditorButton(string tooltip, Action openAction)
+    {
+        ImGui.SameLine();
+
+        // Draw a small arrow button
+        ImGui.PushStyleColor(ImGuiCol.Button, new System.Numerics.Vector4(0.3f, 0.6f, 0.9f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(0.2f, 0.5f, 0.8f, 1.0f));
+
+        if (ImGui.Button("→"))
+        {
+            openAction();
+        }
+
+        ImGui.PopStyleColor(3);
+
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.SetTooltip(tooltip);
+        }
     }
 }

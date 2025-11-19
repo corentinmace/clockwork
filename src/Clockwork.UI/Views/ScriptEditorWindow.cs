@@ -302,6 +302,30 @@ public class ScriptEditorWindow : IView
         }
     }
 
+    /// <summary>
+    /// Open the script editor and load a specific script file by its ID
+    /// </summary>
+    /// <param name="scriptID">The script file ID to load</param>
+    public void OpenWithScriptID(int scriptID)
+    {
+        IsVisible = true;
+
+        // Refresh script files list if not already loaded
+        if (_scriptCount == 0)
+        {
+            RefreshScriptFilesList();
+        }
+
+        // Update the selected index to match the script ID (if valid)
+        if (scriptID >= 0 && scriptID < _scriptCount)
+        {
+            _selectedFileIndex = scriptID;
+        }
+
+        // Load the script file
+        LoadScriptFile(scriptID);
+    }
+
     private void LoadScriptFile(int fileID)
     {
         try

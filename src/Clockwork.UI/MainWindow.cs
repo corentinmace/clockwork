@@ -63,6 +63,9 @@ public class MainWindow
         // Connect theme editor to settings window
         _settingsWindow.SetThemeEditorView(_themeEditorView);
 
+        // Connect editors to header editor for navigation
+        _headerEditorView.SetEditorReferences(_textEditorWindow, _scriptEditorWindow, _matrixEditorView);
+
         // Set up event handlers
         _window.Resized += OnResize;
         _window.Closed += OnClosing;

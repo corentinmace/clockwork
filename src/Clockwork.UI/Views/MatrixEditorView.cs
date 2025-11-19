@@ -529,6 +529,16 @@ public class MatrixEditorView : IView
         }
     }
 
+    /// <summary>
+    /// Open the matrix editor and load a specific matrix by its ID
+    /// </summary>
+    /// <param name="matrixID">The matrix ID to load</param>
+    public void OpenWithMatrixID(int matrixID)
+    {
+        IsVisible = true;
+        LoadMatrix(matrixID);
+    }
+
     private void LoadMatrix(int matrixIndex)
     {
         AppLogger.Debug($"[MatrixEditor] LoadMatrix called for index {matrixIndex}");

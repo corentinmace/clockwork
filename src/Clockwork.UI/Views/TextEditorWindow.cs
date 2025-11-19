@@ -88,6 +88,45 @@ namespace Clockwork.UI.Views
         }
 
         /// <summary>
+        /// Open the text editor and load a specific text archive by its ID
+        /// </summary>
+        /// <param name="archiveID">The text archive ID to load (e.g., 433 for location names)</param>
+        public void OpenWithArchiveID(int archiveID)
+        {
+            IsVisible = true;
+
+            // Refresh archive list if not already loaded
+            if (availableTextArchives.Count == 0)
+            {
+                RefreshTextArchivesList();
+            }
+
+            if (_romService?.CurrentRom?.GameDirectories == null)
+                return;
+
+            if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out string? textArchivesPath))
+                return;
+
+            // Build the file path for this archive ID (format: 0000.txt, 0001.txt, etc.)
+            string fileName = $"{archiveID:D4}.txt";
+            string filePath = Path.Combine(textArchivesPath, fileName);
+
+            if (File.Exists(filePath))
+            {
+                // Find the index in the available archives list
+                selectedArchiveIndex = availableTextArchives.FindIndex(f =>
+                    Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
+
+                // Load the file
+                LoadFile(filePath);
+            }
+            else
+            {
+                SetStatusMessage($"Text archive {archiveID} not found");
+            }
+        }
+
+        /// <summary>
         /// Load a message archive file (.txt format from expanded/)
         /// Format:
         /// # Key: 0x1234
