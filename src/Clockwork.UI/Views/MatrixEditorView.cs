@@ -951,7 +951,7 @@ public class MatrixEditorView : IView
             {
                 Width = 1,
                 Height = 1,
-                Name = $"Nouvelle Matrix {newIndex}",
+                Name = $"newMatrix {newIndex}",
                 Maps = new ushort[1, 1],
                 Headers = new ushort[1, 1],
                 Altitudes = new byte[1, 1]
