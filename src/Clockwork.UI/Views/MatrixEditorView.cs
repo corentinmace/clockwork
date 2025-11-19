@@ -351,28 +351,34 @@ public class MatrixEditorView : IView
                     if (_editingRow == row && _editingCol == col)
                     {
                         // Edit mode
-                        ImGui.SetNextItemWidth(50);
+                        ImGui.SetNextItemWidth(60);
 
                         // Only set focus on first frame of editing
                         if (_justStartedEditing)
                         {
+                            AppLogger.Debug($"[MatrixEditor] Starting edit mode for cell ({row}, {col}) with value: {_editBuffer}");
                             ImGui.SetKeyboardFocusHere();
                             _justStartedEditing = false;
                         }
 
-                        if (ImGui.InputText(cellId, ref _editBuffer, 10, ImGuiInputTextFlags.EnterReturnsTrue))
+                        if (ImGui.InputText(cellId, ref _editBuffer, 10, ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll))
                         {
+                            AppLogger.Debug($"[MatrixEditor] InputText confirmed with value: {_editBuffer}");
                             // Save edit
                             if (ushort.TryParse(_editBuffer, out ushort newValue))
                             {
+                                AppLogger.Info($"[MatrixEditor] Saving cell ({row}, {col}) with new value: {newValue}");
                                 setValue(row, col, newValue);
                             }
                             _editingRow = -1;
                             _editingCol = -1;
                         }
 
-                        if (!ImGui.IsItemActive() && (_editingRow == row && _editingCol == col))
+                        // Check if we lost focus
+                        bool isActive = ImGui.IsItemActive();
+                        if (!isActive && (_editingRow == row && _editingCol == col))
                         {
+                            AppLogger.Debug($"[MatrixEditor] Lost focus on cell ({row}, {col}), canceling edit");
                             // Lost focus, exit edit mode
                             _editingRow = -1;
                             _editingCol = -1;
