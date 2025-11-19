@@ -2,6 +2,7 @@ using ImGuiNET;
 using Clockwork.Core;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
+using Clockwork.Core.Logging;
 using System.Numerics;
 
 namespace Clockwork.UI.Views;
@@ -394,11 +395,11 @@ public class MatrixEditorView : IView
 
     private void LoadMatrix(int matrixIndex)
     {
-        Console.WriteLine($"[MatrixEditor] LoadMatrix called for index {matrixIndex}");
+        AppLogger.Debug($"[MatrixEditor] LoadMatrix called for index {matrixIndex}");
 
         if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
         {
-            Console.WriteLine("[MatrixEditor] LoadMatrix: ROM not loaded");
+            AppLogger.Debug("[MatrixEditor] LoadMatrix: ROM not loaded");
             return;
         }
 
@@ -411,16 +412,16 @@ public class MatrixEditorView : IView
                 $"{matrixIndex}.bin"
             );
 
-            Console.WriteLine($"[MatrixEditor] Attempting to load from: {matrixPath}");
+            AppLogger.Debug($"[MatrixEditor] Attempting to load from: {matrixPath}");
 
             if (!File.Exists(matrixPath))
             {
-                Console.WriteLine($"[MatrixEditor] Matrix file not found: {matrixPath}");
+                AppLogger.Warning($"[MatrixEditor] Matrix file not found: {matrixPath}");
                 return;
             }
 
             byte[] data = File.ReadAllBytes(matrixPath);
-            Console.WriteLine($"[MatrixEditor] Read {data.Length} bytes from file");
+            AppLogger.Debug($"[MatrixEditor] Read {data.Length} bytes from file");
 
             _currentMatrix = GameMatrix.ReadFromBytes(data, matrixIndex);
 
@@ -432,18 +433,18 @@ public class MatrixEditorView : IView
                 _matrixLoaded = true;
                 _selectedMatrixIndex = matrixIndex;
 
-                Console.WriteLine($"[MatrixEditor] Matrix {matrixIndex} loaded successfully: {_matrixWidth}x{_matrixHeight}");
+                AppLogger.Info($"[MatrixEditor] Matrix {matrixIndex} loaded successfully: {_matrixWidth}x{_matrixHeight}");
             }
             else
             {
-                Console.WriteLine($"[MatrixEditor] GameMatrix.ReadFromBytes returned null");
+                AppLogger.Error($"[MatrixEditor] GameMatrix.ReadFromBytes returned null");
                 _matrixLoaded = false;
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[MatrixEditor] Error loading matrix {matrixIndex}: {ex.Message}");
-            Console.WriteLine($"[MatrixEditor] Stack trace: {ex.StackTrace}");
+            AppLogger.Error($"[MatrixEditor] Error loading matrix {matrixIndex}: {ex.Message}");
+            AppLogger.Error($"[MatrixEditor] Stack trace: {ex.StackTrace}");
             _matrixLoaded = false;
         }
     }
@@ -465,11 +466,11 @@ public class MatrixEditorView : IView
             byte[] data = _currentMatrix.ToBytes();
             File.WriteAllBytes(matrixPath, data);
 
-            Console.WriteLine($"Matrix {_selectedMatrixIndex} saved successfully");
+            AppLogger.Info($"Matrix {_selectedMatrixIndex} saved successfully");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error saving matrix: {ex.Message}");
+            AppLogger.Error($"Error saving matrix: {ex.Message}");
         }
     }
 
@@ -497,12 +498,12 @@ public class MatrixEditorView : IView
                     _matrixName = Path.GetFileNameWithoutExtension(filePath);
                     _matrixLoaded = true;
 
-                    Console.WriteLine($"Matrix imported from {filePath}");
+                    AppLogger.Info($"Matrix imported from {filePath}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error importing matrix: {ex.Message}");
+                AppLogger.Error($"Error importing matrix: {ex.Message}");
             }
         }
     }
@@ -525,11 +526,11 @@ public class MatrixEditorView : IView
                 byte[] data = _currentMatrix.ToBytes();
                 File.WriteAllBytes(filePath, data);
 
-                Console.WriteLine($"Matrix exported to {filePath}");
+                AppLogger.Info($"Matrix exported to {filePath}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error exporting matrix: {ex.Message}");
+                AppLogger.Error($"Error exporting matrix: {ex.Message}");
             }
         }
     }
@@ -544,20 +545,20 @@ public class MatrixEditorView : IView
         _matrixWidth = Math.Clamp(newWidth, 1, 255);
         _matrixHeight = Math.Clamp(newHeight, 1, 255);
 
-        Console.WriteLine($"Matrix resize requested: {_matrixWidth}x{_matrixHeight} (not yet implemented)");
+        AppLogger.Debug($"Matrix resize requested: {_matrixWidth}x{_matrixHeight} (not yet implemented)");
     }
 
     private void OpenMapEditor(ushort mapId)
     {
         // TODO: Open map editor with the specified map
-        Console.WriteLine($"Opening map editor for map {mapId}");
+        AppLogger.Debug($"Opening map editor for map {mapId}");
     }
 
     private int GetMatrixCount()
     {
         if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
         {
-            Console.WriteLine("[MatrixEditor] GetMatrixCount: ROM not loaded");
+            AppLogger.Debug("[MatrixEditor] GetMatrixCount: ROM not loaded");
             return 0;
         }
 
@@ -569,22 +570,22 @@ public class MatrixEditorView : IView
                 "matrices"
             );
 
-            Console.WriteLine($"[MatrixEditor] Looking for matrices in: {matricesPath}");
+            AppLogger.Debug($"[MatrixEditor] Looking for matrices in: {matricesPath}");
 
             if (!Directory.Exists(matricesPath))
             {
-                Console.WriteLine($"[MatrixEditor] Directory does not exist: {matricesPath}");
+                AppLogger.Warning($"[MatrixEditor] Directory does not exist: {matricesPath}");
                 return 0;
             }
 
             // Count .bin files in matrices directory
             var files = Directory.GetFiles(matricesPath, "*.bin");
-            Console.WriteLine($"[MatrixEditor] Found {files.Length} matrix files");
+            AppLogger.Debug($"[MatrixEditor] Found {files.Length} matrix files");
             return files.Length;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[MatrixEditor] Error in GetMatrixCount: {ex.Message}");
+            AppLogger.Error($"[MatrixEditor] Error in GetMatrixCount: {ex.Message}");
             return 0;
         }
     }
