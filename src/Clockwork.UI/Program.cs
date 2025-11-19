@@ -12,6 +12,10 @@ internal class Program
     {
         Console.WriteLine("Starting Clockwork...");
 
+        // Initialize logger
+        AppLogger.Initialize("clockwork.log", LogLevel.Debug);
+        AppLogger.Info("Clockwork application starting...");
+
         // Create application context (Backend)
         var appContext = new ApplicationContext();
 
@@ -55,6 +59,7 @@ internal class Program
             window.Run();
         }
 
+        AppLogger.Info("Clockwork application closed.");
         Console.WriteLine("Application closed.");
     }
 }

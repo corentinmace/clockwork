@@ -24,6 +24,7 @@ public class MainWindow : GameWindow
     private readonly MapEditorView _mapEditorView;
     private readonly TextEditorWindow _textEditorWindow;
     private readonly ScriptEditorWindow _scriptEditorWindow;
+    private readonly LogViewerWindow _logViewerWindow;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -37,6 +38,7 @@ public class MainWindow : GameWindow
         _mapEditorView = new MapEditorView(_appContext);
         _textEditorWindow = new TextEditorWindow(_appContext);
         _scriptEditorWindow = new ScriptEditorWindow(_appContext);
+        _logViewerWindow = new LogViewerWindow(_appContext);
     }
 
     protected override void OnLoad()
@@ -255,6 +257,15 @@ public class MainWindow : GameWindow
                 ImGui.EndMenu();
             }
 
+            if (ImGui.BeginMenu("View"))
+            {
+                if (ImGui.MenuItem("Log Viewer"))
+                {
+                    _logViewerWindow.IsVisible = true;
+                }
+                ImGui.EndMenu();
+            }
+
             if (ImGui.BeginMenu("Help"))
             {
                 if (ImGui.MenuItem("About"))
@@ -283,6 +294,7 @@ public class MainWindow : GameWindow
         _mapEditorView.Draw();
         _textEditorWindow.Draw();
         _scriptEditorWindow.Draw();
+        _logViewerWindow.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();

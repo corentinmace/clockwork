@@ -175,68 +175,13 @@ namespace Clockwork.UI.Views
                 File.WriteAllLines(currentFilePath, lines);
                 isDirty = false;
 
-                // Repack to binary format in unpacked/
-                RepackToBinary();
-
-                SetStatusMessage($"Saved {messages.Count} messages to {Path.GetFileName(currentFilePath)} and repacked to ROM");
+                SetStatusMessage($"Saved {messages.Count} messages to {Path.GetFileName(currentFilePath)}");
             }
             catch (Exception ex)
             {
                 SetStatusMessage($"Error saving file: {ex.Message}");
             }
         }
-
-        /// <summary>
-        /// Repacks the current text archive to binary format in unpacked/
-        /// </summary>
-        private void RepackToBinary()
-        {
-            try
-            {
-                // Determine the binary file path
-                // Example: expanded/textArchives/0000.txt -> unpacked/textArchives/0000
-
-                // Use Path methods for cross-platform compatibility
-                string normalizedPath = currentFilePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
-
-                // Check if path contains "expanded"
-                if (!normalizedPath.Contains($"{Path.DirectorySeparatorChar}expanded{Path.DirectorySeparatorChar}"))
-                {
-                    SetStatusMessage("Warning: File is not in expanded/ directory, cannot repack");
-                    return;
-                }
-
-                string binaryPath = normalizedPath
-                    .Replace($"{Path.DirectorySeparatorChar}expanded{Path.DirectorySeparatorChar}",
-                             $"{Path.DirectorySeparatorChar}unpacked{Path.DirectorySeparatorChar}");
-
-                // Remove .txt extension if present
-                if (binaryPath.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
-                {
-                    binaryPath = binaryPath.Substring(0, binaryPath.Length - 4);
-                }
-
-                // Ensure the directory exists
-                string? binaryDir = Path.GetDirectoryName(binaryPath);
-                if (!string.IsNullOrEmpty(binaryDir) && !Directory.Exists(binaryDir))
-                {
-                    Directory.CreateDirectory(binaryDir);
-                }
-
-                // Repack using EncryptText
-                bool success = EncryptText.RepackTextArchive(currentFilePath, binaryPath, false);
-
-                if (!success)
-                {
-                    SetStatusMessage("Warning: Failed to repack to binary format");
-                }
-            }
-            catch (Exception ex)
-            {
-                SetStatusMessage($"Warning: Failed to repack binary: {ex.Message}");
-            }
-        }
-
 
         /// <summary>
         /// Draw the ImGui window
