@@ -31,12 +31,14 @@ internal class Program
             var romService = new RomService();
             var headerService = new HeaderService();
             var mapService = new MapService();
+            var colorTableService = new ColorTableService();
 
             appContext.AddService(romService);
             appContext.AddService(new NdsToolService());
             appContext.AddService(new DialogService());
             appContext.AddService(headerService);
             appContext.AddService(mapService);
+            appContext.AddService(colorTableService);
 
             // Initialize context
             AppLogger.Debug("Initializing application context");

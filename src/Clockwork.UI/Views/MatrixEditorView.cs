@@ -17,6 +17,7 @@ public class MatrixEditorView : IView
     private ApplicationContext? _appContext;
     private RomService? _romService;
     private DialogService? _dialogService;
+    private ColorTableService? _colorTableService;
 
     // Current matrix being edited
     private GameMatrix? _currentMatrix;
@@ -48,6 +49,14 @@ public class MatrixEditorView : IView
         _appContext = appContext;
         _romService = appContext.GetService<RomService>();
         _dialogService = appContext.GetService<DialogService>();
+        _colorTableService = appContext.GetService<ColorTableService>();
+
+        // Try to load last color table from settings
+        var settings = Clockwork.Core.Settings.SettingsManager.Settings;
+        if (!string.IsNullOrEmpty(settings.LastColorTablePath) && _colorTableService != null)
+        {
+            _colorTableService.LoadColorTable(settings.LastColorTablePath, silent: true);
+        }
     }
 
     public void Draw()
@@ -135,6 +144,30 @@ public class MatrixEditorView : IView
         if (ImGui.Button("Exporter..."))
         {
             ExportMatrix();
+        }
+
+        // ColorTable controls
+        ImGui.SameLine();
+        ImGui.Separator();
+        ImGui.SameLine();
+
+        if (ImGui.Button("Charger ColorTable..."))
+        {
+            LoadColorTable();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Réinitialiser Couleurs"))
+        {
+            ResetColorTable();
+        }
+
+        // Show current color table status
+        if (_colorTableService != null && _colorTableService.HasColorTable)
+        {
+            ImGui.SameLine();
+            string filename = Path.GetFileName(_colorTableService.CurrentColorTablePath ?? "");
+            ImGui.TextColored(new Vector4(0.4f, 1.0f, 0.4f, 1.0f), $"[{filename}]");
         }
     }
 
@@ -382,22 +415,37 @@ public class MatrixEditorView : IView
 
     private Vector4 GetCellColor(ushort value, bool isMapFiles)
     {
-        if (isMapFiles)
+        if (!isMapFiles)
+            return new Vector4(0, 0, 0, 0); // No color for non-MapFiles grids
+
+        // Try to get color from ColorTable if available
+        if (_colorTableService != null)
         {
-            if (value == GameMatrix.EMPTY_CELL)
+            var colorPair = _colorTableService.GetColorForMapID(value);
+            if (colorPair.HasValue)
             {
-                // Empty cell - gray
-                return new Vector4(0.3f, 0.3f, 0.3f, 0.5f);
-            }
-            else
-            {
-                // Valid map - light green
-                return new Vector4(0.2f, 0.5f, 0.2f, 0.3f);
+                // Convert System.Drawing.Color to ImGui Vector4
+                var bgColor = colorPair.Value.Background;
+                return new Vector4(
+                    bgColor.R / 255.0f,
+                    bgColor.G / 255.0f,
+                    bgColor.B / 255.0f,
+                    0.6f // Semi-transparent
+                );
             }
         }
 
-        // Default - no color
-        return new Vector4(0, 0, 0, 0);
+        // Fallback colors if no ColorTable
+        if (value == GameMatrix.EMPTY_CELL)
+        {
+            // Empty cell - gray
+            return new Vector4(0.3f, 0.3f, 0.3f, 0.5f);
+        }
+        else
+        {
+            // Valid map - light green
+            return new Vector4(0.2f, 0.5f, 0.2f, 0.3f);
+        }
     }
 
     private void LoadMatrix(int matrixIndex)
@@ -653,5 +701,61 @@ public class MatrixEditorView : IView
             _cachedMatrixCount = 0;
             return 0;
         }
+    }
+
+    private void LoadColorTable()
+    {
+        if (_dialogService == null || _colorTableService == null)
+            return;
+
+        string? filePath = _dialogService.OpenFileDialog(
+            "Charger une ColorTable",
+            "ColorTable files (*.ctb)|*.ctb|All files (*.*)|*.*"
+        );
+
+        if (!string.IsNullOrEmpty(filePath))
+        {
+            try
+            {
+                bool success = _colorTableService.LoadColorTable(filePath, silent: false);
+
+                if (success)
+                {
+                    // Save path to settings
+                    var settings = Clockwork.Core.Settings.SettingsManager.Settings;
+                    settings.LastColorTablePath = filePath;
+                    Clockwork.Core.Settings.SettingsManager.Save();
+
+                    // Reset cache to force refresh
+                    _cachedMatrixCount = -1;
+                    _hasLoggedMatrixPath = false;
+
+                    AppLogger.Info($"ColorTable loaded successfully from {filePath}");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLogger.Error($"Failed to load ColorTable: {ex.Message}");
+            }
+        }
+    }
+
+    private void ResetColorTable()
+    {
+        if (_colorTableService == null)
+            return;
+
+        _colorTableService.ResetColorTable();
+
+        // Clear saved path
+        var settings = Clockwork.Core.Settings.SettingsManager.Settings;
+        settings.LastColorTablePath = string.Empty;
+        Clockwork.Core.Settings.SettingsManager.Save();
+
+        // Reset cache to force refresh
+        _cachedMatrixCount = -1;
+        _hasLoggedMatrixPath = false;
+
+        AppLogger.Info("ColorTable reset to defaults");
     }
 }

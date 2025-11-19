@@ -23,6 +23,11 @@ public class ClockworkSettings
     /// </summary>
     public string ExportPath { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Path to the last loaded ColorTable file (.ctb) for matrix editor
+    /// </summary>
+    public string LastColorTablePath { get; set; } = string.Empty;
+
     // === Editor Preferences ===
 
     /// <summary>
