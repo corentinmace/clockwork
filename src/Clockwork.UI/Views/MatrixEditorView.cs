@@ -409,11 +409,13 @@ public class MatrixEditorView : IView
 
         try
         {
+            // Matrix files are named without extension (0000, 0001, etc.)
+            string matrixFileName = matrixIndex.ToString("D4"); // Format as 4-digit number: 0000, 0001, etc.
             string matrixPath = Path.Combine(
                 _romService.CurrentRom.RomPath,
                 "unpacked",
                 "matrices",
-                $"{matrixIndex}.bin"
+                matrixFileName
             );
 
             AppLogger.Debug($"[MatrixEditor] Attempting to load from: {matrixPath}");
@@ -460,17 +462,19 @@ public class MatrixEditorView : IView
 
         try
         {
+            // Matrix files are named without extension (0000, 0001, etc.)
+            string matrixFileName = _selectedMatrixIndex.ToString("D4");
             string matrixPath = Path.Combine(
                 _romService.CurrentRom.RomPath,
                 "unpacked",
                 "matrices",
-                $"{_selectedMatrixIndex}.bin"
+                matrixFileName
             );
 
             byte[] data = _currentMatrix.ToBytes();
             File.WriteAllBytes(matrixPath, data);
 
-            AppLogger.Info($"Matrix {_selectedMatrixIndex} saved successfully");
+            AppLogger.Info($"Matrix {_selectedMatrixIndex} saved successfully to {matrixPath}");
         }
         catch (Exception ex)
         {
@@ -607,32 +611,36 @@ public class MatrixEditorView : IView
                 return 0;
             }
 
-            // Count .bin files in matrices directory
-            var binFiles = Directory.GetFiles(matricesPath, "*.bin");
-            AppLogger.Debug($"[MatrixEditor] Found {binFiles.Length} .bin files");
+            // Get all files in matrices directory (no extension filter)
+            var allFiles = Directory.GetFiles(matricesPath);
 
-            // If no .bin files, check ALL files in the directory
-            if (binFiles.Length == 0)
+            // Filter files that are numeric (matrix files are named 0000, 0001, etc.)
+            var matrixFiles = allFiles
+                .Where(f => string.IsNullOrEmpty(Path.GetExtension(f))) // No extension
+                .Where(f => int.TryParse(Path.GetFileName(f), out _))   // Numeric name
+                .OrderBy(f => int.Parse(Path.GetFileName(f)))           // Sort numerically
+                .ToArray();
+
+            AppLogger.Debug($"[MatrixEditor] Found {matrixFiles.Length} matrix files (no extension, numeric names)");
+
+            if (matrixFiles.Length > 0)
             {
-                var allFiles = Directory.GetFiles(matricesPath);
-                AppLogger.Warn($"[MatrixEditor] No .bin files found, but directory contains {allFiles.Length} total files");
-
+                var examples = matrixFiles.Take(5).Select(Path.GetFileName);
+                AppLogger.Debug($"[MatrixEditor] Example matrix files: {string.Join(", ", examples)}");
+            }
+            else
+            {
+                AppLogger.Warning($"[MatrixEditor] No matrix files found. Total files in directory: {allFiles.Length}");
                 if (allFiles.Length > 0)
                 {
                     var examples = allFiles.Take(10).Select(f => $"{Path.GetFileName(f)} (ext: '{Path.GetExtension(f)}')");
                     AppLogger.Debug($"[MatrixEditor] First 10 files: {string.Join(", ", examples)}");
                 }
             }
-            else
-            {
-                // Log first few .bin files as examples
-                var examples = binFiles.Take(5).Select(Path.GetFileName);
-                AppLogger.Debug($"[MatrixEditor] Example .bin files: {string.Join(", ", examples)}");
-            }
 
             _hasLoggedMatrixPath = true;
-            _cachedMatrixCount = binFiles.Length;
-            return binFiles.Length;
+            _cachedMatrixCount = matrixFiles.Length;
+            return matrixFiles.Length;
         }
         catch (Exception ex)
         {
