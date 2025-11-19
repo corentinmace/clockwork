@@ -2,6 +2,9 @@ using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.Core.Settings;
+using Veldrid;
+using Veldrid.Sdl2;
+using Veldrid.StartupUtilities;
 
 namespace Clockwork.UI;
 
@@ -47,11 +50,42 @@ internal class Program
             headerService.SetRomService(romService);
             mapService.SetRomService(romService);
 
-            // Create and run main overlay
-            AppLogger.Info("Creating main overlay with multi-viewport support");
+            // Veldrid window configuration
+            AppLogger.Debug("Configuring Veldrid window");
             var settings = SettingsManager.Settings;
-            var overlay = new MainOverlay(appContext, settings.WindowWidth, settings.WindowHeight);
-            overlay.Run();
+
+            var windowCreateInfo = new WindowCreateInfo
+            {
+                X = 100,
+                Y = 100,
+                WindowWidth = settings.WindowWidth,
+                WindowHeight = settings.WindowHeight,
+                WindowTitle = "Clockwork - Pokémon ROM Editor",
+                WindowInitialState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal
+            };
+
+            // Create Veldrid window and graphics device
+            AppLogger.Info("Creating Veldrid window and graphics device");
+            VeldridStartup.CreateWindowAndGraphicsDevice(
+                windowCreateInfo,
+                new GraphicsDeviceOptions
+                {
+                    PreferStandardClipSpaceYDirection = true,
+                    PreferDepthRangeZeroToOne = true,
+                    SyncToVerticalBlank = true
+                },
+                GraphicsBackend.OpenGL,
+                out Sdl2Window window,
+                out GraphicsDevice graphicsDevice);
+
+            // Create and run main window
+            var mainWindow = new MainWindow(appContext, window, graphicsDevice);
+            mainWindow.Run();
+
+            // Cleanup
+            graphicsDevice.WaitForIdle();
+            graphicsDevice.Dispose();
+            window.Close();
 
             // Save settings on exit
             SettingsManager.Save();
