@@ -608,19 +608,31 @@ public class MatrixEditorView : IView
             }
 
             // Count .bin files in matrices directory
-            var files = Directory.GetFiles(matricesPath, "*.bin");
-            AppLogger.Debug($"[MatrixEditor] Found {files.Length} matrix files");
+            var binFiles = Directory.GetFiles(matricesPath, "*.bin");
+            AppLogger.Debug($"[MatrixEditor] Found {binFiles.Length} .bin files");
 
-            // Log first few files as examples
-            if (files.Length > 0)
+            // If no .bin files, check ALL files in the directory
+            if (binFiles.Length == 0)
             {
-                var examples = files.Take(5).Select(Path.GetFileName);
-                AppLogger.Debug($"[MatrixEditor] Example files: {string.Join(", ", examples)}");
+                var allFiles = Directory.GetFiles(matricesPath);
+                AppLogger.Warning($"[MatrixEditor] No .bin files found, but directory contains {allFiles.Length} total files");
+
+                if (allFiles.Length > 0)
+                {
+                    var examples = allFiles.Take(10).Select(f => $"{Path.GetFileName(f)} (ext: '{Path.GetExtension(f)}')");
+                    AppLogger.Debug($"[MatrixEditor] First 10 files: {string.Join(", ", examples)}");
+                }
+            }
+            else
+            {
+                // Log first few .bin files as examples
+                var examples = binFiles.Take(5).Select(Path.GetFileName);
+                AppLogger.Debug($"[MatrixEditor] Example .bin files: {string.Join(", ", examples)}");
             }
 
             _hasLoggedMatrixPath = true;
-            _cachedMatrixCount = files.Length;
-            return files.Length;
+            _cachedMatrixCount = binFiles.Length;
+            return binFiles.Length;
         }
         catch (Exception ex)
         {
