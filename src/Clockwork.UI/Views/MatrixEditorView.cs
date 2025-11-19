@@ -335,11 +335,11 @@ public class MatrixEditorView : IView
                     ushort value = getValue(row, col);
                     string cellId = $"##cell_{row}_{col}";
 
-                    // Color code cells
+                    // Color code cells using TableSetBgColor for proper cell background
                     Vector4 cellColor = GetCellColor(value, gridName == "MapFiles");
-                    if (cellColor.W > 0) // If color is set
+                    if (cellColor.W > 0) // If color has alpha
                     {
-                        ImGui.PushStyleColor(ImGuiCol.FrameBg, cellColor);
+                        ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ImGui.ColorConvertFloat4ToU32(cellColor));
                     }
 
                     // Display value or edit field
@@ -393,11 +393,6 @@ public class MatrixEditorView : IView
                         }
                     }
 
-                    if (cellColor.W > 0)
-                    {
-                        ImGui.PopStyleColor();
-                    }
-
                     // Tooltip
                     if (ImGui.IsItemHovered())
                     {
@@ -419,7 +414,7 @@ public class MatrixEditorView : IView
             return new Vector4(0, 0, 0, 0); // No color for non-MapFiles grids
 
         // Try to get color from ColorTable if available
-        if (_colorTableService != null)
+        if (_colorTableService != null && _colorTableService.HasColorTable)
         {
             var colorPair = _colorTableService.GetColorForMapID(value);
             if (colorPair.HasValue)
@@ -731,6 +726,17 @@ public class MatrixEditorView : IView
                     _hasLoggedMatrixPath = false;
 
                     AppLogger.Info($"ColorTable loaded successfully from {filePath}");
+                    AppLogger.Debug($"[ColorTable] {_colorTableService.GetDebugInfo()}");
+
+                    // Test: get color for a few map IDs
+                    for (uint testID = 0; testID < 10; testID++)
+                    {
+                        var color = _colorTableService.GetColorForMapID(testID);
+                        if (color.HasValue)
+                        {
+                            AppLogger.Debug($"[ColorTable] Map ID {testID}: RGB({color.Value.Background.R}, {color.Value.Background.G}, {color.Value.Background.B})");
+                        }
+                    }
                 }
             }
             catch (Exception ex)

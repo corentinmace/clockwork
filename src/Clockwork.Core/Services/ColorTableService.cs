@@ -212,6 +212,16 @@ public class ColorTableService : IApplicationService
     }
 
     /// <summary>
+    /// Get debug info about the loaded color table.
+    /// </summary>
+    public string GetDebugInfo()
+    {
+        int totalEntries = ColorDictionary.Count;
+        int totalMapIDs = ColorDictionary.Sum(e => e.Key.Count);
+        return $"ColorTable: {totalEntries} entries covering {totalMapIDs} map IDs";
+    }
+
+    /// <summary>
     /// Check if a color table is currently loaded.
     /// </summary>
     public bool HasColorTable => !string.IsNullOrEmpty(CurrentColorTablePath);
