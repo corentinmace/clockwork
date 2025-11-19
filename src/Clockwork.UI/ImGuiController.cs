@@ -41,7 +41,15 @@ public class ImGuiController : IDisposable
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable; // Enable multi-viewport / platform windows
+
+        // NOTE: Multi-viewport support is currently disabled because it requires implementing
+        // platform-specific callbacks for creating/managing secondary native windows with OpenTK.
+        // This would require implementing all ImGuiPlatformIO callbacks:
+        // - Platform_CreateWindow, Platform_DestroyWindow, Platform_ShowWindow
+        // - Platform_SetWindowPos/Size, Platform_GetWindowPos/Size
+        // - Renderer_CreateWindow, Renderer_RenderWindow, etc.
+        // TODO: Implement multi-viewport support or use a library that provides it (e.g., Veldrid.ImGui)
+        // io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
 
         CreateDeviceResources();
 
@@ -388,13 +396,14 @@ void main()
         ImGui.Render();
         RenderImDrawData(ImGui.GetDrawData());
 
-        // Update and render additional platform windows (for multi-viewport support)
-        var io = ImGui.GetIO();
-        if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
-        {
-            ImGui.UpdatePlatformWindows();
-            ImGui.RenderPlatformWindowsDefault();
-        }
+        // NOTE: Multi-viewport rendering disabled (see constructor for explanation)
+        // If ViewportsEnable is implemented in the future, uncomment:
+        // var io = ImGui.GetIO();
+        // if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
+        // {
+        //     ImGui.UpdatePlatformWindows();
+        //     ImGui.RenderPlatformWindowsDefault();
+        // }
     }
 
     private void RenderImDrawData(ImDrawDataPtr drawData)
