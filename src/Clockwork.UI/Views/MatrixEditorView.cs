@@ -39,6 +39,10 @@ public class MatrixEditorView : IView
     // Scroll position
     private Vector2 _scrollPos = Vector2.Zero;
 
+    // Cache for GetMatrixCount to avoid logging every frame
+    private int _cachedMatrixCount = -1;
+    private bool _hasLoggedMatrixPath = false;
+
     public void Initialize(ApplicationContext appContext)
     {
         _appContext = appContext;
@@ -558,34 +562,72 @@ public class MatrixEditorView : IView
     {
         if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
         {
-            AppLogger.Debug("[MatrixEditor] GetMatrixCount: ROM not loaded");
+            if (!_hasLoggedMatrixPath)
+            {
+                AppLogger.Debug("[MatrixEditor] GetMatrixCount: ROM not loaded");
+            }
+            _hasLoggedMatrixPath = true;
             return 0;
+        }
+
+        // Return cached value if already computed
+        if (_cachedMatrixCount >= 0)
+        {
+            return _cachedMatrixCount;
         }
 
         try
         {
+            string romPath = _romService.CurrentRom.RomPath;
+            AppLogger.Debug($"[MatrixEditor] ROM base path: {romPath}");
+
             string matricesPath = Path.Combine(
-                _romService.CurrentRom.RomPath,
+                romPath,
                 "unpacked",
                 "matrices"
             );
 
             AppLogger.Debug($"[MatrixEditor] Looking for matrices in: {matricesPath}");
+            AppLogger.Debug($"[MatrixEditor] Directory.Exists({matricesPath}): {Directory.Exists(matricesPath)}");
 
             if (!Directory.Exists(matricesPath))
             {
                 AppLogger.Warning($"[MatrixEditor] Directory does not exist: {matricesPath}");
+
+                // Try to list what's in the unpacked directory
+                string unpackedPath = Path.Combine(romPath, "unpacked");
+                if (Directory.Exists(unpackedPath))
+                {
+                    var subdirs = Directory.GetDirectories(unpackedPath);
+                    AppLogger.Debug($"[MatrixEditor] Subdirectories in 'unpacked': {string.Join(", ", subdirs.Select(Path.GetFileName))}");
+                }
+
+                _hasLoggedMatrixPath = true;
+                _cachedMatrixCount = 0;
                 return 0;
             }
 
             // Count .bin files in matrices directory
             var files = Directory.GetFiles(matricesPath, "*.bin");
             AppLogger.Debug($"[MatrixEditor] Found {files.Length} matrix files");
+
+            // Log first few files as examples
+            if (files.Length > 0)
+            {
+                var examples = files.Take(5).Select(Path.GetFileName);
+                AppLogger.Debug($"[MatrixEditor] Example files: {string.Join(", ", examples)}");
+            }
+
+            _hasLoggedMatrixPath = true;
+            _cachedMatrixCount = files.Length;
             return files.Length;
         }
         catch (Exception ex)
         {
             AppLogger.Error($"[MatrixEditor] Error in GetMatrixCount: {ex.Message}");
+            AppLogger.Error($"[MatrixEditor] Stack trace: {ex.StackTrace}");
+            _hasLoggedMatrixPath = true;
+            _cachedMatrixCount = 0;
             return 0;
         }
     }
