@@ -4,6 +4,7 @@ using Clockwork.Core.Services;
 using ImGuiNET;
 using System.Numerics;
 using System.IO;
+using Clockwork.Core.Logging;
 
 namespace Clockwork.UI.Views;
 

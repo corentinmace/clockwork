@@ -7,6 +7,7 @@ using ImGuiNET;
 using Clockwork.Core;
 using Clockwork.Core.Services;
 using Clockwork.Core.Formats.NDS.MessageEnc;
+using Clockwork.Core.Logging;
 
 namespace Clockwork.UI.Views
 {
