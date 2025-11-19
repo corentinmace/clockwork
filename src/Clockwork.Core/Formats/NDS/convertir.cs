@@ -52,7 +52,7 @@ namespace Tinke {
             return ret;
         }
         public static (byte b1, byte b2) ToBGR555(this Color c) {
-            byte[] result = BitConverter.GetBytes((short)ColorConverter.EncodeColor(c.ToArgb(), BGR555_));
+            byte[] result = BitConverter.GetBytes((short)MKDS_Course_Editor.ColorConverter.EncodeColor(c.ToArgb(), BGR555_));
             return (result[0], result[1]);
         }
         /// <summary>
@@ -99,7 +99,7 @@ namespace Tinke {
             return tiles.ToArray();
         }
 
-        public static ColorConverter.CColorFormat BGR555_ = new ColorConverter.CColorFormat("BGR555", 10, 16, new int[] {
+        public static MKDS_Course_Editor.ColorConverter.CColorFormat BGR555_ = new MKDS_Course_Editor.ColorConverter.CColorFormat("BGR555", 10, 16, new int[] {
             3, 2, 1, 5, 5, 5
         });
 
@@ -115,9 +115,9 @@ namespace Tinke {
             new int[] { 255, 1 } 
         };
 
-        public static int decodeColor(int value, ColorConverter.CColorFormat format)
+        public static int decodeColor(int value, MKDS_Course_Editor.ColorConverter.CColorFormat format)
         {
-            return ColorConverter.DecodeColor(value, format);
+            return MKDS_Course_Editor.ColorConverter.DecodeColor(value, format);
         }
         #endregion
 
