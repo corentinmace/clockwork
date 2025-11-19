@@ -5,18 +5,18 @@ using Clockwork.Core.Settings;
 using Clockwork.UI.Themes;
 using Clockwork.UI.Views;
 using ImGuiNET;
-using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
+using Silk.NET.OpenGL;
+using Silk.NET.Windowing;
 
 namespace Clockwork.UI;
 
 /// <summary>
-/// Main application window using OpenTK and ImGui.
+/// Main application window using Silk.NET and ImGui.
 /// </summary>
-public class MainWindow : GameWindow
+public class MainWindow
 {
+    private readonly IWindow _window;
+    private GL? _gl;
     private ImGuiController? _imguiController;
     private ApplicationContext _appContext;
 
@@ -31,14 +31,19 @@ public class MainWindow : GameWindow
     private readonly SettingsWindow _settingsWindow;
     private readonly ThemeEditorView _themeEditorView;
 
-    public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
-        : base(gameWindowSettings, nativeWindowSettings)
+    // Sidebar state and metrics
+    private bool _isSidebarCollapsed = false;
+    private bool _showMetricsWindow = false;
+
+    // ROM Save state
+    private bool _isShowingSaveRomDialog = false;
+    private string _saveRomLog = "";
+    private bool _isSavingRom = false;
+
+    public MainWindow(ApplicationContext appContext, IWindow window)
     {
         _appContext = appContext;
-
-        // Initialize logger
-        AppLogger.Initialize();
-        AppLogger.Info("Clockwork application starting...");
+        _window = window;
 
         // Initialize views
         _aboutView = new AboutView(_appContext);
@@ -53,17 +58,30 @@ public class MainWindow : GameWindow
 
         // Connect theme editor to settings window
         _settingsWindow.SetThemeEditorView(_themeEditorView);
+
+        // Set up event handlers
+        _window.Load += OnLoad;
+        _window.Render += OnRender;
+        _window.Update += OnUpdate;
+        _window.Resize += OnResize;
+        _window.Closing += OnClosing;
     }
 
-    protected override void OnLoad()
+    public void Run()
     {
-        base.OnLoad();
+        _window.Run();
+    }
 
+    private void OnLoad()
+    {
         AppLogger.Info("MainWindow OnLoad: Initializing OpenGL and ImGui");
 
-        Title = "Clockwork - Pokémon ROM Editor";
+        // Get OpenGL context
+        _gl = _window.CreateOpenGL();
+        AppLogger.Debug("OpenGL context created");
 
-        _imguiController = new ImGuiController(ClientSize.X, ClientSize.Y);
+        // Initialize ImGui controller
+        _imguiController = new ImGuiController(_gl, _window, _window.Size.X, _window.Size.Y);
         AppLogger.Debug("ImGuiController created");
 
         // Initialize theme manager
@@ -86,59 +104,57 @@ public class MainWindow : GameWindow
         Console.WriteLine("Application started successfully!");
     }
 
-    protected override void OnResize(ResizeEventArgs e)
+    private void OnResize(Silk.NET.Maths.Vector2D<int> size)
     {
-        base.OnResize(e);
-
-        GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
-        _imguiController?.WindowResized(ClientSize.X, ClientSize.Y);
+        _gl?.Viewport(0, 0, (uint)size.X, (uint)size.Y);
+        _imguiController?.WindowResized(size.X, size.Y);
     }
 
-    protected override void OnTextInput(TextInputEventArgs e)
+    private void OnUpdate(double deltaTime)
     {
-        base.OnTextInput(e);
-
-        _imguiController?.PressChar((char)e.Unicode);
-    }
-
-    protected override void OnMouseWheel(MouseWheelEventArgs e)
-    {
-        base.OnMouseWheel(e);
-
-        _imguiController?.MouseScroll(e.OffsetX, e.OffsetY);
-    }
-
-    protected override void OnUpdateFrame(FrameEventArgs args)
-    {
-        base.OnUpdateFrame(args);
-
-        _imguiController?.Update(this, args.Time);
+        _imguiController?.Update((float)deltaTime);
 
         // Update application context
-        _appContext.Update(args.Time);
+        _appContext.Update(deltaTime);
 
         // Close if requested
         if (!_appContext.IsRunning)
         {
-            Close();
+            _window.Close();
         }
     }
 
-    protected override void OnRenderFrame(FrameEventArgs args)
+    private void OnRender(double deltaTime)
     {
-        base.OnRenderFrame(args);
-
         // Clear screen
-        GL.ClearColor(new Color4(0.1f, 0.1f, 0.1f, 1.0f));
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        _gl?.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        _gl?.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         // Draw ImGui UI
         DrawUI();
 
         // Render ImGui
         _imguiController?.Render();
+    }
 
-        SwapBuffers();
+    private void OnClosing()
+    {
+        AppLogger.Info("MainWindow OnClosing: Cleaning up resources");
+
+        // Save window state to settings
+        SettingsManager.Settings.WindowWidth = _window.Size.X;
+        SettingsManager.Settings.WindowHeight = _window.Size.Y;
+        SettingsManager.Settings.WindowMaximized = _window.WindowState == WindowState.Maximized;
+        SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
+        AppLogger.Debug($"Window state saved: {_window.Size.X}x{_window.Size.Y}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
+
+        _imguiController?.Dispose();
+        AppLogger.Debug("ImGuiController disposed");
+
+        _appContext.Shutdown();
+        AppLogger.Info("MainWindow closed");
+
+        _gl?.Dispose();
     }
 
     private void HandleKeyboardShortcuts()
@@ -364,15 +380,6 @@ public class MainWindow : GameWindow
         ImGui.End();
     }
 
-    // Sidebar state and metrics
-    private bool _isSidebarCollapsed = false;
-    private bool _showMetricsWindow = false;
-
-    // ROM Save state
-    private bool _isShowingSaveRomDialog = false;
-    private string _saveRomLog = "";
-    private bool _isSavingRom = false;
-
     private void SaveRomDialog()
     {
         var romService = _appContext.GetService<RomService>();
@@ -479,25 +486,5 @@ public class MainWindow : GameWindow
         ImGui.End();
 
         _isShowingSaveRomDialog = isOpen;
-    }
-
-    protected override void OnUnload()
-    {
-        base.OnUnload();
-
-        AppLogger.Info("MainWindow OnUnload: Cleaning up resources");
-
-        // Save window state to settings
-        SettingsManager.Settings.WindowWidth = ClientSize.X;
-        SettingsManager.Settings.WindowHeight = ClientSize.Y;
-        SettingsManager.Settings.WindowMaximized = WindowState == WindowState.Maximized;
-        SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
-        AppLogger.Debug($"Window state saved: {ClientSize.X}x{ClientSize.Y}, Maximized: {WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
-
-        _imguiController?.Dispose();
-        AppLogger.Debug("ImGuiController disposed");
-
-        _appContext.Shutdown();
-        AppLogger.Info("MainWindow unloaded");
     }
 }

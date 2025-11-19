@@ -2,9 +2,8 @@ using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.Core.Settings;
-using OpenTK.Mathematics;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
+using Silk.NET.Maths;
+using Silk.NET.Windowing;
 
 namespace Clockwork.UI;
 
@@ -48,31 +47,26 @@ internal class Program
             headerService.SetRomService(romService);
             mapService.SetRomService(romService);
 
-            // OpenTK window configuration
-            AppLogger.Debug("Configuring OpenTK window");
+            // Silk.NET window configuration
+            AppLogger.Debug("Configuring Silk.NET window");
             var settings = SettingsManager.Settings;
-            var nativeWindowSettings = new NativeWindowSettings()
-            {
-                ClientSize = new Vector2i(settings.WindowWidth, settings.WindowHeight),
-                Title = "Clockwork",
-                Flags = ContextFlags.ForwardCompatible,
-                WindowBorder = WindowBorder.Resizable,
-                WindowState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal,
-                StartVisible = true,
-            };
 
-            var gameWindowSettings = new GameWindowSettings()
-            {
-                UpdateFrequency = 60,
-            };
+            var options = WindowOptions.Default;
+            options.Size = new Vector2D<int>(settings.WindowWidth, settings.WindowHeight);
+            options.Title = "Clockwork - Pokémon ROM Editor";
+            options.VSync = true;
+            options.ShouldSwapAutomatically = false; // We'll swap manually
+            options.WindowState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
+            options.API = new GraphicsAPI(
+                ContextAPI.OpenGL,
+                new APIVersion(3, 3));
 
             // Create and run window (Frontend)
             AppLogger.Info("Creating main window");
-            using (var window = new MainWindow(appContext, gameWindowSettings, nativeWindowSettings))
-            {
-                AppLogger.Info("Starting main loop");
-                window.Run();
-            }
+            var window = Window.Create(options);
+
+            var mainWindow = new MainWindow(appContext, window);
+            mainWindow.Run();
 
             // Save settings on exit
             SettingsManager.Save();
