@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using ImGuiNET;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
@@ -33,6 +34,9 @@ public class ImGuiController : IDisposable
     private IKeyboard? _keyboard;
     private IMouse? _mouse;
     private readonly List<char> _pressedChars = new();
+
+    // Multi-viewport support
+    private readonly Dictionary<IntPtr, ImGuiViewportWindow> _viewportWindows = new();
 
     /// <summary>
     /// Crée une nouvelle instance du contrôleur ImGui.
@@ -437,48 +441,55 @@ void main()
 
     private unsafe void RenderImDrawData(ImDrawDataPtr drawData)
     {
+        RenderImDrawData(drawData, _gl);
+    }
+
+    private unsafe void RenderImDrawData(ImDrawDataPtr drawData, GL gl)
+    {
         if (drawData.CmdListsCount == 0)
             return;
 
         // Backup GL state
-        _gl.GetInteger(GetPName.ActiveTexture, out int prevActiveTexture);
-        _gl.ActiveTexture(TextureUnit.Texture0);
-        _gl.GetInteger(GetPName.CurrentProgram, out int prevProgram);
-        _gl.GetInteger(GetPName.TextureBinding2D, out int prevTexture);
-        _gl.GetInteger(GetPName.ArrayBufferBinding, out int prevArrayBuffer);
-        _gl.GetInteger(GetPName.VertexArrayBinding, out int prevVertexArray);
+        gl.GetInteger(GetPName.ActiveTexture, out int prevActiveTexture);
+        gl.ActiveTexture(TextureUnit.Texture0);
+        gl.GetInteger(GetPName.CurrentProgram, out int prevProgram);
+        gl.GetInteger(GetPName.TextureBinding2D, out int prevTexture);
+        gl.GetInteger(GetPName.ArrayBufferBinding, out int prevArrayBuffer);
+        gl.GetInteger(GetPName.VertexArrayBinding, out int prevVertexArray);
 
         Span<int> prevScissorBox = stackalloc int[4];
-        _gl.GetInteger(GetPName.ScissorBox, prevScissorBox);
+        gl.GetInteger(GetPName.ScissorBox, prevScissorBox);
 
         Span<int> prevBlendSrcRgb = stackalloc int[1];
-        _gl.GetInteger(GetPName.BlendSrcRgb, prevBlendSrcRgb);
+        gl.GetInteger(GetPName.BlendSrcRgb, prevBlendSrcRgb);
         Span<int> prevBlendDstRgb = stackalloc int[1];
-        _gl.GetInteger(GetPName.BlendDstRgb, prevBlendDstRgb);
+        gl.GetInteger(GetPName.BlendDstRgb, prevBlendDstRgb);
         Span<int> prevBlendSrcAlpha = stackalloc int[1];
-        _gl.GetInteger(GetPName.BlendSrcAlpha, prevBlendSrcAlpha);
+        gl.GetInteger(GetPName.BlendSrcAlpha, prevBlendSrcAlpha);
         Span<int> prevBlendDstAlpha = stackalloc int[1];
-        _gl.GetInteger(GetPName.BlendDstAlpha, prevBlendDstAlpha);
+        gl.GetInteger(GetPName.BlendDstAlpha, prevBlendDstAlpha);
         Span<int> prevBlendEquationRgb = stackalloc int[1];
-        _gl.GetInteger(GetPName.BlendEquationRgb, prevBlendEquationRgb);
+        gl.GetInteger(GetPName.BlendEquationRgb, prevBlendEquationRgb);
         Span<int> prevBlendEquationAlpha = stackalloc int[1];
-        _gl.GetInteger(GetPName.BlendEquationAlpha, prevBlendEquationAlpha);
+        gl.GetInteger(GetPName.BlendEquationAlpha, prevBlendEquationAlpha);
 
-        bool prevEnableBlend = _gl.IsEnabled(EnableCap.Blend);
-        bool prevEnableCullFace = _gl.IsEnabled(EnableCap.CullFace);
-        bool prevEnableDepthTest = _gl.IsEnabled(EnableCap.DepthTest);
-        bool prevEnableScissorTest = _gl.IsEnabled(EnableCap.ScissorTest);
+        bool prevEnableBlend = gl.IsEnabled(EnableCap.Blend);
+        bool prevEnableCullFace = gl.IsEnabled(EnableCap.CullFace);
+        bool prevEnableDepthTest = gl.IsEnabled(EnableCap.DepthTest);
+        bool prevEnableScissorTest = gl.IsEnabled(EnableCap.ScissorTest);
 
         // Setup render state
-        _gl.Enable(EnableCap.Blend);
-        _gl.Enable(EnableCap.ScissorTest);
-        _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
-        _gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
-        _gl.Disable(EnableCap.CullFace);
-        _gl.Disable(EnableCap.DepthTest);
+        gl.Enable(EnableCap.Blend);
+        gl.Enable(EnableCap.ScissorTest);
+        gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+        gl.BlendFunc(BlendingFactor.SrcAlpha, BlendingFactor.OneMinusSrcAlpha);
+        gl.Disable(EnableCap.CullFace);
+        gl.Disable(EnableCap.DepthTest);
 
         // Setup viewport and projection matrix
-        _gl.Viewport(0, 0, (uint)_windowWidth, (uint)_windowHeight);
+        int viewportWidth = (int)drawData.DisplaySize.X;
+        int viewportHeight = (int)drawData.DisplaySize.Y;
+        gl.Viewport(0, 0, (uint)viewportWidth, (uint)viewportHeight);
         float L = drawData.DisplayPos.X;
         float R = drawData.DisplayPos.X + drawData.DisplaySize.X;
         float T = drawData.DisplayPos.Y;
@@ -492,11 +503,11 @@ void main()
             (R + L) / (L - R), (T + B) / (B - T), 0.0f, 1.0f,
         };
 
-        _gl.UseProgram(_shader);
-        _gl.UniformMatrix4(_shaderProjectionMatrix, 1, false, orthoProjection);
-        _gl.Uniform1(_shaderFontTexture, 0);
+        gl.UseProgram(_shader);
+        gl.UniformMatrix4(_shaderProjectionMatrix, 1, false, orthoProjection);
+        gl.Uniform1(_shaderFontTexture, 0);
 
-        _gl.BindVertexArray(_vertexArray);
+        gl.BindVertexArray(_vertexArray);
 
         drawData.ScaleClipRects(ImGui.GetIO().DisplayFramebufferScale);
 
@@ -508,23 +519,23 @@ void main()
             if (vertexSize > _vertexBufferSize)
             {
                 _vertexBufferSize = (int)(vertexSize * 1.5f);
-                _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-                _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)_vertexBufferSize, null, BufferUsageARB.DynamicDraw);
+                gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
+                gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)_vertexBufferSize, null, BufferUsageARB.DynamicDraw);
             }
 
             int indexSize = cmdList.IdxBuffer.Size * sizeof(ushort);
             if (indexSize > _elementBufferSize)
             {
                 _elementBufferSize = (int)(indexSize * 1.5f);
-                _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _elementBuffer);
-                _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)_elementBufferSize, null, BufferUsageARB.DynamicDraw);
+                gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _elementBuffer);
+                gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)_elementBufferSize, null, BufferUsageARB.DynamicDraw);
             }
 
-            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
-            _gl.BufferSubData(BufferTargetARB.ArrayBuffer, 0, (nuint)vertexSize, (void*)cmdList.VtxBuffer.Data);
+            gl.BindBuffer(BufferTargetARB.ArrayBuffer, _vertexBuffer);
+            gl.BufferSubData(BufferTargetARB.ArrayBuffer, 0, (nuint)vertexSize, (void*)cmdList.VtxBuffer.Data);
 
-            _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _elementBuffer);
-            _gl.BufferSubData(BufferTargetARB.ElementArrayBuffer, 0, (nuint)indexSize, (void*)cmdList.IdxBuffer.Data);
+            gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, _elementBuffer);
+            gl.BufferSubData(BufferTargetARB.ElementArrayBuffer, 0, (nuint)indexSize, (void*)cmdList.IdxBuffer.Data);
 
             for (int cmdI = 0; cmdI < cmdList.CmdBuffer.Size; cmdI++)
             {
@@ -535,59 +546,262 @@ void main()
                     throw new NotImplementedException("User callbacks not supported");
                 }
 
-                _gl.ActiveTexture(TextureUnit.Texture0);
-                _gl.BindTexture(TextureTarget.Texture2D, (uint)pcmd.TextureId);
+                gl.ActiveTexture(TextureUnit.Texture0);
+                gl.BindTexture(TextureTarget.Texture2D, (uint)pcmd.TextureId);
 
                 var clip = pcmd.ClipRect;
-                _gl.Scissor((int)clip.X, _windowHeight - (int)clip.W, (uint)(clip.Z - clip.X), (uint)(clip.W - clip.Y));
+                gl.Scissor((int)clip.X, viewportHeight - (int)clip.W, (uint)(clip.Z - clip.X), (uint)(clip.W - clip.Y));
 
                 if ((ImGui.GetIO().BackendFlags & ImGuiBackendFlags.RendererHasVtxOffset) != 0)
                 {
-                    _gl.DrawElementsBaseVertex(PrimitiveType.Triangles, (uint)pcmd.ElemCount, DrawElementsType.UnsignedShort,
+                    gl.DrawElementsBaseVertex(PrimitiveType.Triangles, (uint)pcmd.ElemCount, DrawElementsType.UnsignedShort,
                         (void*)(pcmd.IdxOffset * sizeof(ushort)), (int)pcmd.VtxOffset);
                 }
                 else
                 {
-                    _gl.DrawElements(PrimitiveType.Triangles, (uint)pcmd.ElemCount, DrawElementsType.UnsignedShort,
+                    gl.DrawElements(PrimitiveType.Triangles, (uint)pcmd.ElemCount, DrawElementsType.UnsignedShort,
                         (void*)(pcmd.IdxOffset * sizeof(ushort)));
                 }
             }
         }
 
         // Restore GL state
-        _gl.UseProgram((uint)prevProgram);
-        _gl.BindTexture(TextureTarget.Texture2D, (uint)prevTexture);
-        _gl.ActiveTexture((TextureUnit)prevActiveTexture);
-        _gl.BindVertexArray((uint)prevVertexArray);
-        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, (uint)prevArrayBuffer);
-        _gl.BlendEquationSeparate((BlendEquationModeEXT)prevBlendEquationRgb[0], (BlendEquationModeEXT)prevBlendEquationAlpha[0]);
-        _gl.BlendFuncSeparate((BlendingFactor)prevBlendSrcRgb[0], (BlendingFactor)prevBlendDstRgb[0],
+        gl.UseProgram((uint)prevProgram);
+        gl.BindTexture(TextureTarget.Texture2D, (uint)prevTexture);
+        gl.ActiveTexture((TextureUnit)prevActiveTexture);
+        gl.BindVertexArray((uint)prevVertexArray);
+        gl.BindBuffer(BufferTargetARB.ArrayBuffer, (uint)prevArrayBuffer);
+        gl.BlendEquationSeparate((BlendEquationModeEXT)prevBlendEquationRgb[0], (BlendEquationModeEXT)prevBlendEquationAlpha[0]);
+        gl.BlendFuncSeparate((BlendingFactor)prevBlendSrcRgb[0], (BlendingFactor)prevBlendDstRgb[0],
             (BlendingFactor)prevBlendSrcAlpha[0], (BlendingFactor)prevBlendDstAlpha[0]);
 
-        if (prevEnableBlend) _gl.Enable(EnableCap.Blend); else _gl.Disable(EnableCap.Blend);
-        if (prevEnableCullFace) _gl.Enable(EnableCap.CullFace); else _gl.Disable(EnableCap.CullFace);
-        if (prevEnableDepthTest) _gl.Enable(EnableCap.DepthTest); else _gl.Disable(EnableCap.DepthTest);
-        if (prevEnableScissorTest) _gl.Enable(EnableCap.ScissorTest); else _gl.Disable(EnableCap.ScissorTest);
+        if (prevEnableBlend) gl.Enable(EnableCap.Blend); else gl.Disable(EnableCap.Blend);
+        if (prevEnableCullFace) gl.Enable(EnableCap.CullFace); else gl.Disable(EnableCap.CullFace);
+        if (prevEnableDepthTest) gl.Enable(EnableCap.DepthTest); else gl.Disable(EnableCap.DepthTest);
+        if (prevEnableScissorTest) gl.Enable(EnableCap.ScissorTest); else gl.Disable(EnableCap.ScissorTest);
 
-        _gl.Scissor(prevScissorBox[0], prevScissorBox[1], (uint)prevScissorBox[2], (uint)prevScissorBox[3]);
+        gl.Scissor(prevScissorBox[0], prevScissorBox[1], (uint)prevScissorBox[2], (uint)prevScissorBox[3]);
     }
 
     private unsafe void SetupPlatformCallbacks()
     {
         var platformIO = ImGui.GetPlatformIO();
 
-        // Note: For now, we'll use the default ImGui multi-viewport implementation
-        // which should work with most windowing systems. Silk.NET handles the
-        // native window creation through its IWindow interface.
-        //
-        // If we need custom window management in the future, we can implement
-        // the platform callbacks here (CreateWindow, DestroyWindow, etc.)
+        // Main viewport (our primary window)
+        var mainViewport = ImGui.GetMainViewport();
+        mainViewport.PlatformUserData = (IntPtr)1; // Mark as main viewport
+
+        // Platform callbacks
+        platformIO.Platform_CreateWindow = PlatformCreateWindow;
+        platformIO.Platform_DestroyWindow = PlatformDestroyWindow;
+        platformIO.Platform_ShowWindow = PlatformShowWindow;
+        platformIO.Platform_SetWindowPos = PlatformSetWindowPos;
+        platformIO.Platform_GetWindowPos = PlatformGetWindowPos;
+        platformIO.Platform_SetWindowSize = PlatformSetWindowSize;
+        platformIO.Platform_GetWindowSize = PlatformGetWindowSize;
+        platformIO.Platform_SetWindowFocus = PlatformSetWindowFocus;
+        platformIO.Platform_GetWindowFocus = PlatformGetWindowFocus;
+        platformIO.Platform_GetWindowMinimized = PlatformGetWindowMinimized;
+        platformIO.Platform_SetWindowTitle = PlatformSetWindowTitle;
+
+        // Renderer callbacks
+        platformIO.Renderer_CreateWindow = RendererCreateWindow;
+        platformIO.Renderer_DestroyWindow = RendererDestroyWindow;
+        platformIO.Renderer_SetWindowSize = RendererSetWindowSize;
+        platformIO.Renderer_RenderWindow = RendererRenderWindow;
+        platformIO.Renderer_SwapBuffers = RendererSwapBuffers;
+    }
+
+    // Platform Callbacks
+    private unsafe void PlatformCreateWindow(ImGuiViewportPtr viewport)
+    {
+        var size = new Silk.NET.Maths.Vector2D<int>((int)viewport.Size.X, (int)viewport.Size.Y);
+        var viewportWindow = new ImGuiViewportWindow(size, "ImGui Viewport");
+
+        viewport.PlatformUserData = (IntPtr)GCHandle.Alloc(viewportWindow);
+        _viewportWindows[viewport.ID] = viewportWindow;
+    }
+
+    private unsafe void PlatformDestroyWindow(ImGuiViewportPtr viewport)
+    {
+        if (viewport.PlatformUserData != IntPtr.Zero && viewport.PlatformUserData != (IntPtr)1)
+        {
+            if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+            {
+                window.Dispose();
+                _viewportWindows.Remove(viewport.ID);
+            }
+
+            var handle = (GCHandle)viewport.PlatformUserData;
+            handle.Free();
+            viewport.PlatformUserData = IntPtr.Zero;
+        }
+    }
+
+    private unsafe void PlatformShowWindow(ImGuiViewportPtr viewport)
+    {
+        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            window.Show();
+        }
+    }
+
+    private unsafe void PlatformSetWindowPos(ImGuiViewportPtr viewport, System.Numerics.Vector2 pos)
+    {
+        if (viewport.PlatformUserData == (IntPtr)1)
+        {
+            // Main viewport
+            _window.Position = new Silk.NET.Maths.Vector2D<int>((int)pos.X, (int)pos.Y);
+        }
+        else if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            window.SetPosition(new Silk.NET.Maths.Vector2D<int>((int)pos.X, (int)pos.Y));
+        }
+    }
+
+    private unsafe System.Numerics.Vector2 PlatformGetWindowPos(ImGuiViewportPtr viewport)
+    {
+        if (viewport.PlatformUserData == (IntPtr)1)
+        {
+            // Main viewport
+            return new System.Numerics.Vector2(_window.Position.X, _window.Position.Y);
+        }
+        else if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            var pos = window.GetPosition();
+            return new System.Numerics.Vector2(pos.X, pos.Y);
+        }
+        return System.Numerics.Vector2.Zero;
+    }
+
+    private unsafe void PlatformSetWindowSize(ImGuiViewportPtr viewport, System.Numerics.Vector2 size)
+    {
+        if (viewport.PlatformUserData == (IntPtr)1)
+        {
+            // Main viewport
+            _window.Size = new Silk.NET.Maths.Vector2D<int>((int)size.X, (int)size.Y);
+        }
+        else if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            window.SetSize(new Silk.NET.Maths.Vector2D<int>((int)size.X, (int)size.Y));
+        }
+    }
+
+    private unsafe System.Numerics.Vector2 PlatformGetWindowSize(ImGuiViewportPtr viewport)
+    {
+        if (viewport.PlatformUserData == (IntPtr)1)
+        {
+            // Main viewport
+            return new System.Numerics.Vector2(_window.Size.X, _window.Size.Y);
+        }
+        else if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            var size = window.GetSize();
+            return new System.Numerics.Vector2(size.X, size.Y);
+        }
+        return System.Numerics.Vector2.Zero;
+    }
+
+    private unsafe void PlatformSetWindowFocus(ImGuiViewportPtr viewport)
+    {
+        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            window.Focus();
+        }
+    }
+
+    private unsafe bool PlatformGetWindowFocus(ImGuiViewportPtr viewport)
+    {
+        if (viewport.PlatformUserData == (IntPtr)1)
+        {
+            return !_window.WindowState.HasFlag(WindowState.Minimized);
+        }
+        else if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            return window.IsFocused();
+        }
+        return false;
+    }
+
+    private unsafe bool PlatformGetWindowMinimized(ImGuiViewportPtr viewport)
+    {
+        if (viewport.PlatformUserData == (IntPtr)1)
+        {
+            return _window.WindowState.HasFlag(WindowState.Minimized);
+        }
+        else if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            return window.IsMinimized();
+        }
+        return false;
+    }
+
+    private unsafe void PlatformSetWindowTitle(ImGuiViewportPtr viewport, IntPtr title)
+    {
+        string titleStr = System.Runtime.InteropServices.Marshal.PtrToStringAnsi(title) ?? "ImGui Viewport";
+
+        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            window.SetTitle(titleStr);
+        }
+    }
+
+    // Renderer Callbacks
+    private unsafe void RendererCreateWindow(ImGuiViewportPtr viewport)
+    {
+        // OpenGL context is created automatically by ImGuiViewportWindow
+    }
+
+    private unsafe void RendererDestroyWindow(ImGuiViewportPtr viewport)
+    {
+        // Cleanup is handled in PlatformDestroyWindow
+    }
+
+    private unsafe void RendererSetWindowSize(ImGuiViewportPtr viewport, System.Numerics.Vector2 size)
+    {
+        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            window.GL?.Viewport(0, 0, (uint)size.X, (uint)size.Y);
+        }
+    }
+
+    private unsafe void RendererRenderWindow(ImGuiViewportPtr viewport, IntPtr renderArg)
+    {
+        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            if (window.GL != null)
+            {
+                // Clear the viewport window
+                window.GL.ClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                window.GL.Clear(ClearBufferMask.ColorBufferBit);
+
+                // Render the viewport's draw data using the secondary window's GL context
+                RenderImDrawData(viewport.DrawData, window.GL);
+            }
+        }
+    }
+
+    private unsafe void RendererSwapBuffers(ImGuiViewportPtr viewport, IntPtr renderArg)
+    {
+        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        {
+            // DoEvents to process window messages
+            window.DoEvents();
+            // Swap is automatic with ShouldSwapAutomatically = true
+        }
     }
 
     public void Dispose()
     {
         if (!_disposed)
         {
+            // Cleanup viewport windows
+            foreach (var window in _viewportWindows.Values)
+            {
+                window.Dispose();
+            }
+            _viewportWindows.Clear();
+
             _gl.DeleteVertexArray(_vertexArray);
             _gl.DeleteBuffer(_vertexBuffer);
             _gl.DeleteBuffer(_elementBuffer);
