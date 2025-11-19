@@ -33,6 +33,10 @@ public class MainWindow
     private readonly ThemeEditorView _themeEditorView;
     private readonly MatrixEditorView _matrixEditorView;
 
+    // Tools
+    private readonly AddressHelperWindow _addressHelperWindow;
+    private readonly ScrcmdTableHelperWindow _scrcmdTableHelperWindow;
+
     // Sidebar state and metrics
     private bool _isSidebarCollapsed = false;
     private bool _showMetricsWindow = false;
@@ -60,11 +64,18 @@ public class MainWindow
         _themeEditorView = new ThemeEditorView();
         _matrixEditorView = new MatrixEditorView();
 
+        // Initialize tools
+        _addressHelperWindow = new AddressHelperWindow(_appContext);
+        _scrcmdTableHelperWindow = new ScrcmdTableHelperWindow(_appContext);
+
         // Connect theme editor to settings window
         _settingsWindow.SetThemeEditorView(_themeEditorView);
 
         // Connect editors to header editor for navigation
         _headerEditorView.SetEditorReferences(_textEditorWindow, _scriptEditorWindow, _matrixEditorView);
+
+        // Connect tools (ScrcmdTableHelper -> AddressHelper integration)
+        _scrcmdTableHelperWindow.SetAddressHelperWindow(_addressHelperWindow);
 
         // Set up event handlers
         _window.Resized += OnResize;
@@ -318,6 +329,19 @@ public class MainWindow
                 ImGui.EndMenu();
             }
 
+            if (ImGui.BeginMenu("Tools"))
+            {
+                if (ImGui.MenuItem("Address Helper"))
+                {
+                    _addressHelperWindow.IsVisible = true;
+                }
+                if (ImGui.MenuItem("Script Command Table"))
+                {
+                    _scrcmdTableHelperWindow.IsVisible = true;
+                }
+                ImGui.EndMenu();
+            }
+
             if (ImGui.BeginMenu("View"))
             {
                 if (ImGui.MenuItem("Log Viewer"))
@@ -372,6 +396,10 @@ public class MainWindow
         _logViewerWindow.Draw();
         _settingsWindow.Draw();
         _themeEditorView.Draw();
+
+        // Draw tools
+        _addressHelperWindow.Draw();
+        _scrcmdTableHelperWindow.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();
@@ -433,6 +461,21 @@ public class MainWindow
                 if (ImGui.Selectable("  [S] Script Editor", _scriptEditorWindow.IsVisible))
                 {
                     _scriptEditorWindow.IsVisible = !_scriptEditorWindow.IsVisible;
+                }
+            }
+
+            ImGui.Spacing();
+
+            // Tools section
+            if (ImGui.CollapsingHeader("Tools"))
+            {
+                if (ImGui.Selectable("  Address Helper", _addressHelperWindow.IsVisible))
+                {
+                    _addressHelperWindow.IsVisible = !_addressHelperWindow.IsVisible;
+                }
+                if (ImGui.Selectable("  Script Cmd Helper", _scrcmdTableHelperWindow.IsVisible))
+                {
+                    _scrcmdTableHelperWindow.IsVisible = !_scrcmdTableHelperWindow.IsVisible;
                 }
             }
         }
