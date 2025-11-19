@@ -109,6 +109,13 @@ public class MainWindow : GameWindow
         _imguiController?.PressChar((char)e.Unicode);
     }
 
+    protected override void OnMouseWheel(MouseWheelEventArgs e)
+    {
+        base.OnMouseWheel(e);
+
+        _imguiController?.MouseScroll(e.OffsetX, e.OffsetY);
+    }
+
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
         base.OnUpdateFrame(args);

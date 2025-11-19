@@ -24,6 +24,7 @@ public class ImGuiController : IDisposable
     private int _shaderProjectionMatrix;
     private int _windowWidth;
     private int _windowHeight;
+    private System.Numerics.Vector2 _scrollDelta;
 
     /// <summary>
     /// Crée une nouvelle instance du contrôleur ImGui.
@@ -204,6 +205,11 @@ void main()
         ImGui.NewFrame();
     }
 
+    public void MouseScroll(float offsetX, float offsetY)
+    {
+        _scrollDelta = new System.Numerics.Vector2(offsetX, offsetY);
+    }
+
     private void SetPerFrameImGuiData(float deltaSeconds)
     {
         ImGuiIOPtr io = ImGui.GetIO();
@@ -230,6 +236,11 @@ void main()
 
         var screenPoint = new Vector2i((int)mouseState.X, (int)mouseState.Y);
         io.MousePos = new System.Numerics.Vector2(screenPoint.X, screenPoint.Y);
+
+        // Mouse wheel scroll
+        io.MouseWheel = _scrollDelta.Y;
+        io.MouseWheelH = _scrollDelta.X;
+        _scrollDelta = System.Numerics.Vector2.Zero;
 
         io.AddKeyEvent(ImGuiKey.ModCtrl, keyboardState.IsKeyDown(Keys.LeftControl) || keyboardState.IsKeyDown(Keys.RightControl));
         io.AddKeyEvent(ImGuiKey.ModAlt, keyboardState.IsKeyDown(Keys.LeftAlt) || keyboardState.IsKeyDown(Keys.RightAlt));
