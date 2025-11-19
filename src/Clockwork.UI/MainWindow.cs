@@ -2,6 +2,7 @@ using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.Core.Settings;
+using Clockwork.Core.Themes;
 using Clockwork.UI.Views;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
@@ -28,6 +29,7 @@ public class MainWindow : GameWindow
     private readonly ScriptEditorWindow _scriptEditorWindow;
     private readonly LogViewerWindow _logViewerWindow;
     private readonly SettingsWindow _settingsWindow;
+    private readonly ThemeEditorView _themeEditorView;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -47,6 +49,10 @@ public class MainWindow : GameWindow
         _scriptEditorWindow = new ScriptEditorWindow(_appContext);
         _logViewerWindow = new LogViewerWindow(_appContext);
         _settingsWindow = new SettingsWindow(_appContext);
+        _themeEditorView = new ThemeEditorView();
+
+        // Connect theme editor to settings window
+        _settingsWindow.SetThemeEditorView(_themeEditorView);
     }
 
     protected override void OnLoad()
@@ -60,9 +66,17 @@ public class MainWindow : GameWindow
         _imguiController = new ImGuiController(ClientSize.X, ClientSize.Y);
         AppLogger.Debug("ImGuiController created");
 
-        // Configure ImGui style
-        ConfigureImGuiStyle();
-        AppLogger.Debug("ImGui style configured");
+        // Initialize theme manager
+        ThemeManager.Initialize();
+        AppLogger.Debug("ThemeManager initialized");
+
+        // Initialize theme editor view
+        _themeEditorView.Initialize(_appContext);
+
+        // Apply theme from settings
+        string themeName = SettingsManager.Settings.CurrentThemeName;
+        ThemeManager.ApplyTheme(themeName);
+        AppLogger.Info($"Applied theme: {themeName}");
 
         // Restore sidebar state from settings
         _isSidebarCollapsed = SettingsManager.Settings.SidebarCollapsed;
@@ -70,47 +84,6 @@ public class MainWindow : GameWindow
 
         AppLogger.Info("MainWindow loaded successfully");
         Console.WriteLine("Application started successfully!");
-    }
-
-    private void ConfigureImGuiStyle()
-    {
-        var style = ImGui.GetStyle();
-
-        // Rounding
-        style.WindowRounding = 6.0f;
-        style.FrameRounding = 3.0f;
-        style.GrabRounding = 3.0f;
-        style.TabRounding = 3.0f;
-
-        // Spacing
-        style.WindowPadding = new System.Numerics.Vector2(10, 10);
-        style.FramePadding = new System.Numerics.Vector2(8, 4);
-        style.ItemSpacing = new System.Numerics.Vector2(8, 4);
-
-        // Colors (modern dark theme)
-        var colors = style.Colors;
-        colors[(int)ImGuiCol.WindowBg] = new System.Numerics.Vector4(0.11f, 0.11f, 0.11f, 0.94f);
-        colors[(int)ImGuiCol.ChildBg] = new System.Numerics.Vector4(0.15f, 0.15f, 0.15f, 1.00f);
-        colors[(int)ImGuiCol.PopupBg] = new System.Numerics.Vector4(0.11f, 0.11f, 0.11f, 0.94f);
-        colors[(int)ImGuiCol.Border] = new System.Numerics.Vector4(0.25f, 0.25f, 0.27f, 0.50f);
-        colors[(int)ImGuiCol.FrameBg] = new System.Numerics.Vector4(0.20f, 0.21f, 0.22f, 1.00f);
-        colors[(int)ImGuiCol.FrameBgHovered] = new System.Numerics.Vector4(0.30f, 0.31f, 0.32f, 1.00f);
-        colors[(int)ImGuiCol.FrameBgActive] = new System.Numerics.Vector4(0.25f, 0.26f, 0.27f, 1.00f);
-        colors[(int)ImGuiCol.TitleBg] = new System.Numerics.Vector4(0.08f, 0.08f, 0.09f, 1.00f);
-        colors[(int)ImGuiCol.TitleBgActive] = new System.Numerics.Vector4(0.15f, 0.15f, 0.16f, 1.00f);
-        colors[(int)ImGuiCol.MenuBarBg] = new System.Numerics.Vector4(0.15f, 0.15f, 0.16f, 1.00f);
-        colors[(int)ImGuiCol.CheckMark] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.SliderGrab] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.SliderGrabActive] = new System.Numerics.Vector4(0.50f, 0.80f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.Button] = new System.Numerics.Vector4(0.25f, 0.26f, 0.27f, 1.00f);
-        colors[(int)ImGuiCol.ButtonHovered] = new System.Numerics.Vector4(0.35f, 0.36f, 0.37f, 1.00f);
-        colors[(int)ImGuiCol.ButtonActive] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.Header] = new System.Numerics.Vector4(0.25f, 0.26f, 0.27f, 1.00f);
-        colors[(int)ImGuiCol.HeaderHovered] = new System.Numerics.Vector4(0.35f, 0.36f, 0.37f, 1.00f);
-        colors[(int)ImGuiCol.HeaderActive] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.Tab] = new System.Numerics.Vector4(0.15f, 0.15f, 0.16f, 1.00f);
-        colors[(int)ImGuiCol.TabHovered] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.TabActive] = new System.Numerics.Vector4(0.30f, 0.50f, 0.80f, 1.00f);
     }
 
     protected override void OnResize(ResizeEventArgs e)
@@ -280,6 +253,10 @@ public class MainWindow : GameWindow
                 {
                     _logViewerWindow.IsVisible = true;
                 }
+                if (ImGui.MenuItem("Theme Editor"))
+                {
+                    _themeEditorView.IsVisible = true;
+                }
                 ImGui.EndMenu();
             }
 
@@ -322,6 +299,7 @@ public class MainWindow : GameWindow
         _scriptEditorWindow.Draw();
         _logViewerWindow.Draw();
         _settingsWindow.Draw();
+        _themeEditorView.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();

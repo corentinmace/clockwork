@@ -75,6 +75,11 @@ public class ClockworkSettings
     // === Application Behavior ===
 
     /// <summary>
+    /// Current theme name
+    /// </summary>
+    public string CurrentThemeName { get; set; } = "Dark";
+
+    /// <summary>
     /// Automatically check for application updates on startup
     /// </summary>
     public bool AutomaticallyCheckForUpdates { get; set; } = true;

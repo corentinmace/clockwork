@@ -1,6 +1,7 @@
 using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Settings;
+using Clockwork.Core.Themes;
 using ImGuiNET;
 using System.Numerics;
 
@@ -15,11 +16,17 @@ public class SettingsWindow : IView
     public bool IsVisible { get; set; } = false;
 
     private ClockworkSettings _settings;
+    private ThemeEditorView? _themeEditorView;
 
     public SettingsWindow(ApplicationContext appContext)
     {
         _appContext = appContext;
         _settings = SettingsManager.Settings;
+    }
+
+    public void SetThemeEditorView(ThemeEditorView themeEditorView)
+    {
+        _themeEditorView = themeEditorView;
     }
 
     public void Draw()
@@ -105,6 +112,47 @@ public class SettingsWindow : IView
 
     private void DrawGeneralSettings()
     {
+        // Theme selection
+        ImGui.TextColored(new Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Theme");
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        ImGui.Text("Current theme:");
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(200);
+        if (ImGui.BeginCombo("##ThemeCombo", _settings.CurrentThemeName))
+        {
+            foreach (var theme in ThemeManager.AvailableThemes.Values)
+            {
+                bool isSelected = _settings.CurrentThemeName == theme.Name;
+                if (ImGui.Selectable($"{theme.Name}{(theme.IsReadOnly ? " (prédéfini)" : "")}", isSelected))
+                {
+                    _settings.CurrentThemeName = theme.Name;
+                    ThemeManager.ApplyTheme(theme);
+                    AppLogger.Info($"Theme changed to: {theme.Name}");
+                }
+
+                if (isSelected)
+                {
+                    ImGui.SetItemDefaultFocus();
+                }
+            }
+
+            ImGui.EndCombo();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Éditeur de thèmes..."))
+        {
+            if (_themeEditorView != null)
+            {
+                _themeEditorView.IsVisible = true;
+            }
+        }
+
+        ImGui.Spacing();
+        ImGui.Spacing();
+
         ImGui.TextColored(new Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Application Behavior");
         ImGui.Separator();
         ImGui.Spacing();
