@@ -41,6 +41,7 @@ public class ImGuiController : IDisposable
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable; // Enable multi-viewport / platform windows
 
         CreateDeviceResources();
 
@@ -386,6 +387,14 @@ void main()
     {
         ImGui.Render();
         RenderImDrawData(ImGui.GetDrawData());
+
+        // Update and render additional platform windows (for multi-viewport support)
+        var io = ImGui.GetIO();
+        if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
+        {
+            ImGui.UpdatePlatformWindows();
+            ImGui.RenderPlatformWindowsDefault();
+        }
     }
 
     private void RenderImDrawData(ImDrawDataPtr drawData)

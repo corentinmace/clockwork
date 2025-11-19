@@ -61,6 +61,7 @@ public class ThemeEditorView : IView
         }
 
         ImGui.End();
+        IsVisible = isVisible; // Update property when window is closed
     }
 
     private void DrawThemeSelector()
