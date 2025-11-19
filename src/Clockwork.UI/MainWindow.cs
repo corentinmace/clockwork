@@ -99,6 +99,13 @@ public class MainWindow : GameWindow
         _imguiController?.WindowResized(ClientSize.X, ClientSize.Y);
     }
 
+    protected override void OnTextInput(TextInputEventArgs e)
+    {
+        base.OnTextInput(e);
+
+        _imguiController?.PressChar((char)e.Unicode);
+    }
+
     protected override void OnUpdateFrame(FrameEventArgs args)
     {
         base.OnUpdateFrame(args);
@@ -188,6 +195,12 @@ public class MainWindow : GameWindow
                 {
                     _romLoaderView.IsVisible = true;
                 }
+
+                if (ImGui.MenuItem("Save ROM...", "Ctrl+S"))
+                {
+                    SaveRomDialog();
+                }
+
                 ImGui.EndMenu();
             }
 
@@ -235,6 +248,9 @@ public class MainWindow : GameWindow
         _headerEditorView.Draw();
         _mapEditorView.Draw();
         _textEditorWindow.Draw();
+
+        // Draw dialogs
+        DrawSaveRomDialog();
 
         if (_showMetricsWindow)
         {
@@ -295,6 +311,111 @@ public class MainWindow : GameWindow
     // Sidebar state and metrics
     private bool _isSidebarCollapsed = false;
     private bool _showMetricsWindow = false;
+
+    // ROM Save state
+    private bool _isShowingSaveRomDialog = false;
+    private string _saveRomLog = "";
+    private bool _isSavingRom = false;
+
+    private void SaveRomDialog()
+    {
+        var romService = _appContext.GetService<RomService>();
+        var dialogService = _appContext.GetService<DialogService>();
+
+        if (romService?.CurrentRom?.IsLoaded != true)
+        {
+            // TODO: Show error dialog
+            Console.WriteLine("No ROM loaded");
+            return;
+        }
+
+        // Open save file dialog
+        string? savePath = dialogService?.SaveFileDialog(
+            "NDS ROM Files|*.nds|All Files|*.*",
+            "Save ROM As",
+            "output.nds"
+        );
+
+        if (string.IsNullOrEmpty(savePath))
+        {
+            return; // User cancelled
+        }
+
+        _saveRomLog = "";
+        _isSavingRom = true;
+        _isShowingSaveRomDialog = true;
+
+        // Save ROM in background
+        Task.Run(() =>
+        {
+            var ndsToolService = _appContext.GetService<NdsToolService>();
+            bool success = ndsToolService?.PackRom(
+                romService.CurrentRom.RomPath,
+                savePath,
+                (msg) => { _saveRomLog += msg + "\n"; }
+            ) ?? false;
+
+            _isSavingRom = false;
+
+            if (success)
+            {
+                _saveRomLog += "\n=== ROM saved successfully! ===\n";
+            }
+            else
+            {
+                _saveRomLog += "\n=== ROM save failed! ===\n";
+            }
+        });
+    }
+
+    private void DrawSaveRomDialog()
+    {
+        if (!_isShowingSaveRomDialog)
+            return;
+
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(600, 400), ImGuiCond.FirstUseEver);
+
+        bool isOpen = _isShowingSaveRomDialog;
+        if (ImGui.Begin("Saving ROM", ref isOpen, ImGuiWindowFlags.NoCollapse))
+        {
+            ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "ROM Packing Progress");
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            if (_isSavingRom)
+            {
+                ImGui.Text("Packing ROM, please wait...");
+                ImGui.Spacing();
+            }
+
+            // Display logs
+            ImGui.BeginChild("SaveRomLogs", new System.Numerics.Vector2(0, -40), ImGuiChildFlags.Border);
+            ImGui.TextWrapped(_saveRomLog);
+
+            // Auto-scroll to bottom
+            if (ImGui.GetScrollY() >= ImGui.GetScrollMaxY())
+                ImGui.SetScrollHereY(1.0f);
+
+            ImGui.EndChild();
+
+            ImGui.Spacing();
+
+            if (!_isSavingRom && ImGui.Button("Close", new System.Numerics.Vector2(-1, 30)))
+            {
+                _isShowingSaveRomDialog = false;
+            }
+
+            if (_isSavingRom)
+            {
+                ImGui.BeginDisabled();
+                ImGui.Button("Close", new System.Numerics.Vector2(-1, 30));
+                ImGui.EndDisabled();
+            }
+        }
+        ImGui.End();
+
+        _isShowingSaveRomDialog = isOpen;
+    }
 
     protected override void OnUnload()
     {

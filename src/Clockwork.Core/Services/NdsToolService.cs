@@ -158,4 +158,104 @@ public class NdsToolService : IApplicationService
     /// Obtient le chemin vers ndstool.exe.
     /// </summary>
     public string NdsToolPath => _ndsToolPath;
+
+    /// <summary>
+    /// Repack une ROM NDS à partir d'un dossier extrait.
+    /// </summary>
+    /// <param name="extractedPath">Dossier contenant les fichiers extraits</param>
+    /// <param name="outputRomPath">Chemin vers le fichier .nds à créer</param>
+    /// <param name="progress">Callback pour les messages de progression</param>
+    /// <returns>True si le repacking a réussi</returns>
+    public bool PackRom(string extractedPath, string outputRomPath, Action<string>? progress = null)
+    {
+        if (!IsAvailable)
+        {
+            progress?.Invoke("Erreur: ndstool.exe n'est pas disponible");
+            return false;
+        }
+
+        if (!Directory.Exists(extractedPath))
+        {
+            progress?.Invoke($"Erreur: Le dossier source n'existe pas: {extractedPath}");
+            return false;
+        }
+
+        // Vérifier que les fichiers requis existent
+        string[] requiredFiles = { "header.bin", "arm9.bin", "arm7.bin" };
+        foreach (string file in requiredFiles)
+        {
+            string filePath = Path.Combine(extractedPath, file);
+            if (!File.Exists(filePath))
+            {
+                progress?.Invoke($"Erreur: Fichier requis manquant: {file}");
+                return false;
+            }
+        }
+
+        try
+        {
+            string dataPath = Path.Combine(extractedPath, "data");
+
+            // Construire la commande ndstool pour créer la ROM
+            // ndstool -c <rom.nds> -9 arm9.bin -7 arm7.bin -y9 y9.bin -y7 y7.bin -d data -y overlay -t banner.bin -h header.bin
+            string arguments = $"-c \"{outputRomPath}\" " +
+                             $"-9 \"{Path.Combine(extractedPath, "arm9.bin")}\" " +
+                             $"-7 \"{Path.Combine(extractedPath, "arm7.bin")}\" " +
+                             $"-y9 \"{Path.Combine(extractedPath, "y9.bin")}\" " +
+                             $"-y7 \"{Path.Combine(extractedPath, "y7.bin")}\" " +
+                             $"-d \"{dataPath}\" " +
+                             $"-y \"{Path.Combine(extractedPath, "overlay")}\" " +
+                             $"-t \"{Path.Combine(extractedPath, "banner.bin")}\" " +
+                             $"-h \"{Path.Combine(extractedPath, "header.bin")}\"";
+
+            progress?.Invoke("Démarrage du repacking de la ROM...");
+
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = _ndsToolPath,
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(processStartInfo);
+            if (process == null)
+            {
+                progress?.Invoke("Erreur: Impossible de démarrer ndstool");
+                return false;
+            }
+
+            // Lire la sortie
+            string output = process.StandardOutput.ReadToEnd();
+            string error = process.StandardError.ReadToEnd();
+
+            process.WaitForExit();
+
+            if (!string.IsNullOrWhiteSpace(output))
+            {
+                progress?.Invoke(output);
+            }
+
+            if (!string.IsNullOrWhiteSpace(error))
+            {
+                progress?.Invoke($"Erreur: {error}");
+            }
+
+            if (process.ExitCode != 0)
+            {
+                progress?.Invoke($"ndstool a terminé avec le code d'erreur: {process.ExitCode}");
+                return false;
+            }
+
+            progress?.Invoke($"ROM repacked avec succès: {outputRomPath}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            progress?.Invoke($"Exception: {ex.Message}");
+            return false;
+        }
+    }
 }
