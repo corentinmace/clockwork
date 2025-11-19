@@ -391,9 +391,13 @@ public class MatrixEditorView : IView
                     }
                     else
                     {
-                        // Display mode - use Selectable to make it clickable
-                        if (ImGui.Selectable(displayValue, false, ImGuiSelectableFlags.None, new Vector2(50, 0)))
+                        // Display mode - use text + invisible button to make it clickable
+                        ImGui.Text(displayValue);
+
+                        // Check for click on the text
+                        if (ImGui.IsItemClicked(ImGuiMouseButton.Left))
                         {
+                            AppLogger.Debug($"[MatrixEditor] Cell clicked: ({row}, {col})");
                             // Single click - enter edit mode
                             _editingRow = row;
                             _editingCol = col;
@@ -406,6 +410,7 @@ public class MatrixEditorView : IView
                         {
                             if (value != GameMatrix.EMPTY_CELL)
                             {
+                                AppLogger.Debug($"[MatrixEditor] Cell double-clicked: opening map {value}");
                                 OpenMapEditor(value);
                             }
                         }
