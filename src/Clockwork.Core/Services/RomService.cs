@@ -1,5 +1,6 @@
 using Clockwork.Core.Models;
 using Clockwork.Core.Logging;
+using Clockwork.Core.Settings;
 
 namespace Clockwork.Core.Services;
 
@@ -21,6 +22,14 @@ public class RomService : IApplicationService
     {
         AppLogger.Info("RomService initialized");
         _currentRom = null;
+
+        // Auto-load last ROM if configured
+        if (SettingsManager.Settings.OpenLastRomOnStartup &&
+            !string.IsNullOrEmpty(SettingsManager.Settings.LastRomPath))
+        {
+            AppLogger.Info("Auto-loading last ROM from settings...");
+            LoadRomFromFolder(SettingsManager.Settings.LastRomPath);
+        }
     }
 
     public void Update(double deltaTime)
@@ -96,6 +105,10 @@ public class RomService : IApplicationService
 
             // Initialize game directories
             InitializeGameDirectories(folderPath);
+
+            // Save last ROM path to settings
+            SettingsManager.Settings.LastRomPath = folderPath;
+            AppLogger.Debug($"Saved last ROM path to settings: {folderPath}");
 
             AppLogger.Info("ROM loaded successfully");
             return true;

@@ -1,6 +1,7 @@
 using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
+using Clockwork.Core.Settings;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
@@ -16,6 +17,9 @@ internal class Program
         // Initialize logger
         AppLogger.Initialize();
         AppLogger.Info("Clockwork application starting...");
+
+        // Initialize settings
+        SettingsManager.Initialize();
 
         try
         {
@@ -46,13 +50,14 @@ internal class Program
 
             // OpenTK window configuration
             AppLogger.Debug("Configuring OpenTK window");
+            var settings = SettingsManager.Settings;
             var nativeWindowSettings = new NativeWindowSettings()
             {
-                ClientSize = new Vector2i(1280, 720),
+                ClientSize = new Vector2i(settings.WindowWidth, settings.WindowHeight),
                 Title = "Clockwork",
                 Flags = ContextFlags.ForwardCompatible,
                 WindowBorder = WindowBorder.Resizable,
-                WindowState = WindowState.Normal,
+                WindowState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal,
                 StartVisible = true,
             };
 
@@ -68,6 +73,9 @@ internal class Program
                 AppLogger.Info("Starting main loop");
                 window.Run();
             }
+
+            // Save settings on exit
+            SettingsManager.Save();
 
             AppLogger.Info("Clockwork application closed normally");
             Console.WriteLine("Application closed.");

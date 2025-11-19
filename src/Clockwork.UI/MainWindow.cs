@@ -1,6 +1,7 @@
 using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
+using Clockwork.Core.Settings;
 using Clockwork.UI.Views;
 using ImGuiNET;
 using OpenTK.Graphics.OpenGL4;
@@ -26,6 +27,7 @@ public class MainWindow : GameWindow
     private readonly TextEditorWindow _textEditorWindow;
     private readonly ScriptEditorWindow _scriptEditorWindow;
     private readonly LogViewerWindow _logViewerWindow;
+    private readonly SettingsWindow _settingsWindow;
 
     public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
         : base(gameWindowSettings, nativeWindowSettings)
@@ -44,6 +46,7 @@ public class MainWindow : GameWindow
         _textEditorWindow = new TextEditorWindow(_appContext);
         _scriptEditorWindow = new ScriptEditorWindow(_appContext);
         _logViewerWindow = new LogViewerWindow(_appContext);
+        _settingsWindow = new SettingsWindow(_appContext);
     }
 
     protected override void OnLoad()
@@ -60,6 +63,10 @@ public class MainWindow : GameWindow
         // Configure ImGui style
         ConfigureImGuiStyle();
         AppLogger.Debug("ImGui style configured");
+
+        // Restore sidebar state from settings
+        _isSidebarCollapsed = SettingsManager.Settings.SidebarCollapsed;
+        AppLogger.Debug($"Sidebar collapsed state restored: {_isSidebarCollapsed}");
 
         AppLogger.Info("MainWindow loaded successfully");
         Console.WriteLine("Application started successfully!");
@@ -276,6 +283,15 @@ public class MainWindow : GameWindow
                 ImGui.EndMenu();
             }
 
+            if (ImGui.BeginMenu("Settings"))
+            {
+                if (ImGui.MenuItem("Preferences..."))
+                {
+                    _settingsWindow.IsVisible = true;
+                }
+                ImGui.EndMenu();
+            }
+
             if (ImGui.BeginMenu("Help"))
             {
                 if (ImGui.MenuItem("About"))
@@ -305,6 +321,7 @@ public class MainWindow : GameWindow
         _textEditorWindow.Draw();
         _scriptEditorWindow.Draw();
         _logViewerWindow.Draw();
+        _settingsWindow.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();
@@ -491,6 +508,13 @@ public class MainWindow : GameWindow
         base.OnUnload();
 
         AppLogger.Info("MainWindow OnUnload: Cleaning up resources");
+
+        // Save window state to settings
+        SettingsManager.Settings.WindowWidth = ClientSize.X;
+        SettingsManager.Settings.WindowHeight = ClientSize.Y;
+        SettingsManager.Settings.WindowMaximized = WindowState == WindowState.Maximized;
+        SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
+        AppLogger.Debug($"Window state saved: {ClientSize.X}x{ClientSize.Y}, Maximized: {WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
 
         _imguiController?.Dispose();
         AppLogger.Debug("ImGuiController disposed");
