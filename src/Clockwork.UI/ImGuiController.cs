@@ -65,6 +65,8 @@ public class ImGuiController : IDisposable
 
         var io = ImGui.GetIO();
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
+        io.BackendFlags |= ImGuiBackendFlags.PlatformHasViewports;
+        io.BackendFlags |= ImGuiBackendFlags.RendererHasViewports;
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
@@ -72,6 +74,7 @@ public class ImGuiController : IDisposable
         io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
 
         CreateDeviceResources();
+        SetupPlatformCallbacks();
 
         SetPerFrameImGuiData(1f / 60f);
     }
@@ -567,6 +570,18 @@ void main()
         if (prevEnableScissorTest) _gl.Enable(EnableCap.ScissorTest); else _gl.Disable(EnableCap.ScissorTest);
 
         _gl.Scissor(prevScissorBox[0], prevScissorBox[1], (uint)prevScissorBox[2], (uint)prevScissorBox[3]);
+    }
+
+    private unsafe void SetupPlatformCallbacks()
+    {
+        var platformIO = ImGui.GetPlatformIO();
+
+        // Note: For now, we'll use the default ImGui multi-viewport implementation
+        // which should work with most windowing systems. Silk.NET handles the
+        // native window creation through its IWindow interface.
+        //
+        // If we need custom window management in the future, we can implement
+        // the platform callbacks here (CreateWindow, DestroyWindow, etc.)
     }
 
     public void Dispose()
