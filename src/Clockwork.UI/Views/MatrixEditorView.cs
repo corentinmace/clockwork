@@ -349,7 +349,7 @@ public class MatrixEditorView : IView
         }
 
         ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1),
-            "💡 Cliquez sur une cellule pour éditer, double-cliquez sur MapFiles pour ouvrir la carte");
+            "[i] Cliquez sur une cellule pour éditer, double-cliquez sur MapFiles pour ouvrir la carte");
     }
 
     private Vector4 GetCellColor(ushort value, bool isMapFiles)

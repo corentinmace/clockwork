@@ -371,19 +371,23 @@ public class MainWindow
             // Editors section
             if (ImGui.CollapsingHeader("Editors", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                if (ImGui.Selectable("  📝 Header Editor", _headerEditorView.IsVisible))
+                if (ImGui.Selectable("  [H] Header Editor", _headerEditorView.IsVisible))
                 {
                     _headerEditorView.IsVisible = !_headerEditorView.IsVisible;
                 }
-                if (ImGui.Selectable("  🗺️  Map Editor", _mapEditorView.IsVisible))
+                if (ImGui.Selectable("  [M] Map Editor", _mapEditorView.IsVisible))
                 {
                     _mapEditorView.IsVisible = !_mapEditorView.IsVisible;
                 }
-                if (ImGui.Selectable("  📄 Text Editor", _textEditorWindow.IsVisible))
+                if (ImGui.Selectable("  [G] Matrix Editor", _matrixEditorView.IsVisible))
+                {
+                    _matrixEditorView.IsVisible = !_matrixEditorView.IsVisible;
+                }
+                if (ImGui.Selectable("  [T] Text Editor", _textEditorWindow.IsVisible))
                 {
                     _textEditorWindow.IsVisible = !_textEditorWindow.IsVisible;
                 }
-                if (ImGui.Selectable("  📜 Script Editor", _scriptEditorWindow.IsVisible))
+                if (ImGui.Selectable("  [S] Script Editor", _scriptEditorWindow.IsVisible))
                 {
                     _scriptEditorWindow.IsVisible = !_scriptEditorWindow.IsVisible;
                 }
