@@ -142,8 +142,28 @@ public class MainWindow : GameWindow
         SwapBuffers();
     }
 
+    private void HandleKeyboardShortcuts()
+    {
+        var io = ImGui.GetIO();
+
+        // Ctrl+O: Open ROM
+        if (io.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.O))
+        {
+            _romLoaderView.IsVisible = true;
+        }
+
+        // Ctrl+S: Save ROM
+        if (io.KeyCtrl && ImGui.IsKeyPressed(ImGuiKey.S))
+        {
+            SaveRomDialog();
+        }
+    }
+
     private void DrawUI()
     {
+        // Handle keyboard shortcuts
+        HandleKeyboardShortcuts();
+
         // Calculate sidebar width
         float sidebarWidth = _isSidebarCollapsed ? 50 : 250;
 

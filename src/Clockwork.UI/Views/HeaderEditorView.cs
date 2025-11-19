@@ -190,11 +190,8 @@ public class HeaderEditorView : IView
         ImGui.InputTextWithHint("##search", "Search...", ref _searchFilter, 256);
         ImGui.Spacing();
 
-        // Calculate list height (subtract title, spacing, and search box)
-        float listHeight = availableHeight - 60;
-
         // Header list with scrolling
-        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, listHeight), ImGuiChildFlags.Border);
+        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, -60), ImGuiChildFlags.Border);
 
         var headers = _headerService.Headers;
         foreach (var header in headers)
