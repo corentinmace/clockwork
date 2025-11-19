@@ -121,16 +121,18 @@ public class ImGuiController : IDisposable
 
         var io = ImGui.GetIO();
         io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
-        io.BackendFlags |= ImGuiBackendFlags.PlatformHasViewports;
-        io.BackendFlags |= ImGuiBackendFlags.RendererHasViewports;
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
-        // Enable multi-viewport support with Silk.NET
-        io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
+        // TODO: Re-enable multi-viewport after fixing initialization issues
+        // io.BackendFlags |= ImGuiBackendFlags.PlatformHasViewports;
+        // io.BackendFlags |= ImGuiBackendFlags.RendererHasViewports;
+        // io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
 
         CreateDeviceResources();
-        SetupPlatformCallbacks();
+
+        // TODO: Re-enable after fixing initialization issues
+        // SetupPlatformCallbacks();
 
         SetPerFrameImGuiData(1f / 60f);
     }
@@ -482,13 +484,14 @@ void main()
         ImGui.Render();
         RenderImDrawData(ImGui.GetDrawData());
 
+        // TODO: Re-enable multi-viewport rendering after fixing initialization issues
         // Render additional viewports for multi-viewport support
-        var io = ImGui.GetIO();
-        if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
-        {
-            ImGui.UpdatePlatformWindows();
-            ImGui.RenderPlatformWindowsDefault();
-        }
+        // var io = ImGui.GetIO();
+        // if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
+        // {
+        //     ImGui.UpdatePlatformWindows();
+        //     ImGui.RenderPlatformWindowsDefault();
+        // }
     }
 
     private unsafe void RenderImDrawData(ImDrawDataPtr drawData)
