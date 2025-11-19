@@ -354,6 +354,7 @@ public class MatrixEditorView : IView
                         ImGui.SetNextItemWidth(60);
 
                         // Only set focus on first frame of editing
+                        bool shouldSetFocus = _justStartedEditing;
                         if (_justStartedEditing)
                         {
                             AppLogger.Debug($"[MatrixEditor] Starting edit mode for cell ({row}, {col}) with value: {_editBuffer}");
@@ -374,14 +375,18 @@ public class MatrixEditorView : IView
                             _editingCol = -1;
                         }
 
-                        // Check if we lost focus
-                        bool isActive = ImGui.IsItemActive();
-                        if (!isActive && (_editingRow == row && _editingCol == col))
+                        // Only check for lost focus if we're not on the first frame
+                        // (SetKeyboardFocusHere needs one frame to take effect)
+                        if (!shouldSetFocus)
                         {
-                            AppLogger.Debug($"[MatrixEditor] Lost focus on cell ({row}, {col}), canceling edit");
-                            // Lost focus, exit edit mode
-                            _editingRow = -1;
-                            _editingCol = -1;
+                            bool isActive = ImGui.IsItemActive();
+                            if (!isActive)
+                            {
+                                AppLogger.Debug($"[MatrixEditor] Lost focus on cell ({row}, {col}), canceling edit");
+                                // Lost focus, exit edit mode
+                                _editingRow = -1;
+                                _editingCol = -1;
+                            }
                         }
                     }
                     else
