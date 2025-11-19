@@ -84,8 +84,8 @@ public class MainWindow
 
             double deltaTime = 1.0 / 60.0; // Approximate deltatime (can be improved with actual timing)
 
-            // Update
-            OnUpdate(deltaTime);
+            // Update (pass snapshot to avoid calling PumpEvents twice)
+            OnUpdate(deltaTime, snapshot);
 
             // Render
             OnRender(deltaTime);
@@ -142,10 +142,9 @@ public class MainWindow
         _imguiRenderer?.WindowResized((int)_window.Width, (int)_window.Height);
     }
 
-    private void OnUpdate(double deltaTime)
+    private void OnUpdate(double deltaTime, InputSnapshot snapshot)
     {
         // Update ImGui input
-        var snapshot = _window.PumpEvents();
         _imguiRenderer?.Update((float)deltaTime, snapshot);
 
         // Update application context
