@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Clockwork.Core.Logging;
 
 namespace Clockwork.Core.Services;
 
@@ -11,6 +12,8 @@ public class NdsToolService : IApplicationService
 
     public void Initialize()
     {
+        AppLogger.Info("NdsToolService initializing...");
+
         // Chercher ndstool.exe dans le dossier Tools
         string baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
@@ -20,6 +23,7 @@ public class NdsToolService : IApplicationService
         if (File.Exists(toolsPath))
         {
             _ndsToolPath = toolsPath;
+            AppLogger.Info($"ndstool.exe found at: {_ndsToolPath}");
         }
         else
         {
@@ -31,6 +35,11 @@ public class NdsToolService : IApplicationService
             if (File.Exists(toolsPath))
             {
                 _ndsToolPath = toolsPath;
+                AppLogger.Info($"ndstool.exe found at: {_ndsToolPath}");
+            }
+            else
+            {
+                AppLogger.Warn("ndstool.exe not found - ROM extraction will not be available");
             }
         }
     }
@@ -64,24 +73,31 @@ public class NdsToolService : IApplicationService
     /// <returns>True si l'extraction a réussi</returns>
     public bool ExtractRom(string romPath, string outputPath, Action<string>? progress = null)
     {
+        AppLogger.Info($"Starting ROM extraction: {romPath}");
+
         if (!IsAvailable)
         {
+            AppLogger.Error("ndstool.exe is not available");
             progress?.Invoke("Erreur: ndstool.exe n'est pas disponible");
             return false;
         }
 
         if (!File.Exists(romPath))
         {
+            AppLogger.Error($"ROM file does not exist: {romPath}");
             progress?.Invoke($"Erreur: Le fichier ROM n'existe pas: {romPath}");
             return false;
         }
 
         try
         {
+            AppLogger.Debug($"Output directory: {outputPath}");
+
             // Créer le dossier de sortie s'il n'existe pas
             if (!Directory.Exists(outputPath))
             {
                 Directory.CreateDirectory(outputPath);
+                AppLogger.Debug($"Created output directory: {outputPath}");
             }
 
             // Créer le sous-dossier "data" pour les fichiers de données
@@ -89,6 +105,7 @@ public class NdsToolService : IApplicationService
             if (!Directory.Exists(dataPath))
             {
                 Directory.CreateDirectory(dataPath);
+                AppLogger.Debug($"Created data directory: {dataPath}");
             }
 
             // Construire la commande ndstool
@@ -103,6 +120,7 @@ public class NdsToolService : IApplicationService
                              $"-t \"{Path.Combine(outputPath, "banner.bin")}\" " +
                              $"-h \"{Path.Combine(outputPath, "header.bin")}\"";
 
+            AppLogger.Debug($"ndstool command: {_ndsToolPath} {arguments}");
             progress?.Invoke("Démarrage de l'extraction...");
 
             var processStartInfo = new ProcessStartInfo
@@ -118,9 +136,12 @@ public class NdsToolService : IApplicationService
             using var process = Process.Start(processStartInfo);
             if (process == null)
             {
+                AppLogger.Error("Failed to start ndstool process");
                 progress?.Invoke("Erreur: Impossible de démarrer ndstool");
                 return false;
             }
+
+            AppLogger.Debug("ndstool process started, waiting for completion...");
 
             // Lire la sortie
             string output = process.StandardOutput.ReadToEnd();
@@ -130,25 +151,31 @@ public class NdsToolService : IApplicationService
 
             if (!string.IsNullOrWhiteSpace(output))
             {
+                AppLogger.Debug($"ndstool output: {output}");
                 progress?.Invoke(output);
             }
 
             if (!string.IsNullOrWhiteSpace(error))
             {
+                AppLogger.Warn($"ndstool error output: {error}");
                 progress?.Invoke($"Erreur: {error}");
             }
 
             if (process.ExitCode != 0)
             {
+                AppLogger.Error($"ndstool exited with code: {process.ExitCode}");
                 progress?.Invoke($"ndstool a terminé avec le code d'erreur: {process.ExitCode}");
                 return false;
             }
 
+            AppLogger.Info("ROM extraction completed successfully");
             progress?.Invoke("Extraction terminée avec succès!");
             return true;
         }
         catch (Exception ex)
         {
+            AppLogger.Error($"Exception during ROM extraction: {ex.Message}");
+            AppLogger.Debug($"Stack trace: {ex.StackTrace}");
             progress?.Invoke($"Exception: {ex.Message}");
             return false;
         }
@@ -168,14 +195,18 @@ public class NdsToolService : IApplicationService
     /// <returns>True si le repacking a réussi</returns>
     public bool PackRom(string extractedPath, string outputRomPath, Action<string>? progress = null)
     {
+        AppLogger.Info($"Starting ROM packing: {outputRomPath}");
+
         if (!IsAvailable)
         {
+            AppLogger.Error("ndstool.exe is not available");
             progress?.Invoke("Erreur: ndstool.exe n'est pas disponible");
             return false;
         }
 
         if (!Directory.Exists(extractedPath))
         {
+            AppLogger.Error($"Source directory does not exist: {extractedPath}");
             progress?.Invoke($"Erreur: Le dossier source n'existe pas: {extractedPath}");
             return false;
         }
@@ -187,10 +218,13 @@ public class NdsToolService : IApplicationService
             string filePath = Path.Combine(extractedPath, file);
             if (!File.Exists(filePath))
             {
+                AppLogger.Error($"Required file missing: {file}");
                 progress?.Invoke($"Erreur: Fichier requis manquant: {file}");
                 return false;
             }
         }
+
+        AppLogger.Debug($"All required files present, proceeding with packing");
 
         try
         {
@@ -208,6 +242,7 @@ public class NdsToolService : IApplicationService
                              $"-t \"{Path.Combine(extractedPath, "banner.bin")}\" " +
                              $"-h \"{Path.Combine(extractedPath, "header.bin")}\"";
 
+            AppLogger.Debug($"ndstool command: {_ndsToolPath} {arguments}");
             progress?.Invoke("Démarrage du repacking de la ROM...");
 
             var processStartInfo = new ProcessStartInfo
@@ -223,9 +258,12 @@ public class NdsToolService : IApplicationService
             using var process = Process.Start(processStartInfo);
             if (process == null)
             {
+                AppLogger.Error("Failed to start ndstool process");
                 progress?.Invoke("Erreur: Impossible de démarrer ndstool");
                 return false;
             }
+
+            AppLogger.Debug("ndstool process started, waiting for completion...");
 
             // Lire la sortie
             string output = process.StandardOutput.ReadToEnd();
@@ -235,25 +273,31 @@ public class NdsToolService : IApplicationService
 
             if (!string.IsNullOrWhiteSpace(output))
             {
+                AppLogger.Debug($"ndstool output: {output}");
                 progress?.Invoke(output);
             }
 
             if (!string.IsNullOrWhiteSpace(error))
             {
+                AppLogger.Warn($"ndstool error output: {error}");
                 progress?.Invoke($"Erreur: {error}");
             }
 
             if (process.ExitCode != 0)
             {
+                AppLogger.Error($"ndstool exited with code: {process.ExitCode}");
                 progress?.Invoke($"ndstool a terminé avec le code d'erreur: {process.ExitCode}");
                 return false;
             }
 
+            AppLogger.Info($"ROM packing completed successfully: {outputRomPath}");
             progress?.Invoke($"ROM repacked avec succès: {outputRomPath}");
             return true;
         }
         catch (Exception ex)
         {
+            AppLogger.Error($"Exception during ROM packing: {ex.Message}");
+            AppLogger.Debug($"Stack trace: {ex.StackTrace}");
             progress?.Invoke($"Exception: {ex.Message}");
             return false;
         }

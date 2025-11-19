@@ -1,4 +1,5 @@
 using Clockwork.Core.Models;
+using Clockwork.Core.Logging;
 
 namespace Clockwork.Core.Services;
 
@@ -16,6 +17,7 @@ public class HeaderService : IApplicationService
 
     public void Initialize()
     {
+        AppLogger.Info("HeaderService initialized");
         _headers.Clear();
         _internalNames.Clear();
     }
@@ -42,6 +44,7 @@ public class HeaderService : IApplicationService
     /// </summary>
     public void SetRomService(RomService romService)
     {
+        AppLogger.Debug("RomService dependency set for HeaderService");
         _romService = romService;
     }
 
@@ -55,11 +58,13 @@ public class HeaderService : IApplicationService
     {
         if (_romService?.CurrentRom == null)
         {
+            AppLogger.Error("Cannot load headers: No ROM is loaded");
             return false;
         }
 
         try
         {
+            AppLogger.Info("Loading headers from ROM...");
             _headers.Clear();
             _internalNames.Clear();
 
@@ -71,13 +76,17 @@ public class HeaderService : IApplicationService
             // Load headers from unpacked/dynamicHeaders/ directory (LiTRE structure)
             if (!rom.GameDirectories.TryGetValue("dynamicHeaders", out string? headersPath))
             {
+                AppLogger.Error("dynamicHeaders directory not found in ROM structure");
                 return false;
             }
 
             if (!Directory.Exists(headersPath))
             {
+                AppLogger.Error($"dynamicHeaders directory does not exist: {headersPath}");
                 return false;
             }
+
+            AppLogger.Debug($"Scanning for header files in: {headersPath}");
 
             // Get all header files (numbered 0, 1, 2, etc. or 0000, 0001, etc.)
             var headerFiles = Directory.GetFiles(headersPath)
@@ -85,6 +94,9 @@ public class HeaderService : IApplicationService
                 .OrderBy(f => int.Parse(Path.GetFileName(f)))
                 .ToList();
 
+            AppLogger.Debug($"Found {headerFiles.Count} header files to load");
+
+            int loadedCount = 0;
             foreach (var headerFile in headerFiles)
             {
                 int headerID = int.Parse(Path.GetFileName(headerFile));
@@ -103,13 +115,20 @@ public class HeaderService : IApplicationService
                     }
 
                     _headers.Add(header);
+                    loadedCount++;
+                }
+                else
+                {
+                    AppLogger.Warn($"Failed to load header file: {headerFile}");
                 }
             }
 
+            AppLogger.Info($"Successfully loaded {loadedCount} headers");
             return _headers.Count > 0;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error($"Exception while loading headers: {ex.Message}");
             _headers.Clear();
             return false;
         }
@@ -126,15 +145,19 @@ public class HeaderService : IApplicationService
 
         try
         {
+            AppLogger.Debug("Loading internal map names from mapname.bin...");
+
             var rom = _romService.CurrentRom;
             if (!rom.GameDirectories.TryGetValue("maptable", out string? maptablePath))
             {
+                AppLogger.Warn("maptable directory not found in ROM structure");
                 return;
             }
 
             string mapnamePath = Path.Combine(maptablePath, "mapname.bin");
             if (!File.Exists(mapnamePath))
             {
+                AppLogger.Warn($"mapname.bin not found at: {mapnamePath}");
                 return;
             }
 
@@ -156,9 +179,12 @@ public class HeaderService : IApplicationService
 
                 headerID++;
             }
+
+            AppLogger.Debug($"Loaded {_internalNames.Count} internal map names");
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Warn($"Failed to load internal names: {ex.Message}");
             // If we can't load internal names, headers will just have default names
         }
     }
@@ -179,14 +205,18 @@ public class HeaderService : IApplicationService
     {
         if (_romService?.CurrentRom == null)
         {
+            AppLogger.Error("Cannot save header: No ROM is loaded");
             return false;
         }
 
         try
         {
+            AppLogger.Debug($"Saving header ID {header.HeaderID}...");
+
             var rom = _romService.CurrentRom;
             if (!rom.GameDirectories.TryGetValue("dynamicHeaders", out string? headersPath))
             {
+                AppLogger.Error("dynamicHeaders directory not found in ROM structure");
                 return false;
             }
 
@@ -197,10 +227,22 @@ public class HeaderService : IApplicationService
 
             string headerPath = existingFile ?? Path.Combine(headersPath, header.HeaderID.ToString());
 
-            return header.WriteToFile(headerPath);
+            bool success = header.WriteToFile(headerPath);
+
+            if (success)
+            {
+                AppLogger.Info($"Header ID {header.HeaderID} saved successfully");
+            }
+            else
+            {
+                AppLogger.Error($"Failed to save header ID {header.HeaderID}");
+            }
+
+            return success;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error($"Exception while saving header ID {header.HeaderID}: {ex.Message}");
             return false;
         }
     }

@@ -50,13 +50,18 @@ public class MainWindow : GameWindow
     {
         base.OnLoad();
 
+        AppLogger.Info("MainWindow OnLoad: Initializing OpenGL and ImGui");
+
         Title = "Clockwork - Pokémon ROM Editor";
 
         _imguiController = new ImGuiController(ClientSize.X, ClientSize.Y);
+        AppLogger.Debug("ImGuiController created");
 
         // Configure ImGui style
         ConfigureImGuiStyle();
+        AppLogger.Debug("ImGui style configured");
 
+        AppLogger.Info("MainWindow loaded successfully");
         Console.WriteLine("Application started successfully!");
     }
 
@@ -380,10 +385,13 @@ public class MainWindow : GameWindow
 
         if (romService?.CurrentRom?.IsLoaded != true)
         {
+            AppLogger.Warn("Save ROM requested but no ROM is loaded");
             // TODO: Show error dialog
             Console.WriteLine("No ROM loaded");
             return;
         }
+
+        AppLogger.Debug("Opening save file dialog");
 
         // Open save file dialog
         string? savePath = dialogService?.SaveFileDialog(
@@ -394,8 +402,11 @@ public class MainWindow : GameWindow
 
         if (string.IsNullOrEmpty(savePath))
         {
+            AppLogger.Debug("Save ROM cancelled by user");
             return; // User cancelled
         }
+
+        AppLogger.Info($"User requested ROM save to: {savePath}");
 
         _saveRomLog = "";
         _isSavingRom = true;
@@ -415,10 +426,12 @@ public class MainWindow : GameWindow
 
             if (success)
             {
+                AppLogger.Info("ROM packing completed successfully via UI");
                 _saveRomLog += "\n=== ROM saved successfully! ===\n";
             }
             else
             {
+                AppLogger.Error("ROM packing failed via UI");
                 _saveRomLog += "\n=== ROM save failed! ===\n";
             }
         });
@@ -477,7 +490,12 @@ public class MainWindow : GameWindow
     {
         base.OnUnload();
 
+        AppLogger.Info("MainWindow OnUnload: Cleaning up resources");
+
         _imguiController?.Dispose();
+        AppLogger.Debug("ImGuiController disposed");
+
         _appContext.Shutdown();
+        AppLogger.Info("MainWindow unloaded");
     }
 }
