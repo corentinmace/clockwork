@@ -256,7 +256,7 @@ public class HeaderEditorView : IView
             // Button to open Matrix Editor
             if (_matrixEditorView != null)
             {
-                DrawOpenEditorButton("Ouvrir dans l'éditeur de matrices", () =>
+                DrawOpenEditorButton("openMatrix", "Ouvrir dans l'éditeur de matrices", () =>
                 {
                     _matrixEditorView.OpenWithMatrixID(_currentHeader.MatrixID);
                 });
@@ -350,7 +350,7 @@ public class HeaderEditorView : IView
             // Button to open Script Editor
             if (_scriptEditorWindow != null)
             {
-                DrawOpenEditorButton("Ouvrir dans l'éditeur de scripts", () =>
+                DrawOpenEditorButton("openScript", "Ouvrir dans l'éditeur de scripts", () =>
                 {
                     _scriptEditorWindow.OpenWithScriptID(_currentHeader.ScriptFileID);
                 });
@@ -384,7 +384,7 @@ public class HeaderEditorView : IView
             // Button to open Text Editor
             if (_textEditorWindow != null)
             {
-                DrawOpenEditorButton("Ouvrir dans l'éditeur de textes", () =>
+                DrawOpenEditorButton("openText", "Ouvrir dans l'éditeur de textes", () =>
                 {
                     _textEditorWindow.OpenWithArchiveID(_currentHeader.TextArchiveID);
                 });
@@ -531,16 +531,16 @@ public class HeaderEditorView : IView
     /// <summary>
     /// Draw a navigation button that opens an editor with a specific ID
     /// </summary>
-    private void DrawOpenEditorButton(string tooltip, Action openAction)
+    private void DrawOpenEditorButton(string uniqueId, string tooltip, Action openAction)
     {
         ImGui.SameLine();
 
-        // Draw a small arrow button
+        // Draw a small arrow button with unique ID (##uniqueId makes it invisible to user but unique to ImGui)
         ImGui.PushStyleColor(ImGuiCol.Button, new System.Numerics.Vector4(0.3f, 0.6f, 0.9f, 1.0f));
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f));
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(0.2f, 0.5f, 0.8f, 1.0f));
 
-        if (ImGui.Button("→"))
+        if (ImGui.Button($"→##{uniqueId}"))
         {
             AppLogger.Info($"[HeaderEditor] Navigation button clicked: {tooltip}");
             openAction();
