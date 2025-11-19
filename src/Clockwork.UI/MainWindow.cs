@@ -169,7 +169,6 @@ public class MainWindow
         // Clear screen
         _commandList.SetFramebuffer(_graphicsDevice.MainSwapchain.Framebuffer);
         _commandList.ClearColorTarget(0, new RgbaFloat(0.1f, 0.1f, 0.1f, 1.0f));
-        _commandList.ClearDepthStencil(1f);
 
         // Draw ImGui UI
         DrawUI();
