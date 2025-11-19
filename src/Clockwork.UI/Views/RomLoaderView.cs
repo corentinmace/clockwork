@@ -179,7 +179,7 @@ public class RomLoaderView : IView
                         ImGui.Spacing();
                         ImGui.Separator();
                         ImGui.Text("Extraction Logs:");
-                        ImGui.BeginChild("ExtractionLogs", new System.Numerics.Vector2(0, 150), ImGuiChildFlags.Borders);
+                        ImGui.BeginChild("ExtractionLogs", new System.Numerics.Vector2(0, 150), ImGuiChildFlags.Border);
                         ImGui.TextWrapped(_extractionLog);
                         ImGui.EndChild();
                     }

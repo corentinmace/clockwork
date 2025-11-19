@@ -153,7 +153,7 @@ public class LogViewerWindow : IView
     {
         float availableHeight = ImGui.GetContentRegionAvail().Y;
 
-        ImGui.BeginChild("LogScrollArea", new Vector2(0, availableHeight), ImGuiChildFlags.Borders);
+        ImGui.BeginChild("LogScrollArea", new Vector2(0, availableHeight), ImGuiChildFlags.Border);
 
         if (ImGui.BeginTable("LogTable", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY))
         {
