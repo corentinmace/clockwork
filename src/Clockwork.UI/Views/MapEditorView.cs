@@ -157,7 +157,7 @@ public class MapEditorView : IView
         float listHeight = availableHeight - 60;
 
         // Map list with scrolling
-        ImGui.BeginChild("MapList", new System.Numerics.Vector2(-1, listHeight), ImGuiChildFlags.Border);
+        ImGui.BeginChild("MapList", new System.Numerics.Vector2(-1, listHeight), true);
 
         var maps = _mapService.Maps;
         foreach (var map in maps)
@@ -189,7 +189,7 @@ public class MapEditorView : IView
         if (_currentMap == null) return;
 
         // Scrollable editor area
-        ImGui.BeginChild("MapEditorScroll", new System.Numerics.Vector2(0, 0), ImGuiChildFlags.None);
+        ImGui.BeginChild("MapEditorScroll", new System.Numerics.Vector2(0, 0), false);
 
         // Map info
         ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), $"Map {_currentMap.MapID}");
@@ -279,7 +279,7 @@ public class MapEditorView : IView
             ImGui.Spacing();
 
             // Building list
-            ImGui.BeginChild("BuildingList", new System.Numerics.Vector2(0, 200), ImGuiChildFlags.Border);
+            ImGui.BeginChild("BuildingList", new System.Numerics.Vector2(0, 200), true);
 
             for (int i = 0; i < _currentMap.Buildings.Count; i++)
             {
@@ -640,7 +640,7 @@ public class MapEditorView : IView
         ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), $"Editing Building {_selectedBuildingIndex}");
         ImGui.Spacing();
 
-        ImGui.BeginChild("BuildingEditorScroll", new System.Numerics.Vector2(0, 300), ImGuiChildFlags.Border);
+        ImGui.BeginChild("BuildingEditorScroll", new System.Numerics.Vector2(0, 300), true);
 
         // Model ID
         int modelID = (int)_editingBuilding.ModelID;
