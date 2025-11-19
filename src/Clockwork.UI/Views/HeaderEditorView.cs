@@ -4,6 +4,7 @@ using Clockwork.Core.Formats.NDS.MessageEnc;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
+using Clockwork.UI.Icons;
 using ImGuiNET;
 
 namespace Clockwork.UI.Views;
@@ -541,7 +542,7 @@ public class HeaderEditorView : IView
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f));
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(0.2f, 0.5f, 0.8f, 1.0f));
 
-        if (ImGui.Button($"→##{uniqueId}"))
+        if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}##{uniqueId}"))
         {
             AppLogger.Info($"[HeaderEditor] Navigation button clicked: {tooltip}");
             openAction();

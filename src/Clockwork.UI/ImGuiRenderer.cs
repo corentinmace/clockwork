@@ -77,7 +77,12 @@ namespace Clockwork.UI
             IntPtr context = ImGui.CreateContext();
             ImGui.SetCurrentContext(context);
 
+            // Load default font
             ImGui.GetIO().Fonts.AddFontDefault();
+
+            // Load and merge Font Awesome icons
+            LoadFontAwesome();
+
             ImGui.GetIO().Fonts.Flags |= ImFontAtlasFlags.NoBakedLines;
 
             CreateDeviceResources(gd, outputDescription);
@@ -86,6 +91,63 @@ namespace Clockwork.UI
 
             ImGui.NewFrame();
             _frameBegun = true;
+        }
+
+        /// <summary>
+        /// Load Font Awesome icons and merge them with the default font
+        /// </summary>
+        private unsafe void LoadFontAwesome()
+        {
+            try
+            {
+                // Load Font Awesome from embedded resources
+                byte[] fontData = GetEmbeddedResourceBytes("Clockwork.UI.Assets.Fonts.fa-solid-900.otf");
+
+                if (fontData == null || fontData.Length == 0)
+                {
+                    Console.WriteLine("Warning: Font Awesome not found in embedded resources. Icons will not be available.");
+                    return;
+                }
+
+                // Configuration for merging icons into default font
+                ImFontConfigPtr config = ImGuiNative.ImFontConfig_ImFontConfig();
+                config.MergeMode = true;  // Merge icons into previous font
+                config.GlyphMinAdvanceX = 13.0f; // Fixed width for icons
+                config.GlyphOffset = new Vector2(0, 0);
+                config.OversampleH = 1;
+                config.OversampleV = 1;
+                config.PixelSnapH = true;
+
+                // Define glyph ranges for Font Awesome icons
+                // Font Awesome 6 uses Unicode range: 0xf000 - 0xf8ff (private use area)
+                ushort[] iconRanges = new ushort[]
+                {
+                    0xf000, 0xf8ff, // Font Awesome icon range
+                    0
+                };
+
+                fixed (ushort* rangesPtr = iconRanges)
+                {
+                    // Pin font data in memory
+                    fixed (byte* fontDataPtr = fontData)
+                    {
+                        // Add Font Awesome to font atlas (merged with default font)
+                        ImGui.GetIO().Fonts.AddFontFromMemoryTTF(
+                            (IntPtr)fontDataPtr,
+                            fontData.Length,
+                            16.0f,  // Font size
+                            config,
+                            (IntPtr)rangesPtr
+                        );
+                    }
+                }
+
+                ImGuiNative.ImFontConfig_destroy(config);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error loading Font Awesome: {ex.Message}");
+            }
         }
 
         public void WindowResized(int width, int height)

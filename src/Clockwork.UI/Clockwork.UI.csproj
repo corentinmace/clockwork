@@ -25,6 +25,11 @@
     <EmbeddedResource Include="Assets\GLSL\*.glsl" />
   </ItemGroup>
 
+  <!-- Embed Font Awesome icon font -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Fonts\*.otf" />
+  </ItemGroup>
+
   <!-- Copy Tools folder to output directory -->
   <ItemGroup>
     <None Include="..\..\Tools\**\*.*">
