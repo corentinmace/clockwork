@@ -257,7 +257,7 @@ public class HeaderEditorView : IView
             // Button to open Matrix Editor
             if (_matrixEditorView != null)
             {
-                DrawOpenEditorButton("openMatrix", "Ouvrir dans l'éditeur de matrices", () =>
+                DrawOpenEditorButton("openMatrix", "Ouvrir dans l'éditeur de matrices", "Matrix Editor", () =>
                 {
                     _matrixEditorView.OpenWithMatrixID(_currentHeader.MatrixID);
                 });
@@ -351,7 +351,7 @@ public class HeaderEditorView : IView
             // Button to open Script Editor
             if (_scriptEditorWindow != null)
             {
-                DrawOpenEditorButton("openScript", "Ouvrir dans l'éditeur de scripts", () =>
+                DrawOpenEditorButton("openScript", "Ouvrir dans l'éditeur de scripts", "Script Editor", () =>
                 {
                     _scriptEditorWindow.OpenWithScriptID(_currentHeader.ScriptFileID);
                 });
@@ -385,7 +385,7 @@ public class HeaderEditorView : IView
             // Button to open Text Editor
             if (_textEditorWindow != null)
             {
-                DrawOpenEditorButton("openText", "Ouvrir dans l'éditeur de textes", () =>
+                DrawOpenEditorButton("openText", "Ouvrir dans l'éditeur de textes", "Text Editor", () =>
                 {
                     _textEditorWindow.OpenWithArchiveID(_currentHeader.TextArchiveID);
                 });
@@ -532,7 +532,7 @@ public class HeaderEditorView : IView
     /// <summary>
     /// Draw a navigation button that opens an editor with a specific ID
     /// </summary>
-    private void DrawOpenEditorButton(string uniqueId, string tooltip, Action openAction)
+    private void DrawOpenEditorButton(string uniqueId, string tooltip, string windowName, Action openAction)
     {
         ImGui.SameLine();
 
@@ -545,6 +545,9 @@ public class HeaderEditorView : IView
         {
             AppLogger.Info($"[HeaderEditor] Navigation button clicked: {tooltip}");
             openAction();
+
+            // Force focus on the target window (works better for docked tabs than internal _shouldFocus)
+            ImGui.SetWindowFocus(windowName);
         }
 
         ImGui.PopStyleColor(3);
