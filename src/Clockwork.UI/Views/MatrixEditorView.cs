@@ -217,9 +217,10 @@ public class MatrixEditorView : IView
         ImGui.Text("Headers (IDs des headers de carte)");
         ImGui.Separator();
 
+        // Arrays use [row, col] indexing
         DrawGrid(_currentMatrix.Headers, "Headers",
-            (row, col) => _currentMatrix.Headers[col, row],
-            (row, col, value) => _currentMatrix.Headers[col, row] = value,
+            (row, col) => _currentMatrix.Headers[row, col],
+            (row, col, value) => _currentMatrix.Headers[row, col] = value,
             isUShort: true);
     }
 
@@ -230,9 +231,10 @@ public class MatrixEditorView : IView
         ImGui.Text("Altitudes (Altitudes des cartes)");
         ImGui.Separator();
 
+        // Arrays use [row, col] indexing
         DrawGrid(_currentMatrix.Altitudes, "Altitudes",
-            (row, col) => _currentMatrix.Altitudes[col, row],
-            (row, col, value) => _currentMatrix.Altitudes[col, row] = (byte)value,
+            (row, col) => _currentMatrix.Altitudes[row, col],
+            (row, col, value) => _currentMatrix.Altitudes[row, col] = (byte)value,
             isUShort: false);
     }
 
@@ -243,9 +245,10 @@ public class MatrixEditorView : IView
         ImGui.Text("MapFiles (IDs des fichiers de carte)");
         ImGui.Separator();
 
+        // Arrays use [row, col] indexing
         DrawGrid(_currentMatrix.Maps, "MapFiles",
-            (row, col) => _currentMatrix.Maps[col, row],
-            (row, col, value) => _currentMatrix.Maps[col, row] = value,
+            (row, col) => _currentMatrix.Maps[row, col],
+            (row, col, value) => _currentMatrix.Maps[row, col] = value,
             isUShort: true);
     }
 
