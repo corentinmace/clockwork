@@ -10,7 +10,7 @@ namespace Clockwork.UI.Views
     /// <summary>
     /// Text Editor window for editing Nintendo DS message archives
     /// </summary>
-    public class TextEditorWindow
+    public class TextEditorWindow : IView
     {
         private List<string> messages = new List<string>();
         private string currentFilePath = "";
@@ -24,6 +24,8 @@ namespace Clockwork.UI.Views
         private string searchQuery = "";
         private List<int> searchResults = new List<int>();
         private int currentSearchIndex = -1;
+
+        public bool IsVisible { get; set; } = false;
 
         public TextEditorWindow()
         {
@@ -124,13 +126,16 @@ namespace Clockwork.UI.Views
         /// </summary>
         public void Draw()
         {
+            if (!IsVisible)
+                return;
+
             // Update status message timer
             if (statusMessageTimer > 0f)
             {
                 statusMessageTimer -= ImGui.GetIO().DeltaTime;
             }
 
-            if (ImGui.Begin("Text Editor"))
+            if (ImGui.Begin("Text Editor", ref IsVisible))
             {
                 DrawToolbar();
                 ImGui.Separator();
