@@ -59,7 +59,13 @@ public static class SettingsManager
                     AppLogger.Debug("Loading settings from file...");
 
                     string json = File.ReadAllText(_settingsFilePath);
-                    var loadedSettings = JsonSerializer.Deserialize<ClockworkSettings>(json);
+
+                    var options = new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    };
+
+                    var loadedSettings = JsonSerializer.Deserialize<ClockworkSettings>(json, options);
 
                     if (loadedSettings != null)
                     {
