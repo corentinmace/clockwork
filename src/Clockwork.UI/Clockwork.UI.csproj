@@ -20,6 +20,11 @@
     <ProjectReference Include="..\Clockwork.Core\Clockwork.Core.csproj" />
   </ItemGroup>
 
+  <!-- Embed GLSL shaders as resources for ImGuiRenderer -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\GLSL\*.glsl" />
+  </ItemGroup>
+
   <!-- Copy Tools folder to output directory -->
   <ItemGroup>
     <None Include="..\..\Tools\**\*.*">
