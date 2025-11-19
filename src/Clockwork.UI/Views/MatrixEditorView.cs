@@ -320,7 +320,8 @@ public class MatrixEditorView : IView
         ImGuiTableFlags flags = ImGuiTableFlags.Borders |
                                 ImGuiTableFlags.RowBg |
                                 ImGuiTableFlags.ScrollY | // Only vertical scroll
-                                ImGuiTableFlags.SizingStretchProp; // Stretch to fit width
+                                ImGuiTableFlags.SizingStretchProp | // Stretch to fit width
+                                ImGuiTableFlags.NoHostExtendY; // Don't expand row height for widgets
 
         // Calculate available size
         Vector2 availSize = ImGui.GetContentRegionAvail();
@@ -382,6 +383,9 @@ public class MatrixEditorView : IView
                         float cellWidth = ImGui.GetColumnWidth();
                         ImGui.SetNextItemWidth(Math.Min(cellWidth - 10, 80)); // Max 80px or column width
 
+                        // Reduce padding to match text height
+                        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 2));
+
                         // Only set focus on first frame of editing
                         bool shouldSetFocus = _justStartedEditing;
                         if (_justStartedEditing)
@@ -404,6 +408,9 @@ public class MatrixEditorView : IView
                             _editingCol = -1;
                         }
 
+                        // Pop style after drawing InputText (always)
+                        ImGui.PopStyleVar();
+
                         // Only check for lost focus if we're not on the first frame
                         // (SetKeyboardFocusHere needs one frame to take effect)
                         if (!shouldSetFocus)
@@ -421,6 +428,7 @@ public class MatrixEditorView : IView
                     else
                     {
                         // Display mode - use text + invisible button to make it clickable
+                        ImGui.AlignTextToFramePadding(); // Align text height with InputText
                         ImGui.Text(displayValue);
 
                         // Check for click on the text
