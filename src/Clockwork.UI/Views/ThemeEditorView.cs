@@ -35,8 +35,8 @@ public class ThemeEditorView : IView
         if (!IsVisible) return;
 
         ImGui.SetNextWindowSize(new Vector2(900, 700), ImGuiCond.FirstUseEver);
-
-        if (ImGui.Begin("Éditeur de thèmes", ref IsVisible))
+        bool isVisible = IsVisible;
+        if (ImGui.Begin("Éditeur de thèmes", ref isVisible))
         {
             DrawThemeSelector();
 
@@ -352,17 +352,20 @@ public class ThemeEditorView : IView
         if (_editingTheme == null) return;
 
         ImGui.Text("Propriétés de style:");
-
-        if (ImGui.SliderFloat("Arrondi fenêtres", ref _editingTheme.WindowRounding, 0f, 12f))
+        float windowRounding = _editingTheme.WindowRounding;
+        if (ImGui.SliderFloat("Arrondi fenêtres", ref windowRounding, 0f, 12f))
             _hasUnsavedChanges = true;
 
-        if (ImGui.SliderFloat("Arrondi frames", ref _editingTheme.FrameRounding, 0f, 12f))
+        float frameRounding = _editingTheme.FrameRounding;
+        if (ImGui.SliderFloat("Arrondi frames", ref frameRounding, 0f, 12f))
             _hasUnsavedChanges = true;
 
-        if (ImGui.SliderFloat("Arrondi sliders", ref _editingTheme.GrabRounding, 0f, 12f))
+        float grabRounding = _editingTheme.GrabRounding;
+        if (ImGui.SliderFloat("Arrondi sliders", ref grabRounding, 0f, 12f))
             _hasUnsavedChanges = true;
 
-        if (ImGui.SliderFloat("Arrondi onglets", ref _editingTheme.TabRounding, 0f, 12f))
+        float tabRounding = _editingTheme.TabRounding;
+        if (ImGui.SliderFloat("Arrondi onglets", ref tabRounding, 0f, 12f))
             _hasUnsavedChanges = true;
 
         var windowPadding = _editingTheme.WindowPadding;
