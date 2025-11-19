@@ -25,6 +25,7 @@ namespace Clockwork.UI.Views
         private bool isDirty = false;
         private string statusMessage = "";
         private float statusMessageTimer = 0f;
+        private ushort encryptionKey = 0; // Store the encryption key from .txt file
 
         // ROM text archives
         private List<string> availableTextArchives = new List<string>();
@@ -56,7 +57,7 @@ namespace Clockwork.UI.Views
             if (_romService?.CurrentRom?.GameDirectories == null)
                 return;
 
-            if (!_romService.CurrentRom.GameDirectories.TryGetValue("textArchives", out string? textArchivesPath))
+            if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out string? textArchivesPath))
                 return;
 
             if (!Directory.Exists(textArchivesPath))
@@ -64,8 +65,7 @@ namespace Clockwork.UI.Views
 
             try
             {
-                var files = Directory.GetFiles(textArchivesPath)
-                    .Where(f => !f.EndsWith(".txt")) // Exclude .txt files, only binary archives
+                var files = Directory.GetFiles(textArchivesPath, "*.txt") // Only .txt files from expanded/
                     .OrderBy(f => f)
                     .ToList();
 
@@ -88,18 +88,58 @@ namespace Clockwork.UI.Views
         }
 
         /// <summary>
-        /// Load a message archive file
+        /// Load a message archive file (.txt format from expanded/)
+        /// Format:
+        /// # Key: 0x1234
+        /// message 1
+        /// message 2
+        /// ...
         /// </summary>
         public void LoadFile(string filePath)
         {
             try
             {
-                messages = EncryptText.ReadMessageArchive(filePath, false);
+                if (!File.Exists(filePath))
+                {
+                    SetStatusMessage($"File not found: {filePath}");
+                    return;
+                }
+
+                var lines = File.ReadAllLines(filePath).ToList();
+
+                if (lines.Count == 0)
+                {
+                    SetStatusMessage("File is empty");
+                    return;
+                }
+
+                // Parse first line to extract encryption key
+                string firstLine = lines[0];
+                if (firstLine.StartsWith("# Key: 0x") || firstLine.StartsWith("# Key: "))
+                {
+                    string keyStr = firstLine.Substring(7).Trim();
+                    if (keyStr.StartsWith("0x"))
+                        keyStr = keyStr.Substring(2);
+
+                    if (ushort.TryParse(keyStr, System.Globalization.NumberStyles.HexNumber, null, out ushort key))
+                    {
+                        encryptionKey = key;
+                    }
+
+                    // Remove first line (key line)
+                    lines.RemoveAt(0);
+                }
+                else
+                {
+                    encryptionKey = 0;
+                }
+
+                messages = lines;
                 currentFilePath = filePath;
                 selectedMessageIndex = -1;
                 editBuffer = "";
                 isDirty = false;
-                SetStatusMessage($"Loaded {messages.Count} messages from {Path.GetFileName(filePath)}");
+                SetStatusMessage($"Loaded {messages.Count} messages from {Path.GetFileName(filePath)} (Key: 0x{encryptionKey:X4})");
             }
             catch (Exception ex)
             {
@@ -109,7 +149,7 @@ namespace Clockwork.UI.Views
         }
 
         /// <summary>
-        /// Save the current message archive
+        /// Save the current message archive (.txt format to expanded/)
         /// </summary>
         public void SaveFile()
         {
@@ -127,7 +167,12 @@ namespace Clockwork.UI.Views
                     messages[selectedMessageIndex] = editBuffer;
                 }
 
-                EncryptText.WriteMessageArchive(currentFilePath, messages, false);
+                // Write with key in first line
+                var lines = new List<string>();
+                lines.Add($"# Key: 0x{encryptionKey:X4}");
+                lines.AddRange(messages);
+
+                File.WriteAllLines(currentFilePath, lines);
                 isDirty = false;
                 SetStatusMessage($"Saved {messages.Count} messages to {Path.GetFileName(currentFilePath)}");
             }
@@ -137,45 +182,6 @@ namespace Clockwork.UI.Views
             }
         }
 
-        /// <summary>
-        /// Export messages to a text file
-        /// </summary>
-        public void ExportToText(string textPath)
-        {
-            try
-            {
-                EncryptText.ExportToTextFile(currentFilePath, textPath);
-                SetStatusMessage($"Exported to {Path.GetFileName(textPath)}");
-            }
-            catch (Exception ex)
-            {
-                SetStatusMessage($"Error exporting: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Import messages from a text file
-        /// </summary>
-        public void ImportFromText(string textPath)
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(currentFilePath))
-                {
-                    SetStatusMessage("Load a binary file first to get the encryption key");
-                    return;
-                }
-
-                EncryptText.ImportFromTextFile(textPath, currentFilePath, false);
-                messages = EncryptText.ReadMessageArchive(currentFilePath, false);
-                isDirty = false;
-                SetStatusMessage($"Imported {messages.Count} messages from {Path.GetFileName(textPath)}");
-            }
-            catch (Exception ex)
-            {
-                SetStatusMessage($"Error importing: {ex.Message}");
-            }
-        }
 
         /// <summary>
         /// Draw the ImGui window
@@ -262,24 +268,6 @@ namespace Clockwork.UI.Views
             if (ImGui.Button("Save") && !string.IsNullOrEmpty(currentFilePath))
             {
                 SaveFile();
-            }
-
-            ImGui.SameLine();
-            if (ImGui.Button("Export to TXT"))
-            {
-                // TODO: Save file dialog
-                if (!string.IsNullOrEmpty(currentFilePath))
-                {
-                    string txtPath = Path.ChangeExtension(currentFilePath, ".txt");
-                    ExportToText(txtPath);
-                }
-            }
-
-            ImGui.SameLine();
-            if (ImGui.Button("Import from TXT"))
-            {
-                // TODO: Open file dialog
-                SetStatusMessage("File dialog not implemented yet");
             }
 
             ImGui.SameLine();
