@@ -36,6 +36,7 @@ public class MatrixEditorView : IView
     private int _editingRow = -1;
     private int _editingCol = -1;
     private string _editBuffer = "";
+    private bool _justStartedEditing = false;
 
     // Scroll position
     private Vector2 _scrollPos = Vector2.Zero;
@@ -351,7 +352,14 @@ public class MatrixEditorView : IView
                     {
                         // Edit mode
                         ImGui.SetNextItemWidth(50);
-                        ImGui.SetKeyboardFocusHere();
+
+                        // Only set focus on first frame of editing
+                        if (_justStartedEditing)
+                        {
+                            ImGui.SetKeyboardFocusHere();
+                            _justStartedEditing = false;
+                        }
+
                         if (ImGui.InputText(cellId, ref _editBuffer, 10, ImGuiInputTextFlags.EnterReturnsTrue))
                         {
                             // Save edit
@@ -379,6 +387,7 @@ public class MatrixEditorView : IView
                             _editingRow = row;
                             _editingCol = col;
                             _editBuffer = displayValue == "-" ? "" : displayValue;
+                            _justStartedEditing = true;
                         }
 
                         // Double-click to open map editor (MapFiles only)
