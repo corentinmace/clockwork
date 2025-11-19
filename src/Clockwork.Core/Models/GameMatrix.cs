@@ -11,6 +11,9 @@ public class GameMatrix
     // Matrix ID
     public int MatrixID { get; set; }
 
+    // Matrix name (read from file)
+    public string Name { get; set; } = string.Empty;
+
     // Grid dimensions
     public byte Width { get; set; }
     public byte Height { get; set; }
@@ -62,6 +65,10 @@ public class GameMatrix
             // Read flags
             matrix.HasHeaders = reader.ReadByte() == 1;
             matrix.HasAltitudes = reader.ReadByte() == 1;
+
+            // Read name (length-prefixed UTF-8 string)
+            byte nameLength = reader.ReadByte();
+            matrix.Name = System.Text.Encoding.UTF8.GetString(reader.ReadBytes(nameLength));
 
             // Initialize arrays with [height, width] indexing (row-major order)
             matrix.Headers = new ushort[matrix.Height, matrix.Width];
@@ -138,6 +145,11 @@ public class GameMatrix
         // Write flags
         writer.Write((byte)(HasHeaders ? 1 : 0));
         writer.Write((byte)(HasAltitudes ? 1 : 0));
+
+        // Write name (length-prefixed UTF-8 string)
+        byte[] nameBytes = System.Text.Encoding.UTF8.GetBytes(Name ?? string.Empty);
+        writer.Write((byte)nameBytes.Length);
+        writer.Write(nameBytes);
 
         // IMPORTANT: Write order matches LiTRE: Headers → Altitudes → Maps
 
