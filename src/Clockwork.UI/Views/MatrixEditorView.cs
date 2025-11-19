@@ -48,6 +48,10 @@ public class MatrixEditorView : IView
     // Cache for matrix names to avoid reading all files multiple times
     private Dictionary<int, string> _matrixNamesCache = new();
 
+    // Confirmation dialog state
+    private bool _showDeleteConfirmation = false;
+    private int _matrixToDelete = -1;
+
     public void Initialize(ApplicationContext appContext)
     {
         _appContext = appContext;
@@ -93,6 +97,9 @@ public class MatrixEditorView : IView
         ImGui.Separator();
 
         DrawMatrixTabs();
+
+        // Delete confirmation dialog
+        DrawDeleteConfirmationDialog();
 
         ImGui.End();
     }
@@ -142,6 +149,18 @@ public class MatrixEditorView : IView
         if (ImGui.Button("Sauvegarder"))
         {
             SaveMatrix();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Ajouter"))
+        {
+            AddNewMatrix();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button("Supprimer"))
+        {
+            RequestDeleteMatrix(_selectedMatrixIndex);
         }
 
         ImGui.SameLine();
@@ -882,6 +901,197 @@ public class MatrixEditorView : IView
         catch
         {
             return string.Empty;
+        }
+    }
+
+    private void AddNewMatrix()
+    {
+        if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+        {
+            AppLogger.Warn("[MatrixEditor] Cannot add matrix: ROM not loaded");
+            return;
+        }
+
+        try
+        {
+            // Find next available matrix index
+            string matricesPath = Path.Combine(
+                _romService.CurrentRom.RomPath,
+                "unpacked",
+                "matrices"
+            );
+
+            if (!Directory.Exists(matricesPath))
+            {
+                Directory.CreateDirectory(matricesPath);
+            }
+
+            // Get existing matrix indices
+            var existingMatrices = Directory.GetFiles(matricesPath)
+                .Where(f => string.IsNullOrEmpty(Path.GetExtension(f)))
+                .Where(f => int.TryParse(Path.GetFileName(f), out _))
+                .Select(f => int.Parse(Path.GetFileName(f)))
+                .OrderBy(i => i)
+                .ToList();
+
+            // Find first gap or use next number
+            int newIndex = 0;
+            for (int i = 0; i < existingMatrices.Count; i++)
+            {
+                if (existingMatrices[i] != i)
+                {
+                    newIndex = i;
+                    break;
+                }
+                newIndex = i + 1;
+            }
+
+            // Create new empty matrix (1x1)
+            var newMatrix = new GameMatrix
+            {
+                Width = 1,
+                Height = 1,
+                Name = $"Nouvelle Matrix {newIndex}",
+                Maps = new ushort[1, 1],
+                Headers = new ushort[1, 1],
+                Altitudes = new byte[1, 1]
+            };
+
+            // Initialize with empty cells
+            newMatrix.Maps[0, 0] = GameMatrix.EMPTY_CELL;
+            newMatrix.Headers[0, 0] = 0;
+            newMatrix.Altitudes[0, 0] = 0;
+
+            // Save to file
+            string matrixFileName = newIndex.ToString("D4");
+            string matrixPath = Path.Combine(matricesPath, matrixFileName);
+
+            byte[] data = newMatrix.ToBytes();
+            File.WriteAllBytes(matrixPath, data);
+
+            AppLogger.Info($"[MatrixEditor] Created new matrix at index {newIndex}");
+
+            // Refresh cache and UI
+            _cachedMatrixCount = -1;
+            _matrixNamesCache.Clear();
+            _hasLoggedMatrixPath = false;
+
+            // Load the new matrix
+            _selectedMatrixIndex = newIndex;
+            LoadMatrix(newIndex);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"[MatrixEditor] Error creating new matrix: {ex.Message}");
+            AppLogger.Error($"[MatrixEditor] Stack trace: {ex.StackTrace}");
+        }
+    }
+
+    private void RequestDeleteMatrix(int matrixIndex)
+    {
+        _matrixToDelete = matrixIndex;
+        _showDeleteConfirmation = true;
+    }
+
+    private void DrawDeleteConfirmationDialog()
+    {
+        if (!_showDeleteConfirmation)
+            return;
+
+        ImGui.OpenPopup("Supprimer la matrice");
+
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(400, 150));
+
+        if (ImGui.BeginPopupModal("Supprimer la matrice", ref _showDeleteConfirmation, ImGuiWindowFlags.NoResize))
+        {
+            ImGui.TextWrapped($"Êtes-vous sûr de vouloir supprimer la matrice {_matrixToDelete} ?");
+            ImGui.TextWrapped("Cette action est irréversible.");
+
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            float buttonWidth = 120;
+            float spacing = ImGui.GetStyle().ItemSpacing.X;
+            float totalWidth = buttonWidth * 2 + spacing;
+            float offsetX = (ImGui.GetContentRegionAvail().X - totalWidth) * 0.5f;
+
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + offsetX);
+
+            if (ImGui.Button("Confirmer", new Vector2(buttonWidth, 0)))
+            {
+                DeleteMatrix(_matrixToDelete);
+                _showDeleteConfirmation = false;
+                ImGui.CloseCurrentPopup();
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Annuler", new Vector2(buttonWidth, 0)))
+            {
+                _showDeleteConfirmation = false;
+                ImGui.CloseCurrentPopup();
+            }
+
+            ImGui.EndPopup();
+        }
+    }
+
+    private void DeleteMatrix(int matrixIndex)
+    {
+        if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+        {
+            AppLogger.Warn("[MatrixEditor] Cannot delete matrix: ROM not loaded");
+            return;
+        }
+
+        try
+        {
+            string matrixFileName = matrixIndex.ToString("D4");
+            string matrixPath = Path.Combine(
+                _romService.CurrentRom.RomPath,
+                "unpacked",
+                "matrices",
+                matrixFileName
+            );
+
+            if (!File.Exists(matrixPath))
+            {
+                AppLogger.Warn($"[MatrixEditor] Matrix file not found for deletion: {matrixPath}");
+                return;
+            }
+
+            // Delete the file
+            File.Delete(matrixPath);
+            AppLogger.Info($"[MatrixEditor] Deleted matrix {matrixIndex}");
+
+            // Remove from cache
+            _matrixNamesCache.Remove(matrixIndex);
+
+            // Refresh cache
+            _cachedMatrixCount = -1;
+            _hasLoggedMatrixPath = false;
+
+            // If we deleted the currently loaded matrix, clear it
+            if (_selectedMatrixIndex == matrixIndex)
+            {
+                _currentMatrix = null;
+                _matrixLoaded = false;
+
+                // Try to load another matrix if available
+                int matrixCount = GetMatrixCount();
+                if (matrixCount > 0)
+                {
+                    _selectedMatrixIndex = 0;
+                    LoadMatrix(0);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"[MatrixEditor] Error deleting matrix {matrixIndex}: {ex.Message}");
+            AppLogger.Error($"[MatrixEditor] Stack trace: {ex.StackTrace}");
         }
     }
 }
