@@ -280,6 +280,9 @@ namespace Clockwork.UI.Views
                 DrawStatusBar();
             }
             ImGui.End();
+
+            // Update visibility state from window close button
+            IsVisible = isVisible;
         }
 
         private void DrawToolbar()
