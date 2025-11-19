@@ -39,38 +39,39 @@ public class ImGuiController : IDisposable
     private readonly Dictionary<uint, ImGuiViewportWindow> _viewportWindows = new();
 
     // Keep delegate references to prevent garbage collection
+    // Note: Use IntPtr for viewport parameter, not ImGuiViewportPtr (managed struct can't be marshalled)
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Platform_CreateWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_CreateWindowDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Platform_DestroyWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_DestroyWindowDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Platform_ShowWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_ShowWindowDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Platform_SetWindowPosDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 pos);
+    private delegate void Platform_SetWindowPosDelegate(IntPtr viewport, System.Numerics.Vector2 pos);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate System.Numerics.Vector2 Platform_GetWindowPosDelegate(ImGuiViewportPtr viewport);
+    private delegate System.Numerics.Vector2 Platform_GetWindowPosDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Platform_SetWindowSizeDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 size);
+    private delegate void Platform_SetWindowSizeDelegate(IntPtr viewport, System.Numerics.Vector2 size);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate System.Numerics.Vector2 Platform_GetWindowSizeDelegate(ImGuiViewportPtr viewport);
+    private delegate System.Numerics.Vector2 Platform_GetWindowSizeDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Platform_SetWindowFocusDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_SetWindowFocusDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate bool Platform_GetWindowFocusDelegate(ImGuiViewportPtr viewport);
+    private delegate byte Platform_GetWindowFocusDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate bool Platform_GetWindowMinimizedDelegate(ImGuiViewportPtr viewport);
+    private delegate byte Platform_GetWindowMinimizedDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Platform_SetWindowTitleDelegate(ImGuiViewportPtr viewport, IntPtr title);
+    private delegate void Platform_SetWindowTitleDelegate(IntPtr viewport, IntPtr title);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Renderer_CreateWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Renderer_CreateWindowDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Renderer_DestroyWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Renderer_DestroyWindowDelegate(IntPtr viewport);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Renderer_SetWindowSizeDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 size);
+    private delegate void Renderer_SetWindowSizeDelegate(IntPtr viewport, System.Numerics.Vector2 size);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Renderer_RenderWindowDelegate(ImGuiViewportPtr viewport, IntPtr renderArg);
+    private delegate void Renderer_RenderWindowDelegate(IntPtr viewport, IntPtr renderArg);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-    private delegate void Renderer_SwapBuffersDelegate(ImGuiViewportPtr viewport, IntPtr renderArg);
+    private delegate void Renderer_SwapBuffersDelegate(IntPtr viewport, IntPtr renderArg);
 
     private Platform_CreateWindowDelegate? _platformCreateWindow;
     private Platform_DestroyWindowDelegate? _platformDestroyWindow;
@@ -682,8 +683,9 @@ void main()
     }
 
     // Platform Callbacks
-    private unsafe void PlatformCreateWindow(ImGuiViewportPtr viewport)
+    private unsafe void PlatformCreateWindow(IntPtr viewportPtr)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         var size = new Silk.NET.Maths.Vector2D<int>((int)viewport.Size.X, (int)viewport.Size.Y);
         var viewportWindow = new ImGuiViewportWindow(size, "ImGui Viewport");
 
@@ -691,8 +693,9 @@ void main()
         _viewportWindows[viewport.ID] = viewportWindow;
     }
 
-    private unsafe void PlatformDestroyWindow(ImGuiViewportPtr viewport)
+    private unsafe void PlatformDestroyWindow(IntPtr viewportPtr)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (viewport.PlatformUserData != IntPtr.Zero && viewport.PlatformUserData != (IntPtr)1)
         {
             if (_viewportWindows.TryGetValue(viewport.ID, out var window))
@@ -707,16 +710,18 @@ void main()
         }
     }
 
-    private unsafe void PlatformShowWindow(ImGuiViewportPtr viewport)
+    private unsafe void PlatformShowWindow(IntPtr viewportPtr)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (_viewportWindows.TryGetValue(viewport.ID, out var window))
         {
             window.Show();
         }
     }
 
-    private unsafe void PlatformSetWindowPos(ImGuiViewportPtr viewport, System.Numerics.Vector2 pos)
+    private unsafe void PlatformSetWindowPos(IntPtr viewportPtr, System.Numerics.Vector2 pos)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (viewport.PlatformUserData == (IntPtr)1)
         {
             // Main viewport
@@ -728,8 +733,9 @@ void main()
         }
     }
 
-    private unsafe System.Numerics.Vector2 PlatformGetWindowPos(ImGuiViewportPtr viewport)
+    private unsafe System.Numerics.Vector2 PlatformGetWindowPos(IntPtr viewportPtr)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (viewport.PlatformUserData == (IntPtr)1)
         {
             // Main viewport
@@ -743,8 +749,9 @@ void main()
         return System.Numerics.Vector2.Zero;
     }
 
-    private unsafe void PlatformSetWindowSize(ImGuiViewportPtr viewport, System.Numerics.Vector2 size)
+    private unsafe void PlatformSetWindowSize(IntPtr viewportPtr, System.Numerics.Vector2 size)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (viewport.PlatformUserData == (IntPtr)1)
         {
             // Main viewport
@@ -756,8 +763,9 @@ void main()
         }
     }
 
-    private unsafe System.Numerics.Vector2 PlatformGetWindowSize(ImGuiViewportPtr viewport)
+    private unsafe System.Numerics.Vector2 PlatformGetWindowSize(IntPtr viewportPtr)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (viewport.PlatformUserData == (IntPtr)1)
         {
             // Main viewport
@@ -771,42 +779,46 @@ void main()
         return System.Numerics.Vector2.Zero;
     }
 
-    private unsafe void PlatformSetWindowFocus(ImGuiViewportPtr viewport)
+    private unsafe void PlatformSetWindowFocus(IntPtr viewportPtr)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (_viewportWindows.TryGetValue(viewport.ID, out var window))
         {
             window.Focus();
         }
     }
 
-    private unsafe bool PlatformGetWindowFocus(ImGuiViewportPtr viewport)
+    private unsafe byte PlatformGetWindowFocus(IntPtr viewportPtr)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (viewport.PlatformUserData == (IntPtr)1)
         {
-            return !_window.WindowState.HasFlag(WindowState.Minimized);
+            return (byte)(!_window.WindowState.HasFlag(WindowState.Minimized) ? 1 : 0);
         }
         else if (_viewportWindows.TryGetValue(viewport.ID, out var window))
         {
-            return window.IsFocused();
+            return (byte)(window.IsFocused() ? 1 : 0);
         }
-        return false;
+        return 0;
     }
 
-    private unsafe bool PlatformGetWindowMinimized(ImGuiViewportPtr viewport)
+    private unsafe byte PlatformGetWindowMinimized(IntPtr viewportPtr)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (viewport.PlatformUserData == (IntPtr)1)
         {
-            return _window.WindowState.HasFlag(WindowState.Minimized);
+            return (byte)(_window.WindowState.HasFlag(WindowState.Minimized) ? 1 : 0);
         }
         else if (_viewportWindows.TryGetValue(viewport.ID, out var window))
         {
-            return window.IsMinimized();
+            return (byte)(window.IsMinimized() ? 1 : 0);
         }
-        return false;
+        return 0;
     }
 
-    private unsafe void PlatformSetWindowTitle(ImGuiViewportPtr viewport, IntPtr title)
+    private unsafe void PlatformSetWindowTitle(IntPtr viewportPtr, IntPtr title)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         string titleStr = System.Runtime.InteropServices.Marshal.PtrToStringAnsi(title) ?? "ImGui Viewport";
 
         if (_viewportWindows.TryGetValue(viewport.ID, out var window))
@@ -816,26 +828,28 @@ void main()
     }
 
     // Renderer Callbacks
-    private unsafe void RendererCreateWindow(ImGuiViewportPtr viewport)
+    private unsafe void RendererCreateWindow(IntPtr viewportPtr)
     {
         // OpenGL context is created automatically by ImGuiViewportWindow
     }
 
-    private unsafe void RendererDestroyWindow(ImGuiViewportPtr viewport)
+    private unsafe void RendererDestroyWindow(IntPtr viewportPtr)
     {
         // Cleanup is handled in PlatformDestroyWindow
     }
 
-    private unsafe void RendererSetWindowSize(ImGuiViewportPtr viewport, System.Numerics.Vector2 size)
+    private unsafe void RendererSetWindowSize(IntPtr viewportPtr, System.Numerics.Vector2 size)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (_viewportWindows.TryGetValue(viewport.ID, out var window))
         {
             window.GL?.Viewport(0, 0, (uint)size.X, (uint)size.Y);
         }
     }
 
-    private unsafe void RendererRenderWindow(ImGuiViewportPtr viewport, IntPtr renderArg)
+    private unsafe void RendererRenderWindow(IntPtr viewportPtr, IntPtr renderArg)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (_viewportWindows.TryGetValue(viewport.ID, out var window))
         {
             if (window.GL != null)
@@ -850,8 +864,9 @@ void main()
         }
     }
 
-    private unsafe void RendererSwapBuffers(ImGuiViewportPtr viewport, IntPtr renderArg)
+    private unsafe void RendererSwapBuffers(IntPtr viewportPtr, IntPtr renderArg)
     {
+        ImGuiViewportPtr viewport = new ImGuiViewportPtr(viewportPtr);
         if (_viewportWindows.TryGetValue(viewport.ID, out var window))
         {
             // DoEvents to process window messages
