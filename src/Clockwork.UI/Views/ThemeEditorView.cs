@@ -160,7 +160,8 @@ public class ThemeEditorView : IView
 
     private void DrawNewThemePopup()
     {
-        if (ImGui.BeginPopupModal("NewThemePopup", ImGuiWindowFlags.AlwaysAutoResize))
+        bool popupOpen = true;
+        if (ImGui.BeginPopupModal("NewThemePopup", ref popupOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
             ImGui.Text("Créer un nouveau thème");
             ImGui.Separator();
@@ -221,7 +222,8 @@ public class ThemeEditorView : IView
 
     private void DrawDeleteThemePopup()
     {
-        if (ImGui.BeginPopupModal("DeleteThemePopup", ImGuiWindowFlags.AlwaysAutoResize))
+        bool popupOpen = true;
+        if (ImGui.BeginPopupModal("DeleteThemePopup", ref popupOpen, ImGuiWindowFlags.AlwaysAutoResize))
         {
             ImGui.Text($"Êtes-vous sûr de vouloir supprimer le thème '{_selectedThemeName}' ?");
             ImGui.Separator();
