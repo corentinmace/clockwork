@@ -1,4 +1,5 @@
 using Clockwork.Core;
+using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -10,19 +11,34 @@ internal class Program
 {
     private static void Main(string[] args)
     {
-        Console.WriteLine("Démarrage de Clockwork...");
+        Console.WriteLine("Starting Clockwork...");
 
-        // Créer le contexte de l'application (Backend)
+        // Initialize logger
+        AppLogger.Initialize();
+        AppLogger.Info("Clockwork application starting...");
+
+        // Create application context (Backend)
         var appContext = new ApplicationContext();
 
-        // Enregistrer les services métier
-        var exampleService = new ExampleService();
-        appContext.AddService(exampleService);
+        // Register services
+        var romService = new RomService();
+        var headerService = new HeaderService();
+        var mapService = new MapService();
 
-        // Initialiser le contexte
+        appContext.AddService(romService);
+        appContext.AddService(new NdsToolService());
+        appContext.AddService(new DialogService());
+        appContext.AddService(headerService);
+        appContext.AddService(mapService);
+
+        // Initialize context
         appContext.Initialize();
 
-        // Configuration de la fenêtre OpenTK
+        // Set service dependencies
+        headerService.SetRomService(romService);
+        mapService.SetRomService(romService);
+
+        // OpenTK window configuration
         var nativeWindowSettings = new NativeWindowSettings()
         {
             ClientSize = new Vector2i(1280, 720),
@@ -38,12 +54,13 @@ internal class Program
             UpdateFrequency = 60,
         };
 
-        // Créer et lancer la fenêtre (Frontend)
+        // Create and run window (Frontend)
         using (var window = new MainWindow(appContext, gameWindowSettings, nativeWindowSettings))
         {
             window.Run();
         }
 
-        Console.WriteLine("Application fermée.");
+        AppLogger.Info("Clockwork application closed.");
+        Console.WriteLine("Application closed.");
     }
 }

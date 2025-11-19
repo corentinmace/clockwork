@@ -1,0 +1,6 @@
+# Ne pas commit les outils binaires
+*.exe
+*.dll
+
+# Garder le README
+!README.md
