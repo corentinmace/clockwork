@@ -199,8 +199,13 @@ public class MatrixEditorView : IView
             return;
         }
 
-        ImGui.Text($"Nom: {_matrixName}");
-        ImGui.SameLine(200);
+        // Display matrix name from loaded data
+        string displayName = _currentMatrix.Name;
+        if (string.IsNullOrEmpty(displayName))
+            displayName = $"Matrix {_selectedMatrixIndex}";
+
+        ImGui.Text($"Nom: {displayName}");
+        ImGui.SameLine(300);
 
         // Width control
         ImGui.Text("Largeur:");
@@ -373,8 +378,9 @@ public class MatrixEditorView : IView
 
                     if (_editingRow == row && _editingCol == col)
                     {
-                        // Edit mode - use full column width
-                        ImGui.SetNextItemWidth(-1);
+                        // Edit mode - limit width to reasonable size
+                        float cellWidth = ImGui.GetColumnWidth();
+                        ImGui.SetNextItemWidth(Math.Min(cellWidth - 10, 80)); // Max 80px or column width
 
                         // Only set focus on first frame of editing
                         bool shouldSetFocus = _justStartedEditing;
