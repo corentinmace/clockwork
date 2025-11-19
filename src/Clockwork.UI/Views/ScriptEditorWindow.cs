@@ -321,10 +321,12 @@ public class ScriptEditorWindow : IView
 
         try
         {
-            // Look for script files in unpacked/scripts/
+            // Use script_export path like LiTRE does
+            // exportedScriptPath = Path.Combine(workDir, @"../script_export")
             if (_romService.CurrentRom.GameDirectories.TryGetValue("root", out var rootPath))
             {
-                string scriptsPath = Path.Combine(rootPath, "unpacked", "scripts");
+                string scriptsPath = Path.Combine(rootPath, "..", "script_export");
+                scriptsPath = Path.GetFullPath(scriptsPath); // Normalize path
 
                 if (Directory.Exists(scriptsPath))
                 {
@@ -339,7 +341,7 @@ public class ScriptEditorWindow : IView
                 }
                 else
                 {
-                    SetStatus("Scripts directory not found", new Vector4(1.0f, 0.6f, 0.0f, 1.0f));
+                    SetStatus("script_export directory not found", new Vector4(1.0f, 0.6f, 0.0f, 1.0f));
                 }
             }
         }
