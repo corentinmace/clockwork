@@ -88,7 +88,7 @@ public class ImGuiController : IDisposable
         _scrollDelta = new System.Numerics.Vector2(scrollWheel.X, scrollWheel.Y);
     }
 
-    private void CreateDeviceResources()
+    private unsafe void CreateDeviceResources()
     {
         _vertexBufferSize = 10000;
         _elementBufferSize = 2000;
@@ -208,7 +208,7 @@ void main()
         return shader;
     }
 
-    private void RecreateFontDeviceTexture()
+    private unsafe void RecreateFontDeviceTexture()
     {
         ImGuiIOPtr io = ImGui.GetIO();
         io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out int width, out int height, out int bytesPerPixel);
