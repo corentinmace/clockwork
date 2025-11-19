@@ -229,16 +229,12 @@ public class ScriptEditorWindow : IView
 
         ImGui.InputTextMultiline("##scripttext", ref text, 100000,
             new Vector2(-1, availableHeight),
-            ImGuiInputTextFlags.AllowTabInput | ImGuiInputTextFlags.CallbackAlways);
+            ImGuiInputTextFlags.AllowTabInput);
 
         if (ImGui.IsItemEdited())
         {
             _isDirty = true;
-        }
-
-        // Handle autocomplete
-        if (ImGui.IsItemActive())
-        {
+            // Update autocomplete when text changes
             UpdateAutocomplete(text);
         }
 
