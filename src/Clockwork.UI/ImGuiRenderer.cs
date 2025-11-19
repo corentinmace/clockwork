@@ -113,7 +113,7 @@ namespace Clockwork.UI
                 ImFontConfigPtr config = ImGuiNative.ImFontConfig_ImFontConfig();
                 config.MergeMode = true;  // Merge icons into previous font
                 config.GlyphMinAdvanceX = 13.0f; // Fixed width for icons
-                config.GlyphOffset = new Vector2(0, 0);
+                config.GlyphOffset = new Vector2(0, 1);  // Slight vertical offset for better centering
                 config.OversampleH = 1;
                 config.OversampleV = 1;
                 config.PixelSnapH = true;
@@ -135,7 +135,7 @@ namespace Clockwork.UI
                         ImGui.GetIO().Fonts.AddFontFromMemoryTTF(
                             (IntPtr)fontDataPtr,
                             fontData.Length,
-                            16.0f,  // Font size
+                            13.0f,  // Font size - matches default font better
                             config,
                             (IntPtr)rangesPtr
                         );
