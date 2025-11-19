@@ -165,20 +165,25 @@ public class RomService : IApplicationService
         // LiTRE structure: unpacked/ contains extracted NARC files
         string dataPath = Path.Combine(romPath, "data");
         string unpackedPath = Path.Combine(romPath, "unpacked");
+        string expandedPath = Path.Combine(romPath, "expanded");
 
         _currentRom.GameDirectories = new Dictionary<string, string>
         {
             ["root"] = romPath,
             ["data"] = dataPath,
             ["unpacked"] = unpackedPath,
+            ["expanded"] = expandedPath,
 
-            // Unpacked directories (following LiTRE structure)
+            // Unpacked directories (following LiTRE structure) - binary files
             ["dynamicHeaders"] = Path.Combine(unpackedPath, "dynamicHeaders"),
             ["scripts"] = Path.Combine(unpackedPath, "scripts"),
             ["eventFiles"] = Path.Combine(unpackedPath, "eventFiles"),
             ["matrices"] = Path.Combine(unpackedPath, "matrices"),
             ["maps"] = Path.Combine(unpackedPath, "maps"),
             ["textArchives"] = Path.Combine(unpackedPath, "textArchives"),
+
+            // Expanded directories (following LiTRE structure) - text files
+            ["expandedTextArchives"] = Path.Combine(expandedPath, "textArchives"),
 
             // Data directories (not unpacked)
             ["fielddata"] = Path.Combine(dataPath, "fielddata"),
