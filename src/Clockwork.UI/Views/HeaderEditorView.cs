@@ -337,7 +337,7 @@ public class HeaderEditorView : IView
         ImGui.Spacing();
 
         // Scripts & Events section
-        if (ImGui.CollapsingHeader("Scripts & Events"))
+        if (ImGui.CollapsingHeader("Scripts & Events", ImGuiTreeNodeFlags.DefaultOpen))
         {
             ImGui.Text("Script File ID:");
             ImGui.SameLine(150);
