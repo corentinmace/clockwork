@@ -17,19 +17,24 @@ public class ScriptEditorWindow : IView
     public bool IsVisible { get; set; } = false;
 
     // Script file management
-    private ScriptFile? _currentFile;
-    private List<string> _availableScriptFiles = new();
+    private int _scriptCount = 0;
     private string[] _scriptFileNames = Array.Empty<string>();
     private int _selectedFileIndex = -1;
+    private int _currentFileID = -1;
 
     // Tab management
     private int _selectedTab = 0; // 0 = Scripts, 1 = Functions, 2 = Actions
     private readonly string[] _tabNames = { "Scripts", "Functions", "Actions" };
 
-    // Container selection
-    private int _selectedContainerIndex = -1;
-    private string _scriptText = string.Empty;
+    // Text content for each tab (loaded from export_script files)
+    private string _scriptTabText = string.Empty;
+    private string _functionTabText = string.Empty;
+    private string _actionTabText = string.Empty;
     private bool _isDirty = false;
+
+    // Paths
+    private string _scriptsDir = string.Empty;  // unpacked/scripts (for listing)
+    private string _exportDir = string.Empty;   // script_export (for loading/saving)
 
     // Status
     private string _statusMessage = string.Empty;
@@ -54,7 +59,7 @@ public class ScriptEditorWindow : IView
         }
 
         // Refresh file list when ROM loads
-        if (_availableScriptFiles.Count == 0 && _romService?.CurrentRom?.IsLoaded == true)
+        if (_scriptCount == 0 && _romService?.CurrentRom?.IsLoaded == true)
         {
             RefreshScriptFilesList();
         }
@@ -68,7 +73,7 @@ public class ScriptEditorWindow : IView
 
             ImGui.Separator();
 
-            if (_currentFile != null)
+            if (_currentFileID >= 0)
             {
                 DrawEditorArea();
             }
@@ -93,7 +98,7 @@ public class ScriptEditorWindow : IView
         {
             if (ImGui.BeginMenu("File"))
             {
-                if (ImGui.MenuItem("Save", "Ctrl+S", false, _currentFile != null && _isDirty))
+                if (ImGui.MenuItem("Save", "Ctrl+S", false, _currentFileID >= 0 && _isDirty))
                 {
                     SaveCurrentFile();
                 }
@@ -132,7 +137,7 @@ public class ScriptEditorWindow : IView
             ImGui.SetNextItemWidth(200);
             if (ImGui.Combo("##scriptfile", ref _selectedFileIndex, _scriptFileNames, _scriptFileNames.Length))
             {
-                if (_selectedFileIndex >= 0 && _selectedFileIndex < _availableScriptFiles.Count)
+                if (_selectedFileIndex >= 0 && _selectedFileIndex < _scriptCount)
                 {
                     LoadScriptFile(_selectedFileIndex);
                 }
@@ -157,7 +162,7 @@ public class ScriptEditorWindow : IView
         ImGui.SameLine();
 
         // Save button
-        if (_currentFile != null && _isDirty)
+        if (_currentFileID >= 0 && _isDirty)
         {
             if (ImGui.Button("Save"))
             {
@@ -166,25 +171,19 @@ public class ScriptEditorWindow : IView
             ImGui.SameLine();
         }
 
-        // Compile/Decompile buttons
-        if (_currentFile != null)
+        // Compile button
+        if (_currentFileID >= 0)
         {
-            if (ImGui.Button("Decompile All"))
+            if (ImGui.Button("Compile & Save to ROM"))
             {
-                DecompileCurrentFile();
-            }
-            ImGui.SameLine();
-
-            if (ImGui.Button("Compile"))
-            {
-                CompileCurrentScript();
+                CompileAndSaveToROM();
             }
         }
     }
 
     private void DrawEditorArea()
     {
-        if (_currentFile == null) return;
+        if (_currentFileID < 0) return;
 
         // Tabs for Scripts/Functions/Actions
         if (ImGui.BeginTabBar("ScriptTabs"))
@@ -192,21 +191,21 @@ public class ScriptEditorWindow : IView
             if (ImGui.BeginTabItem("Scripts"))
             {
                 _selectedTab = 0;
-                DrawContainerList(_currentFile.Scripts);
+                DrawScriptTextEditor(ref _scriptTabText);
                 ImGui.EndTabItem();
             }
 
             if (ImGui.BeginTabItem("Functions"))
             {
                 _selectedTab = 1;
-                DrawContainerList(_currentFile.Functions);
+                DrawScriptTextEditor(ref _functionTabText);
                 ImGui.EndTabItem();
             }
 
             if (ImGui.BeginTabItem("Actions"))
             {
                 _selectedTab = 2;
-                DrawContainerList(_currentFile.Actions);
+                DrawScriptTextEditor(ref _actionTabText);
                 ImGui.EndTabItem();
             }
 
@@ -214,84 +213,18 @@ public class ScriptEditorWindow : IView
         }
     }
 
-    private void DrawContainerList(List<ScriptContainer> containers)
+    private void DrawScriptTextEditor(ref string text)
     {
         float availableHeight = ImGui.GetContentRegionAvail().Y;
 
-        // Split view: list on left, editor on right
-        if (ImGui.BeginTable("ScriptEditorTable", 2, ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV))
+        // TODO: Add syntax highlighting here
+        ImGui.InputTextMultiline("##scripttext", ref text, 100000,
+            new Vector2(-1, availableHeight),
+            ImGuiInputTextFlags.AllowTabInput);
+
+        if (ImGui.IsItemEdited())
         {
-            ImGui.TableSetupColumn("List", ImGuiTableColumnFlags.WidthFixed, 250);
-            ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
-
-            ImGui.TableNextRow();
-            ImGui.TableSetColumnIndex(0);
-
-            // Left: Container list
-            ImGui.BeginChild("ContainerList", new Vector2(-1, availableHeight - 40), ImGuiChildFlags.Border);
-
-            for (int i = 0; i < containers.Count; i++)
-            {
-                var container = containers[i];
-                bool isSelected = _selectedContainerIndex == i;
-                string label = container.ToString();
-
-                if (ImGui.Selectable(label, isSelected))
-                {
-                    _selectedContainerIndex = i;
-                    LoadContainer(container);
-                }
-            }
-
-            ImGui.EndChild();
-
-            ImGui.TableSetColumnIndex(1);
-
-            // Right: Script editor
-            DrawScriptEditor();
-
-            ImGui.EndTable();
-        }
-    }
-
-    private void DrawScriptEditor()
-    {
-        float availableHeight = ImGui.GetContentRegionAvail().Y;
-
-        ImGui.BeginChild("ScriptEditor", new Vector2(-1, availableHeight - 40), ImGuiChildFlags.Border);
-
-        if (_selectedContainerIndex >= 0)
-        {
-            // TODO: Add syntax highlighting here
-            ImGui.InputTextMultiline("##scripttext", ref _scriptText, 100000,
-                new Vector2(-1, -1),
-                ImGuiInputTextFlags.AllowTabInput);
-
-            if (ImGui.IsItemEdited())
-            {
-                _isDirty = true;
-            }
-        }
-        else
-        {
-            ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
-                "Select a script from the list to edit.");
-        }
-
-        ImGui.EndChild();
-
-        // Bottom buttons
-        if (_selectedContainerIndex >= 0)
-        {
-            if (ImGui.Button("Update Container"))
-            {
-                UpdateCurrentContainer();
-            }
-            ImGui.SameLine();
-            if (ImGui.Button("Revert Changes"))
-            {
-                ReloadCurrentContainer();
-            }
+            _isDirty = true;
         }
     }
 
@@ -301,9 +234,9 @@ public class ScriptEditorWindow : IView
         {
             ImGui.TextColored(_statusColor, _statusMessage);
         }
-        else if (_currentFile != null)
+        else if (_currentFileID >= 0)
         {
-            ImGui.Text($"{_currentFile.GetSummary()}");
+            ImGui.Text($"Script File {_currentFileID} ({_tabNames[_selectedTab]})");
             if (_isDirty)
             {
                 ImGui.SameLine();
@@ -314,34 +247,44 @@ public class ScriptEditorWindow : IView
 
     private void RefreshScriptFilesList()
     {
-        _availableScriptFiles.Clear();
+        _scriptCount = 0;
+        _scriptFileNames = Array.Empty<string>();
 
         if (_romService?.CurrentRom?.GameDirectories == null)
             return;
 
         try
         {
-            // Use script_export path like LiTRE does
-            // exportedScriptPath = Path.Combine(workDir, @"../script_export")
             if (_romService.CurrentRom.GameDirectories.TryGetValue("root", out var rootPath))
             {
-                string scriptsPath = Path.Combine(rootPath, "..", "script_export");
-                scriptsPath = Path.GetFullPath(scriptsPath); // Normalize path
+                // Get unpacked/scripts directory (for counting scripts)
+                _scriptsDir = Path.Combine(rootPath, "unpacked", "scripts");
 
-                if (Directory.Exists(scriptsPath))
+                // Get script_export directory (for loading/saving text files)
+                _exportDir = Path.Combine(rootPath, "..", "script_export");
+                _exportDir = Path.GetFullPath(_exportDir);
+
+                if (Directory.Exists(_scriptsDir))
                 {
-                    var files = Directory.GetFiles(scriptsPath, "*")
-                        .OrderBy(f => f)
-                        .ToList();
+                    // Count script files in ROM directory
+                    var scriptFiles = Directory.GetFiles(_scriptsDir);
+                    _scriptCount = scriptFiles.Length;
 
-                    _availableScriptFiles = files;
-                    _scriptFileNames = files.Select(f => Path.GetFileName(f)).ToArray();
+                    // Create display names: "Script File 0", "Script File 1", etc.
+                    _scriptFileNames = new string[_scriptCount];
+                    for (int i = 0; i < _scriptCount; i++)
+                    {
+                        _scriptFileNames[i] = $"Script File {i}";
+                    }
 
-                    SetStatus($"Found {_availableScriptFiles.Count} script files", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
+                    // Ensure export directory exists
+                    Directory.CreateDirectory(_exportDir);
+
+                    SetStatus($"Found {_scriptCount} script files", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
                 }
                 else
                 {
-                    SetStatus("script_export directory not found", new Vector4(1.0f, 0.6f, 0.0f, 1.0f));
+                    SetStatus("unpacked/scripts directory not found", new Vector4(1.0f, 0.6f, 0.0f, 1.0f));
                 }
             }
         }
@@ -351,17 +294,26 @@ public class ScriptEditorWindow : IView
         }
     }
 
-    private void LoadScriptFile(int index)
+    private void LoadScriptFile(int fileID)
     {
         try
         {
-            string filePath = _availableScriptFiles[index];
-            _currentFile = ScriptFile.FromFile(filePath, index);
-            _selectedContainerIndex = -1;
-            _scriptText = string.Empty;
+            _currentFileID = fileID;
+
+            // Build file paths for the 3 export files
+            string fileIDStr = fileID.ToString("D4");
+            string scriptPath = Path.Combine(_exportDir, $"{fileIDStr}_script.script");
+            string functionPath = Path.Combine(_exportDir, $"{fileIDStr}_func.script");
+            string actionPath = Path.Combine(_exportDir, $"{fileIDStr}_action.action");
+
+            // Load text from export files (or create empty if they don't exist)
+            _scriptTabText = File.Exists(scriptPath) ? File.ReadAllText(scriptPath) : string.Empty;
+            _functionTabText = File.Exists(functionPath) ? File.ReadAllText(functionPath) : string.Empty;
+            _actionTabText = File.Exists(actionPath) ? File.ReadAllText(actionPath) : string.Empty;
+
             _isDirty = false;
 
-            SetStatus($"Loaded {Path.GetFileName(filePath)}", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
+            SetStatus($"Loaded Script File {fileID}", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
         }
         catch (Exception ex)
         {
@@ -369,86 +321,39 @@ public class ScriptEditorWindow : IView
         }
     }
 
-    private void LoadContainer(ScriptContainer container)
+    private void CompileAndSaveToROM()
     {
-        try
-        {
-            _scriptText = ScriptDecompiler.DecompileContainer(container);
-            _isDirty = false;
-        }
-        catch (Exception ex)
-        {
-            SetStatus($"Error decompiling container: {ex.Message}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
-        }
-    }
-
-    private void DecompileCurrentFile()
-    {
-        if (_currentFile == null) return;
-
-        try
-        {
-            string decompiled = ScriptDecompiler.DecompileFile(_currentFile);
-            // TODO: Show in separate window or save to file
-            SetStatus("File decompiled successfully", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
-        }
-        catch (Exception ex)
-        {
-            SetStatus($"Error decompiling file: {ex.Message}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
-        }
-    }
-
-    private void CompileCurrentScript()
-    {
-        // TODO: Implement script compilation (text -> binary)
+        // TODO: Implement script compilation (text -> binary) and save to ROM
         SetStatus("Compilation not yet implemented", new Vector4(1.0f, 0.6f, 0.0f, 1.0f));
-    }
-
-    private void UpdateCurrentContainer()
-    {
-        // TODO: Parse script text and update container
-        SetStatus("Container update not yet implemented", new Vector4(1.0f, 0.6f, 0.0f, 1.0f));
-    }
-
-    private void ReloadCurrentContainer()
-    {
-        if (_currentFile == null || _selectedContainerIndex < 0) return;
-
-        var containers = GetCurrentContainerList();
-        if (_selectedContainerIndex < containers.Count)
-        {
-            LoadContainer(containers[_selectedContainerIndex]);
-            SetStatus("Changes reverted", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
-        }
     }
 
     private void SaveCurrentFile()
     {
-        if (_currentFile == null) return;
+        if (_currentFileID < 0) return;
 
         try
         {
-            // TODO: Implement saving
+            // Ensure export directory exists
+            Directory.CreateDirectory(_exportDir);
+
+            // Build file paths for the 3 export files
+            string fileIDStr = _currentFileID.ToString("D4");
+            string scriptPath = Path.Combine(_exportDir, $"{fileIDStr}_script.script");
+            string functionPath = Path.Combine(_exportDir, $"{fileIDStr}_func.script");
+            string actionPath = Path.Combine(_exportDir, $"{fileIDStr}_action.action");
+
+            // Save all 3 text files
+            File.WriteAllText(scriptPath, _scriptTabText);
+            File.WriteAllText(functionPath, _functionTabText);
+            File.WriteAllText(actionPath, _actionTabText);
+
             _isDirty = false;
-            SetStatus("File saved successfully", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
+            SetStatus($"Saved Script File {_currentFileID} to export directory", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
         }
         catch (Exception ex)
         {
             SetStatus($"Error saving file: {ex.Message}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
         }
-    }
-
-    private List<ScriptContainer> GetCurrentContainerList()
-    {
-        if (_currentFile == null) return new List<ScriptContainer>();
-
-        return _selectedTab switch
-        {
-            0 => _currentFile.Scripts,
-            1 => _currentFile.Functions,
-            2 => _currentFile.Actions,
-            _ => new List<ScriptContainer>()
-        };
     }
 
     private void SetStatus(string message, Vector4 color)
