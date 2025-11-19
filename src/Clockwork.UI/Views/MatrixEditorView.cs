@@ -615,7 +615,7 @@ public class MatrixEditorView : IView
             if (binFiles.Length == 0)
             {
                 var allFiles = Directory.GetFiles(matricesPath);
-                AppLogger.Warning($"[MatrixEditor] No .bin files found, but directory contains {allFiles.Length} total files");
+                AppLogger.Warn($"[MatrixEditor] No .bin files found, but directory contains {allFiles.Length} total files");
 
                 if (allFiles.Length > 0)
                 {
