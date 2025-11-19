@@ -39,21 +39,37 @@ public class ImGuiController : IDisposable
     private readonly Dictionary<uint, ImGuiViewportWindow> _viewportWindows = new();
 
     // Keep delegate references to prevent garbage collection
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Platform_CreateWindowDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Platform_DestroyWindowDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Platform_ShowWindowDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Platform_SetWindowPosDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 pos);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate System.Numerics.Vector2 Platform_GetWindowPosDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Platform_SetWindowSizeDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 size);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate System.Numerics.Vector2 Platform_GetWindowSizeDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Platform_SetWindowFocusDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate bool Platform_GetWindowFocusDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate bool Platform_GetWindowMinimizedDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Platform_SetWindowTitleDelegate(ImGuiViewportPtr viewport, IntPtr title);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Renderer_CreateWindowDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Renderer_DestroyWindowDelegate(ImGuiViewportPtr viewport);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Renderer_SetWindowSizeDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 size);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Renderer_RenderWindowDelegate(ImGuiViewportPtr viewport, IntPtr renderArg);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
     private delegate void Renderer_SwapBuffersDelegate(ImGuiViewportPtr viewport, IntPtr renderArg);
 
     private Platform_CreateWindowDelegate? _platformCreateWindow;
