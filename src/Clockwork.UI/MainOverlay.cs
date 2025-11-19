@@ -59,8 +59,13 @@ public class MainOverlay : Overlay
         _settingsWindow.SetThemeEditorView(_themeEditorView);
 
         AppLogger.Info("MainOverlay created");
+    }
 
-        // Initialize ImGui configuration after overlay is set up
+    protected override void PostInitialized()
+    {
+        base.PostInitialized();
+
+        // Configure ImGui after overlay and ImGui context are fully initialized
         ConfigureImGui();
     }
 
