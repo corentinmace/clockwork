@@ -37,9 +37,6 @@ public class ScriptEditorWindow : IView
     private string _scriptsDir = string.Empty;  // unpacked/scripts (for listing)
     private string _exportDir = string.Empty;   // script_export (for loading/saving)
 
-    // Syntax highlighting
-    private bool _showSyntaxPreview = false;
-
     // Autocomplete
     private bool _showAutocomplete = false;
     private List<string> _autocompleteSuggestions = new();
@@ -51,12 +48,8 @@ public class ScriptEditorWindow : IView
     private Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
     private float _statusTimer = 0f;
 
-    // Syntax colors
+    // Autocomplete colors
     private static readonly Vector4 CommandColor = new(0.4f, 0.8f, 1.0f, 1.0f);      // Light blue for commands
-    private static readonly Vector4 ParameterColor = new(0.9f, 0.9f, 0.6f, 1.0f);    // Light yellow for parameters
-    private static readonly Vector4 CommentColor = new(0.5f, 0.7f, 0.5f, 1.0f);      // Green for comments
-    private static readonly Vector4 NumberColor = new(0.8f, 1.0f, 0.8f, 1.0f);       // Light green for numbers
-    private static readonly Vector4 ErrorColor = new(1.0f, 0.4f, 0.4f, 1.0f);        // Red for errors
 
     public ScriptEditorWindow(ApplicationContext appContext)
     {
@@ -195,15 +188,6 @@ public class ScriptEditorWindow : IView
             {
                 CompileAndSaveToROM();
             }
-
-            ImGui.SameLine();
-
-            // Syntax highlight toggle
-            string syntaxLabel = _showSyntaxPreview ? "Hide Syntax Colors" : "Show Syntax Colors";
-            if (ImGui.Button(syntaxLabel))
-            {
-                _showSyntaxPreview = !_showSyntaxPreview;
-            }
         }
     }
 
@@ -243,134 +227,25 @@ public class ScriptEditorWindow : IView
     {
         float availableHeight = ImGui.GetContentRegionAvail().Y;
 
-        if (_showSyntaxPreview)
+        ImGui.InputTextMultiline("##scripttext", ref text, 100000,
+            new Vector2(-1, availableHeight),
+            ImGuiInputTextFlags.AllowTabInput | ImGuiInputTextFlags.CallbackAlways);
+
+        if (ImGui.IsItemEdited())
         {
-            // Split view: editor on top, preview on bottom
-            float editorHeight = availableHeight * 0.5f;
-
-            ImGui.InputTextMultiline("##scripttext", ref text, 100000,
-                new Vector2(-1, editorHeight - 5),
-                ImGuiInputTextFlags.AllowTabInput);
-
-            if (ImGui.IsItemEdited())
-            {
-                _isDirty = true;
-            }
-
-            ImGui.Text("Syntax Preview:");
-            ImGui.BeginChild("##syntaxpreview", new Vector2(-1, editorHeight - 25), ImGuiChildFlags.Border);
-            DrawSyntaxHighlightedText(text);
-            ImGui.EndChild();
+            _isDirty = true;
         }
-        else
+
+        // Handle autocomplete
+        if (ImGui.IsItemActive())
         {
-            // Full editor
-            ImGui.InputTextMultiline("##scripttext", ref text, 100000,
-                new Vector2(-1, availableHeight),
-                ImGuiInputTextFlags.AllowTabInput | ImGuiInputTextFlags.CallbackAlways);
-
-            if (ImGui.IsItemEdited())
-            {
-                _isDirty = true;
-            }
-
-            // Handle autocomplete
-            if (ImGui.IsItemActive())
-            {
-                UpdateAutocomplete(text);
-            }
+            UpdateAutocomplete(text);
         }
 
         // Draw autocomplete popup
         if (_showAutocomplete && _autocompleteSuggestions.Count > 0)
         {
             DrawAutocompletePopup(ref text);
-        }
-    }
-
-    private void DrawSyntaxHighlightedText(string text)
-    {
-        var lines = text.Split('\n');
-
-        foreach (var line in lines)
-        {
-            var trimmed = line.Trim();
-
-            // Comment lines
-            if (trimmed.StartsWith("//"))
-            {
-                ImGui.TextColored(CommentColor, line);
-                continue;
-            }
-
-            // Empty lines
-            if (string.IsNullOrWhiteSpace(trimmed))
-            {
-                ImGui.Text("");
-                continue;
-            }
-
-            // Try to parse command
-            var match = System.Text.RegularExpressions.Regex.Match(trimmed, @"^\s*(\w+)\s*\((.*?)\)\s*$");
-            if (match.Success)
-            {
-                string commandName = match.Groups[1].Value;
-                string paramsStr = match.Groups[2].Value;
-
-                // Check if command exists
-                var commandInfo = ScriptDatabase.GetCommandInfo(commandName);
-                Vector4 cmdColor = commandInfo != null ? CommandColor : ErrorColor;
-
-                // Draw indentation
-                int indentCount = line.TakeWhile(c => c == ' ' || c == '\t').Count();
-                ImGui.Text(new string(' ', indentCount));
-                ImGui.SameLine(0, 0);
-
-                // Draw command name
-                ImGui.TextColored(cmdColor, commandName);
-                ImGui.SameLine(0, 0);
-
-                // Draw opening parenthesis
-                ImGui.Text("(");
-                ImGui.SameLine(0, 0);
-
-                // Draw parameters
-                if (!string.IsNullOrWhiteSpace(paramsStr))
-                {
-                    var paramParts = paramsStr.Split(',');
-                    for (int i = 0; i < paramParts.Length; i++)
-                    {
-                        var param = paramParts[i].Trim();
-
-                        // Detect numbers vs other
-                        bool isNumber = param.StartsWith("0x") ||
-                                       param.StartsWith("@") ||
-                                       (param.Length > 0 && char.IsDigit(param[0]));
-
-                        Vector4 paramColor = isNumber ? NumberColor : ParameterColor;
-                        ImGui.TextColored(paramColor, param);
-
-                        if (i < paramParts.Length - 1)
-                        {
-                            ImGui.SameLine(0, 0);
-                            ImGui.Text(", ");
-                            ImGui.SameLine(0, 0);
-                        }
-                        else
-                        {
-                            ImGui.SameLine(0, 0);
-                        }
-                    }
-                }
-
-                // Draw closing parenthesis
-                ImGui.Text(")");
-            }
-            else
-            {
-                // Unknown format - show as is
-                ImGui.Text(line);
-            }
         }
     }
 
