@@ -224,7 +224,7 @@ namespace Clockwork.UI.Views
                 }
 
                 // Repack using EncryptText
-                bool success = MessageEnc.EncryptText.RepackTextArchive(currentFilePath, binaryPath, false);
+                bool success = EncryptText.RepackTextArchive(currentFilePath, binaryPath, false);
 
                 if (!success)
                 {
