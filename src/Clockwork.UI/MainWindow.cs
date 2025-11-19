@@ -518,7 +518,7 @@ public class MainWindow
             }
 
             // Display logs
-            ImGui.BeginChild("SaveRomLogs", new System.Numerics.Vector2(0, -40), ImGuiChildFlags.Border);
+            ImGui.BeginChild("SaveRomLogs", new System.Numerics.Vector2(0, -40), true);
             ImGui.TextWrapped(_saveRomLog);
 
             // Auto-scroll to bottom

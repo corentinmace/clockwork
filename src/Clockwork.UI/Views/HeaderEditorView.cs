@@ -191,7 +191,7 @@ public class HeaderEditorView : IView
         ImGui.Spacing();
 
         // Header list with scrolling
-        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, -60), ImGuiChildFlags.Border);
+        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, -60), true);
 
         var headers = _headerService.Headers;
         foreach (var header in headers)
@@ -224,7 +224,7 @@ public class HeaderEditorView : IView
         if (_currentHeader == null) return;
 
         // Scrollable editor area
-        ImGui.BeginChild("HeaderEditorScroll", new System.Numerics.Vector2(0, 0), ImGuiChildFlags.None);
+        ImGui.BeginChild("HeaderEditorScroll", new System.Numerics.Vector2(0, 0), false);
 
         // Map Structure section
         if (ImGui.CollapsingHeader("Map Structure", ImGuiTreeNodeFlags.DefaultOpen))
