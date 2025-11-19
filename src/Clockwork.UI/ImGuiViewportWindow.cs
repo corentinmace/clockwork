@@ -26,7 +26,7 @@ internal class ImGuiViewportWindow : IDisposable
         options.IsVisible = false; // Start hidden, will be shown by ImGui
         options.API = new GraphicsAPI(ContextAPI.OpenGL, new APIVersion(3, 3));
 
-        _window = Window.Create(options);
+        _window = Silk.NET.Windowing.Window.Create(options);
 
         // Set up window events
         _window.Load += OnLoad;

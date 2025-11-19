@@ -36,7 +36,42 @@ public class ImGuiController : IDisposable
     private readonly List<char> _pressedChars = new();
 
     // Multi-viewport support
-    private readonly Dictionary<IntPtr, ImGuiViewportWindow> _viewportWindows = new();
+    private readonly Dictionary<uint, ImGuiViewportWindow> _viewportWindows = new();
+
+    // Keep delegate references to prevent garbage collection
+    private delegate void Platform_CreateWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_DestroyWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_ShowWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_SetWindowPosDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 pos);
+    private delegate System.Numerics.Vector2 Platform_GetWindowPosDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_SetWindowSizeDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 size);
+    private delegate System.Numerics.Vector2 Platform_GetWindowSizeDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_SetWindowFocusDelegate(ImGuiViewportPtr viewport);
+    private delegate bool Platform_GetWindowFocusDelegate(ImGuiViewportPtr viewport);
+    private delegate bool Platform_GetWindowMinimizedDelegate(ImGuiViewportPtr viewport);
+    private delegate void Platform_SetWindowTitleDelegate(ImGuiViewportPtr viewport, IntPtr title);
+    private delegate void Renderer_CreateWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Renderer_DestroyWindowDelegate(ImGuiViewportPtr viewport);
+    private delegate void Renderer_SetWindowSizeDelegate(ImGuiViewportPtr viewport, System.Numerics.Vector2 size);
+    private delegate void Renderer_RenderWindowDelegate(ImGuiViewportPtr viewport, IntPtr renderArg);
+    private delegate void Renderer_SwapBuffersDelegate(ImGuiViewportPtr viewport, IntPtr renderArg);
+
+    private Platform_CreateWindowDelegate? _platformCreateWindow;
+    private Platform_DestroyWindowDelegate? _platformDestroyWindow;
+    private Platform_ShowWindowDelegate? _platformShowWindow;
+    private Platform_SetWindowPosDelegate? _platformSetWindowPos;
+    private Platform_GetWindowPosDelegate? _platformGetWindowPos;
+    private Platform_SetWindowSizeDelegate? _platformSetWindowSize;
+    private Platform_GetWindowSizeDelegate? _platformGetWindowSize;
+    private Platform_SetWindowFocusDelegate? _platformSetWindowFocus;
+    private Platform_GetWindowFocusDelegate? _platformGetWindowFocus;
+    private Platform_GetWindowMinimizedDelegate? _platformGetWindowMinimized;
+    private Platform_SetWindowTitleDelegate? _platformSetWindowTitle;
+    private Renderer_CreateWindowDelegate? _rendererCreateWindow;
+    private Renderer_DestroyWindowDelegate? _rendererDestroyWindow;
+    private Renderer_SetWindowSizeDelegate? _rendererSetWindowSize;
+    private Renderer_RenderWindowDelegate? _rendererRenderWindow;
+    private Renderer_SwapBuffersDelegate? _rendererSwapBuffers;
 
     /// <summary>
     /// Crée une nouvelle instance du contrôleur ImGui.
@@ -591,25 +626,43 @@ void main()
         var mainViewport = ImGui.GetMainViewport();
         mainViewport.PlatformUserData = (IntPtr)1; // Mark as main viewport
 
-        // Platform callbacks
-        platformIO.Platform_CreateWindow = PlatformCreateWindow;
-        platformIO.Platform_DestroyWindow = PlatformDestroyWindow;
-        platformIO.Platform_ShowWindow = PlatformShowWindow;
-        platformIO.Platform_SetWindowPos = PlatformSetWindowPos;
-        platformIO.Platform_GetWindowPos = PlatformGetWindowPos;
-        platformIO.Platform_SetWindowSize = PlatformSetWindowSize;
-        platformIO.Platform_GetWindowSize = PlatformGetWindowSize;
-        platformIO.Platform_SetWindowFocus = PlatformSetWindowFocus;
-        platformIO.Platform_GetWindowFocus = PlatformGetWindowFocus;
-        platformIO.Platform_GetWindowMinimized = PlatformGetWindowMinimized;
-        platformIO.Platform_SetWindowTitle = PlatformSetWindowTitle;
+        // Create and store delegate instances
+        _platformCreateWindow = PlatformCreateWindow;
+        _platformDestroyWindow = PlatformDestroyWindow;
+        _platformShowWindow = PlatformShowWindow;
+        _platformSetWindowPos = PlatformSetWindowPos;
+        _platformGetWindowPos = PlatformGetWindowPos;
+        _platformSetWindowSize = PlatformSetWindowSize;
+        _platformGetWindowSize = PlatformGetWindowSize;
+        _platformSetWindowFocus = PlatformSetWindowFocus;
+        _platformGetWindowFocus = PlatformGetWindowFocus;
+        _platformGetWindowMinimized = PlatformGetWindowMinimized;
+        _platformSetWindowTitle = PlatformSetWindowTitle;
+        _rendererCreateWindow = RendererCreateWindow;
+        _rendererDestroyWindow = RendererDestroyWindow;
+        _rendererSetWindowSize = RendererSetWindowSize;
+        _rendererRenderWindow = RendererRenderWindow;
+        _rendererSwapBuffers = RendererSwapBuffers;
 
-        // Renderer callbacks
-        platformIO.Renderer_CreateWindow = RendererCreateWindow;
-        platformIO.Renderer_DestroyWindow = RendererDestroyWindow;
-        platformIO.Renderer_SetWindowSize = RendererSetWindowSize;
-        platformIO.Renderer_RenderWindow = RendererRenderWindow;
-        platformIO.Renderer_SwapBuffers = RendererSwapBuffers;
+        // Assign function pointers to platform callbacks
+        platformIO.Platform_CreateWindow = Marshal.GetFunctionPointerForDelegate(_platformCreateWindow);
+        platformIO.Platform_DestroyWindow = Marshal.GetFunctionPointerForDelegate(_platformDestroyWindow);
+        platformIO.Platform_ShowWindow = Marshal.GetFunctionPointerForDelegate(_platformShowWindow);
+        platformIO.Platform_SetWindowPos = Marshal.GetFunctionPointerForDelegate(_platformSetWindowPos);
+        platformIO.Platform_GetWindowPos = Marshal.GetFunctionPointerForDelegate(_platformGetWindowPos);
+        platformIO.Platform_SetWindowSize = Marshal.GetFunctionPointerForDelegate(_platformSetWindowSize);
+        platformIO.Platform_GetWindowSize = Marshal.GetFunctionPointerForDelegate(_platformGetWindowSize);
+        platformIO.Platform_SetWindowFocus = Marshal.GetFunctionPointerForDelegate(_platformSetWindowFocus);
+        platformIO.Platform_GetWindowFocus = Marshal.GetFunctionPointerForDelegate(_platformGetWindowFocus);
+        platformIO.Platform_GetWindowMinimized = Marshal.GetFunctionPointerForDelegate(_platformGetWindowMinimized);
+        platformIO.Platform_SetWindowTitle = Marshal.GetFunctionPointerForDelegate(_platformSetWindowTitle);
+
+        // Assign function pointers to renderer callbacks
+        platformIO.Renderer_CreateWindow = Marshal.GetFunctionPointerForDelegate(_rendererCreateWindow);
+        platformIO.Renderer_DestroyWindow = Marshal.GetFunctionPointerForDelegate(_rendererDestroyWindow);
+        platformIO.Renderer_SetWindowSize = Marshal.GetFunctionPointerForDelegate(_rendererSetWindowSize);
+        platformIO.Renderer_RenderWindow = Marshal.GetFunctionPointerForDelegate(_rendererRenderWindow);
+        platformIO.Renderer_SwapBuffers = Marshal.GetFunctionPointerForDelegate(_rendererSwapBuffers);
     }
 
     // Platform Callbacks
