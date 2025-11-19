@@ -11,6 +11,9 @@ public class GameMatrix
     // Matrix ID
     public int MatrixID { get; set; }
 
+    // Matrix name (read from file)
+    public string Name { get; set; } = string.Empty;
+
     // Grid dimensions
     public byte Width { get; set; }
     public byte Height { get; set; }
@@ -63,52 +66,59 @@ public class GameMatrix
             matrix.HasHeaders = reader.ReadByte() == 1;
             matrix.HasAltitudes = reader.ReadByte() == 1;
 
-            // Initialize arrays
-            matrix.Maps = new ushort[matrix.Width, matrix.Height];
-            matrix.Headers = new ushort[matrix.Width, matrix.Height];
-            matrix.Altitudes = new byte[matrix.Width, matrix.Height];
+            // Read name (length-prefixed UTF-8 string)
+            byte nameLength = reader.ReadByte();
+            matrix.Name = System.Text.Encoding.UTF8.GetString(reader.ReadBytes(nameLength));
 
-            // Read maps grid
-            for (int y = 0; y < matrix.Height; y++)
-            {
-                for (int x = 0; x < matrix.Width; x++)
-                {
-                    matrix.Maps[x, y] = reader.ReadUInt16();
-                }
-            }
+            // Initialize arrays with [height, width] indexing (row-major order)
+            matrix.Headers = new ushort[matrix.Height, matrix.Width];
+            matrix.Altitudes = new byte[matrix.Height, matrix.Width];
+            matrix.Maps = new ushort[matrix.Height, matrix.Width];
 
-            // Read headers grid if present
+            // IMPORTANT: Read order matches LiTRE: Headers → Altitudes → Maps
+            // Arrays use [row, col] indexing where row=height and col=width
+
+            // Read headers grid if present (FIRST)
             if (matrix.HasHeaders)
             {
-                for (int y = 0; y < matrix.Height; y++)
+                for (int row = 0; row < matrix.Height; row++)
                 {
-                    for (int x = 0; x < matrix.Width; x++)
+                    for (int col = 0; col < matrix.Width; col++)
                     {
-                        matrix.Headers[x, y] = reader.ReadUInt16();
+                        matrix.Headers[row, col] = reader.ReadUInt16();
                     }
                 }
             }
             else
             {
                 // Fill with empty cells
-                for (int y = 0; y < matrix.Height; y++)
+                for (int row = 0; row < matrix.Height; row++)
                 {
-                    for (int x = 0; x < matrix.Width; x++)
+                    for (int col = 0; col < matrix.Width; col++)
                     {
-                        matrix.Headers[x, y] = EMPTY_CELL;
+                        matrix.Headers[row, col] = EMPTY_CELL;
                     }
                 }
             }
 
-            // Read altitudes grid if present
+            // Read altitudes grid if present (SECOND)
             if (matrix.HasAltitudes)
             {
-                for (int y = 0; y < matrix.Height; y++)
+                for (int row = 0; row < matrix.Height; row++)
                 {
-                    for (int x = 0; x < matrix.Width; x++)
+                    for (int col = 0; col < matrix.Width; col++)
                     {
-                        matrix.Altitudes[x, y] = reader.ReadByte();
+                        matrix.Altitudes[row, col] = reader.ReadByte();
                     }
+                }
+            }
+
+            // Read maps grid (THIRD - always present)
+            for (int row = 0; row < matrix.Height; row++)
+            {
+                for (int col = 0; col < matrix.Width; col++)
+                {
+                    matrix.Maps[row, col] = reader.ReadUInt16();
                 }
             }
 
@@ -136,36 +146,43 @@ public class GameMatrix
         writer.Write((byte)(HasHeaders ? 1 : 0));
         writer.Write((byte)(HasAltitudes ? 1 : 0));
 
-        // Write maps grid
-        for (int y = 0; y < Height; y++)
-        {
-            for (int x = 0; x < Width; x++)
-            {
-                writer.Write(Maps[x, y]);
-            }
-        }
+        // Write name (length-prefixed UTF-8 string)
+        byte[] nameBytes = System.Text.Encoding.UTF8.GetBytes(Name ?? string.Empty);
+        writer.Write((byte)nameBytes.Length);
+        writer.Write(nameBytes);
 
-        // Write headers grid if present
+        // IMPORTANT: Write order matches LiTRE: Headers → Altitudes → Maps
+
+        // Write headers grid if present (FIRST)
         if (HasHeaders)
         {
-            for (int y = 0; y < Height; y++)
+            for (int row = 0; row < Height; row++)
             {
-                for (int x = 0; x < Width; x++)
+                for (int col = 0; col < Width; col++)
                 {
-                    writer.Write(Headers[x, y]);
+                    writer.Write(Headers[row, col]);
                 }
             }
         }
 
-        // Write altitudes grid if present
+        // Write altitudes grid if present (SECOND)
         if (HasAltitudes)
         {
-            for (int y = 0; y < Height; y++)
+            for (int row = 0; row < Height; row++)
             {
-                for (int x = 0; x < Width; x++)
+                for (int col = 0; col < Width; col++)
                 {
-                    writer.Write(Altitudes[x, y]);
+                    writer.Write(Altitudes[row, col]);
                 }
+            }
+        }
+
+        // Write maps grid (THIRD - always present)
+        for (int row = 0; row < Height; row++)
+        {
+            for (int col = 0; col < Width; col++)
+            {
+                writer.Write(Maps[row, col]);
             }
         }
 
@@ -192,33 +209,42 @@ public class GameMatrix
     /// <summary>
     /// Check if a cell is empty.
     /// </summary>
+    /// <param name="x">Column index (0 to Width-1)</param>
+    /// <param name="y">Row index (0 to Height-1)</param>
     public bool IsCellEmpty(int x, int y)
     {
         if (x < 0 || x >= Width || y < 0 || y >= Height)
             return true;
 
-        return Maps[x, y] == EMPTY_CELL;
+        // Arrays use [row, col] indexing
+        return Maps[y, x] == EMPTY_CELL;
     }
 
     /// <summary>
     /// Get map ID at position.
     /// </summary>
+    /// <param name="x">Column index (0 to Width-1)</param>
+    /// <param name="y">Row index (0 to Height-1)</param>
     public ushort GetMapID(int x, int y)
     {
         if (x < 0 || x >= Width || y < 0 || y >= Height)
             return EMPTY_CELL;
 
-        return Maps[x, y];
+        // Arrays use [row, col] indexing
+        return Maps[y, x];
     }
 
     /// <summary>
     /// Get header ID at position.
     /// </summary>
+    /// <param name="x">Column index (0 to Width-1)</param>
+    /// <param name="y">Row index (0 to Height-1)</param>
     public ushort GetHeaderID(int x, int y)
     {
         if (x < 0 || x >= Width || y < 0 || y >= Height)
             return EMPTY_CELL;
 
-        return Headers[x, y];
+        // Arrays use [row, col] indexing
+        return Headers[y, x];
     }
 }

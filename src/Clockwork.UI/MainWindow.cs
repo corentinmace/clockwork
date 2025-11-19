@@ -1,20 +1,22 @@
 using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
+using Clockwork.Core.Settings;
+using Clockwork.UI.Themes;
 using Clockwork.UI.Views;
 using ImGuiNET;
-using OpenTK.Graphics.OpenGL4;
-using OpenTK.Mathematics;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
+using Silk.NET.OpenGL;
+using Silk.NET.Windowing;
 
 namespace Clockwork.UI;
 
 /// <summary>
-/// Main application window using OpenTK and ImGui.
+/// Main application window using Silk.NET and ImGui.
 /// </summary>
-public class MainWindow : GameWindow
+public class MainWindow
 {
+    private readonly IWindow _window;
+    private GL? _gl;
     private ImGuiController? _imguiController;
     private ApplicationContext _appContext;
 
@@ -26,15 +28,23 @@ public class MainWindow : GameWindow
     private readonly TextEditorWindow _textEditorWindow;
     private readonly ScriptEditorWindow _scriptEditorWindow;
     private readonly LogViewerWindow _logViewerWindow;
+    private readonly SettingsWindow _settingsWindow;
+    private readonly ThemeEditorView _themeEditorView;
+    private readonly MatrixEditorView _matrixEditorView;
 
-    public MainWindow(ApplicationContext appContext, GameWindowSettings gameWindowSettings, NativeWindowSettings nativeWindowSettings)
-        : base(gameWindowSettings, nativeWindowSettings)
+    // Sidebar state and metrics
+    private bool _isSidebarCollapsed = false;
+    private bool _showMetricsWindow = false;
+
+    // ROM Save state
+    private bool _isShowingSaveRomDialog = false;
+    private string _saveRomLog = "";
+    private bool _isSavingRom = false;
+
+    public MainWindow(ApplicationContext appContext, IWindow window)
     {
         _appContext = appContext;
-
-        // Initialize logger
-        AppLogger.Initialize();
-        AppLogger.Info("Clockwork application starting...");
+        _window = window;
 
         // Initialize views
         _aboutView = new AboutView(_appContext);
@@ -44,108 +54,86 @@ public class MainWindow : GameWindow
         _textEditorWindow = new TextEditorWindow(_appContext);
         _scriptEditorWindow = new ScriptEditorWindow(_appContext);
         _logViewerWindow = new LogViewerWindow(_appContext);
+        _settingsWindow = new SettingsWindow(_appContext);
+        _themeEditorView = new ThemeEditorView();
+        _matrixEditorView = new MatrixEditorView();
+
+        // Connect theme editor to settings window
+        _settingsWindow.SetThemeEditorView(_themeEditorView);
+
+        // Set up event handlers
+        _window.Load += OnLoad;
+        _window.Render += OnRender;
+        _window.Update += OnUpdate;
+        _window.Resize += OnResize;
+        _window.Closing += OnClosing;
     }
 
-    protected override void OnLoad()
+    public void Run()
     {
-        base.OnLoad();
+        _window.Run();
+    }
 
-        Title = "Clockwork - Pokémon ROM Editor";
+    private void OnLoad()
+    {
+        AppLogger.Info("MainWindow OnLoad: Initializing OpenGL and ImGui");
 
-        _imguiController = new ImGuiController(ClientSize.X, ClientSize.Y);
+        // Get OpenGL context
+        _gl = _window.CreateOpenGL();
+        AppLogger.Debug("OpenGL context created");
 
-        // Configure ImGui style
-        ConfigureImGuiStyle();
+        // Initialize ImGui controller
+        _imguiController = new ImGuiController(_gl, _window, _window.Size.X, _window.Size.Y);
+        AppLogger.Debug("ImGuiController created");
 
+        // Initialize theme manager
+        ThemeManager.Initialize();
+        AppLogger.Debug("ThemeManager initialized");
+
+        // Initialize theme editor view
+        _themeEditorView.Initialize(_appContext);
+
+        // Initialize matrix editor view
+        _matrixEditorView.Initialize(_appContext);
+
+        // Apply theme from settings
+        string themeName = SettingsManager.Settings.CurrentThemeName;
+        ThemeManager.ApplyTheme(themeName);
+        AppLogger.Info($"Applied theme: {themeName}");
+
+        // Restore sidebar state from settings
+        _isSidebarCollapsed = SettingsManager.Settings.SidebarCollapsed;
+        AppLogger.Debug($"Sidebar collapsed state restored: {_isSidebarCollapsed}");
+
+        AppLogger.Info("MainWindow loaded successfully");
         Console.WriteLine("Application started successfully!");
     }
 
-    private void ConfigureImGuiStyle()
+    private void OnResize(Silk.NET.Maths.Vector2D<int> size)
     {
-        var style = ImGui.GetStyle();
-
-        // Rounding
-        style.WindowRounding = 6.0f;
-        style.FrameRounding = 3.0f;
-        style.GrabRounding = 3.0f;
-        style.TabRounding = 3.0f;
-
-        // Spacing
-        style.WindowPadding = new System.Numerics.Vector2(10, 10);
-        style.FramePadding = new System.Numerics.Vector2(8, 4);
-        style.ItemSpacing = new System.Numerics.Vector2(8, 4);
-
-        // Colors (modern dark theme)
-        var colors = style.Colors;
-        colors[(int)ImGuiCol.WindowBg] = new System.Numerics.Vector4(0.11f, 0.11f, 0.11f, 0.94f);
-        colors[(int)ImGuiCol.ChildBg] = new System.Numerics.Vector4(0.15f, 0.15f, 0.15f, 1.00f);
-        colors[(int)ImGuiCol.PopupBg] = new System.Numerics.Vector4(0.11f, 0.11f, 0.11f, 0.94f);
-        colors[(int)ImGuiCol.Border] = new System.Numerics.Vector4(0.25f, 0.25f, 0.27f, 0.50f);
-        colors[(int)ImGuiCol.FrameBg] = new System.Numerics.Vector4(0.20f, 0.21f, 0.22f, 1.00f);
-        colors[(int)ImGuiCol.FrameBgHovered] = new System.Numerics.Vector4(0.30f, 0.31f, 0.32f, 1.00f);
-        colors[(int)ImGuiCol.FrameBgActive] = new System.Numerics.Vector4(0.25f, 0.26f, 0.27f, 1.00f);
-        colors[(int)ImGuiCol.TitleBg] = new System.Numerics.Vector4(0.08f, 0.08f, 0.09f, 1.00f);
-        colors[(int)ImGuiCol.TitleBgActive] = new System.Numerics.Vector4(0.15f, 0.15f, 0.16f, 1.00f);
-        colors[(int)ImGuiCol.MenuBarBg] = new System.Numerics.Vector4(0.15f, 0.15f, 0.16f, 1.00f);
-        colors[(int)ImGuiCol.CheckMark] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.SliderGrab] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.SliderGrabActive] = new System.Numerics.Vector4(0.50f, 0.80f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.Button] = new System.Numerics.Vector4(0.25f, 0.26f, 0.27f, 1.00f);
-        colors[(int)ImGuiCol.ButtonHovered] = new System.Numerics.Vector4(0.35f, 0.36f, 0.37f, 1.00f);
-        colors[(int)ImGuiCol.ButtonActive] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.Header] = new System.Numerics.Vector4(0.25f, 0.26f, 0.27f, 1.00f);
-        colors[(int)ImGuiCol.HeaderHovered] = new System.Numerics.Vector4(0.35f, 0.36f, 0.37f, 1.00f);
-        colors[(int)ImGuiCol.HeaderActive] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.Tab] = new System.Numerics.Vector4(0.15f, 0.15f, 0.16f, 1.00f);
-        colors[(int)ImGuiCol.TabHovered] = new System.Numerics.Vector4(0.40f, 0.70f, 1.00f, 1.00f);
-        colors[(int)ImGuiCol.TabActive] = new System.Numerics.Vector4(0.30f, 0.50f, 0.80f, 1.00f);
+        _gl?.Viewport(0, 0, (uint)size.X, (uint)size.Y);
+        _imguiController?.WindowResized(size.X, size.Y);
     }
 
-    protected override void OnResize(ResizeEventArgs e)
+    private void OnUpdate(double deltaTime)
     {
-        base.OnResize(e);
-
-        GL.Viewport(0, 0, ClientSize.X, ClientSize.Y);
-        _imguiController?.WindowResized(ClientSize.X, ClientSize.Y);
-    }
-
-    protected override void OnTextInput(TextInputEventArgs e)
-    {
-        base.OnTextInput(e);
-
-        _imguiController?.PressChar((char)e.Unicode);
-    }
-
-    protected override void OnMouseWheel(MouseWheelEventArgs e)
-    {
-        base.OnMouseWheel(e);
-
-        _imguiController?.MouseScroll(e.OffsetX, e.OffsetY);
-    }
-
-    protected override void OnUpdateFrame(FrameEventArgs args)
-    {
-        base.OnUpdateFrame(args);
-
-        _imguiController?.Update(this, args.Time);
+        _imguiController?.Update((float)deltaTime);
 
         // Update application context
-        _appContext.Update(args.Time);
+        _appContext.Update(deltaTime);
 
         // Close if requested
         if (!_appContext.IsRunning)
         {
-            Close();
+            _window.Close();
         }
     }
 
-    protected override void OnRenderFrame(FrameEventArgs args)
+    private void OnRender(double deltaTime)
     {
-        base.OnRenderFrame(args);
-
         // Clear screen
-        GL.ClearColor(new Color4(0.1f, 0.1f, 0.1f, 1.0f));
-        GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        _gl?.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        _gl?.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
         // Draw ImGui UI
         DrawUI();
@@ -153,7 +141,28 @@ public class MainWindow : GameWindow
         // Render ImGui
         _imguiController?.Render();
 
-        SwapBuffers();
+        // Note: Buffer swap is automatic (ShouldSwapAutomatically = true)
+    }
+
+    private void OnClosing()
+    {
+        AppLogger.Info("MainWindow OnClosing: Cleaning up resources");
+
+        // Save window state to settings
+        SettingsManager.Settings.WindowWidth = _window.Size.X;
+        SettingsManager.Settings.WindowHeight = _window.Size.Y;
+        SettingsManager.Settings.WindowMaximized = _window.WindowState == WindowState.Maximized;
+        SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
+        SettingsManager.Save();
+        AppLogger.Debug($"Window state saved: {_window.Size.X}x{_window.Size.Y}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
+
+        _imguiController?.Dispose();
+        AppLogger.Debug("ImGuiController disposed");
+
+        _appContext.Shutdown();
+        AppLogger.Info("MainWindow closed");
+
+        _gl?.Dispose();
     }
 
     private void HandleKeyboardShortcuts()
@@ -251,6 +260,10 @@ public class MainWindow : GameWindow
                 {
                     _mapEditorView.IsVisible = true;
                 }
+                if (ImGui.MenuItem("Matrix Editor"))
+                {
+                    _matrixEditorView.IsVisible = true;
+                }
                 if (ImGui.MenuItem("Text Editor"))
                 {
                     _textEditorWindow.IsVisible = true;
@@ -267,6 +280,19 @@ public class MainWindow : GameWindow
                 if (ImGui.MenuItem("Log Viewer"))
                 {
                     _logViewerWindow.IsVisible = true;
+                }
+                if (ImGui.MenuItem("Theme Editor"))
+                {
+                    _themeEditorView.IsVisible = true;
+                }
+                ImGui.EndMenu();
+            }
+
+            if (ImGui.BeginMenu("Settings"))
+            {
+                if (ImGui.MenuItem("Preferences..."))
+                {
+                    _settingsWindow.IsVisible = true;
                 }
                 ImGui.EndMenu();
             }
@@ -297,9 +323,12 @@ public class MainWindow : GameWindow
         _romLoaderView.Draw();
         _headerEditorView.Draw();
         _mapEditorView.Draw();
+        _matrixEditorView.Draw();
         _textEditorWindow.Draw();
         _scriptEditorWindow.Draw();
         _logViewerWindow.Draw();
+        _settingsWindow.Draw();
+        _themeEditorView.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();
@@ -342,19 +371,23 @@ public class MainWindow : GameWindow
             // Editors section
             if (ImGui.CollapsingHeader("Editors", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                if (ImGui.Selectable("  📝 Header Editor", _headerEditorView.IsVisible))
+                if (ImGui.Selectable("  [H] Header Editor", _headerEditorView.IsVisible))
                 {
                     _headerEditorView.IsVisible = !_headerEditorView.IsVisible;
                 }
-                if (ImGui.Selectable("  🗺️  Map Editor", _mapEditorView.IsVisible))
+                if (ImGui.Selectable("  [M] Map Editor", _mapEditorView.IsVisible))
                 {
                     _mapEditorView.IsVisible = !_mapEditorView.IsVisible;
                 }
-                if (ImGui.Selectable("  📄 Text Editor", _textEditorWindow.IsVisible))
+                if (ImGui.Selectable("  [G] Matrix Editor", _matrixEditorView.IsVisible))
+                {
+                    _matrixEditorView.IsVisible = !_matrixEditorView.IsVisible;
+                }
+                if (ImGui.Selectable("  [T] Text Editor", _textEditorWindow.IsVisible))
                 {
                     _textEditorWindow.IsVisible = !_textEditorWindow.IsVisible;
                 }
-                if (ImGui.Selectable("  📜 Script Editor", _scriptEditorWindow.IsVisible))
+                if (ImGui.Selectable("  [S] Script Editor", _scriptEditorWindow.IsVisible))
                 {
                     _scriptEditorWindow.IsVisible = !_scriptEditorWindow.IsVisible;
                 }
@@ -364,15 +397,6 @@ public class MainWindow : GameWindow
         ImGui.End();
     }
 
-    // Sidebar state and metrics
-    private bool _isSidebarCollapsed = false;
-    private bool _showMetricsWindow = false;
-
-    // ROM Save state
-    private bool _isShowingSaveRomDialog = false;
-    private string _saveRomLog = "";
-    private bool _isSavingRom = false;
-
     private void SaveRomDialog()
     {
         var romService = _appContext.GetService<RomService>();
@@ -380,10 +404,13 @@ public class MainWindow : GameWindow
 
         if (romService?.CurrentRom?.IsLoaded != true)
         {
+            AppLogger.Warn("Save ROM requested but no ROM is loaded");
             // TODO: Show error dialog
             Console.WriteLine("No ROM loaded");
             return;
         }
+
+        AppLogger.Debug("Opening save file dialog");
 
         // Open save file dialog
         string? savePath = dialogService?.SaveFileDialog(
@@ -394,8 +421,11 @@ public class MainWindow : GameWindow
 
         if (string.IsNullOrEmpty(savePath))
         {
+            AppLogger.Debug("Save ROM cancelled by user");
             return; // User cancelled
         }
+
+        AppLogger.Info($"User requested ROM save to: {savePath}");
 
         _saveRomLog = "";
         _isSavingRom = true;
@@ -415,10 +445,12 @@ public class MainWindow : GameWindow
 
             if (success)
             {
+                AppLogger.Info("ROM packing completed successfully via UI");
                 _saveRomLog += "\n=== ROM saved successfully! ===\n";
             }
             else
             {
+                AppLogger.Error("ROM packing failed via UI");
                 _saveRomLog += "\n=== ROM save failed! ===\n";
             }
         });
@@ -471,13 +503,5 @@ public class MainWindow : GameWindow
         ImGui.End();
 
         _isShowingSaveRomDialog = isOpen;
-    }
-
-    protected override void OnUnload()
-    {
-        base.OnUnload();
-
-        _imguiController?.Dispose();
-        _appContext.Shutdown();
     }
 }

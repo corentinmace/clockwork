@@ -1,4 +1,6 @@
 using Clockwork.Core.Models;
+using Clockwork.Core.Logging;
+using Clockwork.Core.Settings;
 
 namespace Clockwork.Core.Services;
 
@@ -18,7 +20,16 @@ public class RomService : IApplicationService
 
     public void Initialize()
     {
+        AppLogger.Info("RomService initialized");
         _currentRom = null;
+
+        // Auto-load last ROM if configured
+        if (SettingsManager.Settings.OpenLastRomOnStartup &&
+            !string.IsNullOrEmpty(SettingsManager.Settings.LastRomPath))
+        {
+            AppLogger.Info("Auto-loading last ROM from settings...");
+            LoadRomFromFolder(SettingsManager.Settings.LastRomPath);
+        }
     }
 
     public void Update(double deltaTime)
@@ -45,9 +56,12 @@ public class RomService : IApplicationService
     {
         try
         {
+            AppLogger.Info($"Attempting to load ROM from folder: {folderPath}");
+
             // Check that the folder exists
             if (!Directory.Exists(folderPath))
             {
+                AppLogger.Error($"ROM folder does not exist: {folderPath}");
                 return false;
             }
 
@@ -55,6 +69,7 @@ public class RomService : IApplicationService
             string headerPath = Path.Combine(folderPath, "header.bin");
             if (!File.Exists(headerPath))
             {
+                AppLogger.Error($"header.bin not found at: {headerPath}");
                 return false;
             }
 
@@ -62,12 +77,16 @@ public class RomService : IApplicationService
             string gameCode = ReadGameCodeFromHeader(headerPath);
             if (string.IsNullOrEmpty(gameCode))
             {
+                AppLogger.Error("Failed to read game code from header.bin");
                 return false;
             }
+
+            AppLogger.Debug($"Game code detected: {gameCode}");
 
             // Determine the game version
             if (!_gameCodeMapping.TryGetValue(gameCode, out GameVersion version))
             {
+                AppLogger.Error($"Unsupported game code: {gameCode}");
                 return false;
             }
 
@@ -82,13 +101,22 @@ public class RomService : IApplicationService
                 RomPath = folderPath
             };
 
+            AppLogger.Info($"ROM identified: {_currentRom.GameName} ({gameCode})");
+
             // Initialize game directories
             InitializeGameDirectories(folderPath);
 
+            // Save last ROM path to settings and persist immediately
+            SettingsManager.Settings.LastRomPath = folderPath;
+            SettingsManager.Save(); // Save immediately to avoid losing this on crash
+            AppLogger.Debug($"Saved last ROM path to settings: {folderPath}");
+
+            AppLogger.Info("ROM loaded successfully");
             return true;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error($"Exception while loading ROM: {ex.Message}");
             _currentRom = null;
             return false;
         }
@@ -110,8 +138,9 @@ public class RomService : IApplicationService
 
             return System.Text.Encoding.ASCII.GetString(codeBytes);
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error($"Failed to read game code from header: {ex.Message}");
             return string.Empty;
         }
     }
@@ -162,6 +191,8 @@ public class RomService : IApplicationService
     {
         if (_currentRom == null) return;
 
+        AppLogger.Debug("Initializing game directory structure");
+
         // LiTRE structure: unpacked/ contains extracted NARC files
         string dataPath = Path.Combine(romPath, "data");
         string unpackedPath = Path.Combine(romPath, "unpacked");
@@ -189,6 +220,8 @@ public class RomService : IApplicationService
             ["fielddata"] = Path.Combine(dataPath, "fielddata"),
             ["maptable"] = Path.Combine(dataPath, "fielddata", "maptable"),
         };
+
+        AppLogger.Debug($"Game directories initialized: {_currentRom.GameDirectories.Count} paths registered");
     }
 
     /// <summary>
@@ -196,6 +229,10 @@ public class RomService : IApplicationService
     /// </summary>
     public void UnloadRom()
     {
+        if (_currentRom != null)
+        {
+            AppLogger.Info($"Unloading ROM: {_currentRom.GameName}");
+        }
         _currentRom = null;
     }
 }

@@ -1,4 +1,5 @@
 using Clockwork.Core.Models;
+using Clockwork.Core.Logging;
 
 namespace Clockwork.Core.Services;
 
@@ -17,6 +18,7 @@ public class MapService : IApplicationService
 
     public void Initialize()
     {
+        AppLogger.Info("MapService initialized");
         _maps.Clear();
         _matrices.Clear();
     }
@@ -43,6 +45,7 @@ public class MapService : IApplicationService
     /// </summary>
     public void SetRomService(RomService romService)
     {
+        AppLogger.Debug("RomService dependency set for MapService");
         _romService = romService;
     }
 
@@ -54,11 +57,13 @@ public class MapService : IApplicationService
     {
         if (_romService?.CurrentRom == null)
         {
+            AppLogger.Error("Cannot load maps: No ROM is loaded");
             return false;
         }
 
         try
         {
+            AppLogger.Info("Loading maps from ROM...");
             _maps.Clear();
 
             var rom = _romService.CurrentRom;
@@ -66,13 +71,17 @@ public class MapService : IApplicationService
             // Load maps from unpacked/maps/ directory
             if (!rom.GameDirectories.TryGetValue("maps", out string? mapsPath))
             {
+                AppLogger.Error("Maps directory not found in ROM structure");
                 return false;
             }
 
             if (!Directory.Exists(mapsPath))
             {
+                AppLogger.Error($"Maps directory does not exist: {mapsPath}");
                 return false;
             }
+
+            AppLogger.Debug($"Scanning for map files in: {mapsPath}");
 
             // Get all map files (numbered 0, 1, 2, etc. or 0000, 0001, etc.)
             var mapFiles = Directory.GetFiles(mapsPath)
@@ -80,6 +89,9 @@ public class MapService : IApplicationService
                 .OrderBy(f => int.Parse(Path.GetFileName(f)))
                 .ToList();
 
+            AppLogger.Debug($"Found {mapFiles.Count} map files to load");
+
+            int loadedCount = 0;
             foreach (var mapFile in mapFiles)
             {
                 int mapID = int.Parse(Path.GetFileName(mapFile));
@@ -88,13 +100,20 @@ public class MapService : IApplicationService
                 if (map != null)
                 {
                     _maps.Add(map);
+                    loadedCount++;
+                }
+                else
+                {
+                    AppLogger.Warn($"Failed to load map file: {mapFile}");
                 }
             }
 
+            AppLogger.Info($"Successfully loaded {loadedCount} maps");
             return _maps.Count > 0;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error($"Exception while loading maps: {ex.Message}");
             _maps.Clear();
             return false;
         }
@@ -108,11 +127,13 @@ public class MapService : IApplicationService
     {
         if (_romService?.CurrentRom == null)
         {
+            AppLogger.Error("Cannot load matrices: No ROM is loaded");
             return false;
         }
 
         try
         {
+            AppLogger.Info("Loading matrices from ROM...");
             _matrices.Clear();
 
             var rom = _romService.CurrentRom;
@@ -120,13 +141,17 @@ public class MapService : IApplicationService
             // Load matrices from unpacked/matrices/ directory
             if (!rom.GameDirectories.TryGetValue("matrices", out string? matricesPath))
             {
+                AppLogger.Error("Matrices directory not found in ROM structure");
                 return false;
             }
 
             if (!Directory.Exists(matricesPath))
             {
+                AppLogger.Error($"Matrices directory does not exist: {matricesPath}");
                 return false;
             }
+
+            AppLogger.Debug($"Scanning for matrix files in: {matricesPath}");
 
             // Get all matrix files
             var matrixFiles = Directory.GetFiles(matricesPath)
@@ -134,6 +159,9 @@ public class MapService : IApplicationService
                 .OrderBy(f => int.Parse(Path.GetFileName(f)))
                 .ToList();
 
+            AppLogger.Debug($"Found {matrixFiles.Count} matrix files to load");
+
+            int loadedCount = 0;
             foreach (var matrixFile in matrixFiles)
             {
                 int matrixID = int.Parse(Path.GetFileName(matrixFile));
@@ -142,13 +170,20 @@ public class MapService : IApplicationService
                 if (matrix != null)
                 {
                     _matrices.Add(matrix);
+                    loadedCount++;
+                }
+                else
+                {
+                    AppLogger.Warn($"Failed to load matrix file: {matrixFile}");
                 }
             }
 
+            AppLogger.Info($"Successfully loaded {loadedCount} matrices");
             return _matrices.Count > 0;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error($"Exception while loading matrices: {ex.Message}");
             _matrices.Clear();
             return false;
         }
@@ -177,14 +212,18 @@ public class MapService : IApplicationService
     {
         if (_romService?.CurrentRom == null)
         {
+            AppLogger.Error("Cannot save map: No ROM is loaded");
             return false;
         }
 
         try
         {
+            AppLogger.Debug($"Saving map ID {map.MapID}...");
+
             var rom = _romService.CurrentRom;
             if (!rom.GameDirectories.TryGetValue("maps", out string? mapsPath))
             {
+                AppLogger.Error("Maps directory not found in ROM structure");
                 return false;
             }
 
@@ -194,10 +233,22 @@ public class MapService : IApplicationService
 
             string mapPath = existingFile ?? Path.Combine(mapsPath, map.MapID.ToString());
 
-            return map.WriteToFile(mapPath);
+            bool success = map.WriteToFile(mapPath);
+
+            if (success)
+            {
+                AppLogger.Info($"Map ID {map.MapID} saved successfully");
+            }
+            else
+            {
+                AppLogger.Error($"Failed to save map ID {map.MapID}");
+            }
+
+            return success;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error($"Exception while saving map ID {map.MapID}: {ex.Message}");
             return false;
         }
     }
@@ -209,14 +260,18 @@ public class MapService : IApplicationService
     {
         if (_romService?.CurrentRom == null)
         {
+            AppLogger.Error("Cannot save matrix: No ROM is loaded");
             return false;
         }
 
         try
         {
+            AppLogger.Debug($"Saving matrix ID {matrix.MatrixID}...");
+
             var rom = _romService.CurrentRom;
             if (!rom.GameDirectories.TryGetValue("matrices", out string? matricesPath))
             {
+                AppLogger.Error("Matrices directory not found in ROM structure");
                 return false;
             }
 
@@ -226,10 +281,22 @@ public class MapService : IApplicationService
 
             string matrixPath = existingFile ?? Path.Combine(matricesPath, matrix.MatrixID.ToString());
 
-            return matrix.WriteToFile(matrixPath);
+            bool success = matrix.WriteToFile(matrixPath);
+
+            if (success)
+            {
+                AppLogger.Info($"Matrix ID {matrix.MatrixID} saved successfully");
+            }
+            else
+            {
+                AppLogger.Error($"Failed to save matrix ID {matrix.MatrixID}");
+            }
+
+            return success;
         }
-        catch
+        catch (Exception ex)
         {
+            AppLogger.Error($"Exception while saving matrix ID {matrix.MatrixID}: {ex.Message}");
             return false;
         }
     }

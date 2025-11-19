@@ -1,9 +1,9 @@
 using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
-using OpenTK.Mathematics;
-using OpenTK.Windowing.Common;
-using OpenTK.Windowing.Desktop;
+using Clockwork.Core.Settings;
+using Silk.NET.Maths;
+using Silk.NET.Windowing;
 
 namespace Clockwork.UI;
 
@@ -17,50 +17,72 @@ internal class Program
         AppLogger.Initialize();
         AppLogger.Info("Clockwork application starting...");
 
-        // Create application context (Backend)
-        var appContext = new ApplicationContext();
+        // Initialize settings
+        SettingsManager.Initialize();
 
-        // Register services
-        var romService = new RomService();
-        var headerService = new HeaderService();
-        var mapService = new MapService();
-
-        appContext.AddService(romService);
-        appContext.AddService(new NdsToolService());
-        appContext.AddService(new DialogService());
-        appContext.AddService(headerService);
-        appContext.AddService(mapService);
-
-        // Initialize context
-        appContext.Initialize();
-
-        // Set service dependencies
-        headerService.SetRomService(romService);
-        mapService.SetRomService(romService);
-
-        // OpenTK window configuration
-        var nativeWindowSettings = new NativeWindowSettings()
+        try
         {
-            ClientSize = new Vector2i(1280, 720),
-            Title = "Clockwork",
-            Flags = ContextFlags.ForwardCompatible,
-            WindowBorder = WindowBorder.Resizable,
-            WindowState = WindowState.Normal,
-            StartVisible = true,
-        };
+            // Create application context (Backend)
+            AppLogger.Debug("Creating application context");
+            var appContext = new ApplicationContext();
 
-        var gameWindowSettings = new GameWindowSettings()
-        {
-            UpdateFrequency = 60,
-        };
+            // Register services
+            AppLogger.Debug("Registering services");
+            var romService = new RomService();
+            var headerService = new HeaderService();
+            var mapService = new MapService();
+            var colorTableService = new ColorTableService();
 
-        // Create and run window (Frontend)
-        using (var window = new MainWindow(appContext, gameWindowSettings, nativeWindowSettings))
-        {
-            window.Run();
+            appContext.AddService(romService);
+            appContext.AddService(new NdsToolService());
+            appContext.AddService(new DialogService());
+            appContext.AddService(headerService);
+            appContext.AddService(mapService);
+            appContext.AddService(colorTableService);
+
+            // Initialize context
+            AppLogger.Debug("Initializing application context");
+            appContext.Initialize();
+
+            // Set service dependencies
+            AppLogger.Debug("Configuring service dependencies");
+            headerService.SetRomService(romService);
+            mapService.SetRomService(romService);
+
+            // Silk.NET window configuration
+            AppLogger.Debug("Configuring Silk.NET window");
+            var settings = SettingsManager.Settings;
+
+            var options = WindowOptions.Default;
+            options.Size = new Vector2D<int>(settings.WindowWidth, settings.WindowHeight);
+            options.Title = "Clockwork - Pokémon ROM Editor";
+            options.VSync = true;
+            options.ShouldSwapAutomatically = true;
+            options.WindowState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
+            options.API = new GraphicsAPI(
+                ContextAPI.OpenGL,
+                new APIVersion(3, 3));
+
+            // Create and run window (Frontend)
+            AppLogger.Info("Creating main window");
+            var window = Window.Create(options);
+
+            var mainWindow = new MainWindow(appContext, window);
+            mainWindow.Run();
+
+            // Save settings on exit
+            SettingsManager.Save();
+
+            AppLogger.Info("Clockwork application closed normally");
+            Console.WriteLine("Application closed.");
         }
-
-        AppLogger.Info("Clockwork application closed.");
-        Console.WriteLine("Application closed.");
+        catch (Exception ex)
+        {
+            AppLogger.Fatal($"Fatal error during application startup or runtime: {ex.Message}");
+            AppLogger.Debug($"Stack trace: {ex.StackTrace}");
+            Console.WriteLine($"Fatal error: {ex.Message}");
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey();
+        }
     }
 }

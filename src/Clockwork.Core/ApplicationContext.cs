@@ -1,3 +1,5 @@
+using Clockwork.Core.Logging;
+
 namespace Clockwork.Core;
 
 /// <summary>
@@ -24,6 +26,7 @@ public class ApplicationContext
             throw new InvalidOperationException("Cannot add services after initialization.");
         }
         _services.Add(service);
+        AppLogger.Debug($"Service registered: {service.GetType().Name}");
     }
 
     /// <summary>
@@ -44,12 +47,16 @@ public class ApplicationContext
             throw new InvalidOperationException("Application already initialized.");
         }
 
+        AppLogger.Info($"Initializing application context with {_services.Count} services...");
+
         foreach (var service in _services)
         {
+            AppLogger.Debug($"Initializing service: {service.GetType().Name}");
             service.Initialize();
         }
 
         _isInitialized = true;
+        AppLogger.Info("Application context initialized successfully");
     }
 
     /// <summary>
@@ -73,12 +80,16 @@ public class ApplicationContext
     /// </summary>
     public void Shutdown()
     {
+        AppLogger.Info("Shutting down application context...");
+
         foreach (var service in _services)
         {
+            AppLogger.Debug($"Disposing service: {service.GetType().Name}");
             service.Dispose();
         }
 
         _services.Clear();
         _isInitialized = false;
+        AppLogger.Info("Application context shutdown complete");
     }
 }
