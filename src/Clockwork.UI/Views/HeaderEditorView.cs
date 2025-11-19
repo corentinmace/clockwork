@@ -1,4 +1,6 @@
 using Clockwork.Core;
+using Clockwork.Core.Data;
+using Clockwork.Core.Formats.NDS.MessageEnc;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
 using ImGuiNET;
@@ -19,6 +21,10 @@ public class HeaderEditorView : IView
     private System.Numerics.Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
     private string _searchFilter = string.Empty;
     private string? _lastLoadedRomPath;
+
+    // Location names loaded from text archives
+    private List<string> _locationNames = new();
+    private bool _locationNamesLoaded = false;
 
     public bool IsVisible { get; set; } = false;
 
@@ -117,11 +123,58 @@ public class HeaderEditorView : IView
         {
             _statusMessage = $"Loaded {_headerService.Headers.Count} headers from ROM";
             _statusColor = new System.Numerics.Vector4(0.5f, 0.8f, 0.5f, 1.0f);
+
+            // Load location names
+            LoadLocationNames();
         }
         else
         {
             _statusMessage = "Error: Failed to load headers from ROM";
             _statusColor = new System.Numerics.Vector4(1.0f, 0.4f, 0.4f, 1.0f);
+        }
+    }
+
+    private void LoadLocationNames()
+    {
+        if (_romService?.CurrentRom?.GameDirectories == null)
+            return;
+
+        try
+        {
+            // Get expanded text archives path
+            if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out var textArchivesPath))
+                return;
+
+            // Default to Platinum location names (433) - could be made configurable based on game detection
+            int locationArchiveId = GameConstants.LocationNamesTextArchive.Platinum;
+            string archivePath = Path.Combine(textArchivesPath, $"{locationArchiveId:D4}.txt");
+
+            if (File.Exists(archivePath))
+            {
+                var lines = File.ReadAllLines(archivePath).ToList();
+
+                // Skip key header line if present
+                if (lines.Count > 0 && lines[0].StartsWith("# Key:"))
+                {
+                    lines.RemoveAt(0);
+                }
+
+                _locationNames = lines;
+                _locationNamesLoaded = true;
+
+                _statusMessage += $" | Loaded {_locationNames.Count} location names";
+            }
+            else
+            {
+                _locationNames = new List<string>();
+                _locationNamesLoaded = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading location names: {ex.Message}");
+            _locationNames = new List<string>();
+            _locationNamesLoaded = false;
         }
     }
 
@@ -137,11 +190,8 @@ public class HeaderEditorView : IView
         ImGui.InputTextWithHint("##search", "Search...", ref _searchFilter, 256);
         ImGui.Spacing();
 
-        // Calculate list height (subtract title, spacing, and search box)
-        float listHeight = availableHeight - 60;
-
         // Header list with scrolling
-        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, listHeight), ImGuiChildFlags.Border);
+        ImGui.BeginChild("HeaderList", new System.Numerics.Vector2(-1, -60), ImGuiChildFlags.Border);
 
         var headers = _headerService.Headers;
         foreach (var header in headers)
@@ -217,20 +267,44 @@ public class HeaderEditorView : IView
                 _currentHeader.MusicNightID = (ushort)Math.Clamp(musicNightID, 0, ushort.MaxValue);
             }
 
-            ImGui.Text("Weather ID:");
+            // Weather dropdown with names (using Platinum weather)
+            ImGui.Text("Weather:");
             ImGui.SameLine(150);
-            int weatherID = _currentHeader.WeatherID;
-            if (ImGui.InputInt("##weatherid", ref weatherID, 1, 10))
+            string weatherName = GameConstants.GetWeatherName(_currentHeader.WeatherID);
+            ImGui.SetNextItemWidth(300);
+            if (ImGui.BeginCombo("##weathercombo", weatherName))
             {
-                _currentHeader.WeatherID = (byte)Math.Clamp(weatherID, 0, byte.MaxValue);
+                foreach (var kvp in GameConstants.PtWeatherNames.OrderBy(x => x.Key))
+                {
+                    bool isSelected = _currentHeader.WeatherID == kvp.Key;
+                    if (ImGui.Selectable($"{kvp.Key}: {kvp.Value}", isSelected))
+                    {
+                        _currentHeader.WeatherID = kvp.Key;
+                    }
+                    if (isSelected)
+                        ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
             }
 
-            ImGui.Text("Camera Angle ID:");
+            // Camera Angle dropdown with names (using DPPt cameras)
+            ImGui.Text("Camera Angle:");
             ImGui.SameLine(150);
-            int cameraID = _currentHeader.CameraAngleID;
-            if (ImGui.InputInt("##cameraid", ref cameraID, 1, 10))
+            string cameraName = GameConstants.GetCameraAngleName(_currentHeader.CameraAngleID);
+            ImGui.SetNextItemWidth(300);
+            if (ImGui.BeginCombo("##cameracombo", cameraName))
             {
-                _currentHeader.CameraAngleID = (byte)Math.Clamp(cameraID, 0, byte.MaxValue);
+                foreach (var kvp in GameConstants.DPPtCameraAngles.OrderBy(x => x.Key))
+                {
+                    bool isSelected = _currentHeader.CameraAngleID == kvp.Key;
+                    if (ImGui.Selectable($"{kvp.Key}: {kvp.Value}", isSelected))
+                    {
+                        _currentHeader.CameraAngleID = kvp.Key;
+                    }
+                    if (isSelected)
+                        ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
             }
         }
 
@@ -277,12 +351,45 @@ public class HeaderEditorView : IView
         // Location & Encounters section
         if (ImGui.CollapsingHeader("Location & Encounters"))
         {
+            // Location Name dropdown with names from text archive
             ImGui.Text("Location Name:");
             ImGui.SameLine(150);
-            int locationName = _currentHeader.LocationName;
-            if (ImGui.InputInt("##locationname", ref locationName, 1, 10))
+
+            if (_locationNamesLoaded && _locationNames.Count > 0)
             {
-                _currentHeader.LocationName = (byte)Math.Clamp(locationName, 0, byte.MaxValue);
+                // Display location name from text archive
+                string currentLocationName = _currentHeader.LocationName < _locationNames.Count
+                    ? _locationNames[_currentHeader.LocationName]
+                    : $"<Unknown {_currentHeader.LocationName}>";
+
+                ImGui.SetNextItemWidth(300);
+                if (ImGui.BeginCombo("##locationcombo", $"{_currentHeader.LocationName}: {currentLocationName}"))
+                {
+                    for (int i = 0; i < Math.Min(_locationNames.Count, 256); i++)
+                    {
+                        bool isSelected = _currentHeader.LocationName == i;
+                        string locationText = !string.IsNullOrWhiteSpace(_locationNames[i])
+                            ? _locationNames[i]
+                            : $"<Empty {i}>";
+
+                        if (ImGui.Selectable($"{i}: {locationText}", isSelected))
+                        {
+                            _currentHeader.LocationName = (byte)i;
+                        }
+                        if (isSelected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+            }
+            else
+            {
+                // Fallback to simple input if location names not loaded
+                int locationName = _currentHeader.LocationName;
+                if (ImGui.InputInt("##locationname", ref locationName, 1, 10))
+                {
+                    _currentHeader.LocationName = (byte)Math.Clamp(locationName, 0, byte.MaxValue);
+                }
             }
 
             ImGui.Text("Area Icon:");

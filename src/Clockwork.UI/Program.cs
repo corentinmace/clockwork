@@ -1,4 +1,5 @@
 using Clockwork.Core;
+using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using OpenTK.Mathematics;
 using OpenTK.Windowing.Common;
@@ -11,6 +12,10 @@ internal class Program
     private static void Main(string[] args)
     {
         Console.WriteLine("Starting Clockwork...");
+
+        // Initialize logger
+        AppLogger.Initialize();
+        AppLogger.Info("Clockwork application starting...");
 
         // Create application context (Backend)
         var appContext = new ApplicationContext();
@@ -55,6 +60,7 @@ internal class Program
             window.Run();
         }
 
+        AppLogger.Info("Clockwork application closed.");
         Console.WriteLine("Application closed.");
     }
 }

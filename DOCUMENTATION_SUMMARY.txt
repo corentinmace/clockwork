@@ -1,0 +1,151 @@
+NDS SCRIPT FILE FORMAT - DOCUMENTATION COMPLETE
+
+Location: /home/user/clockwork/
+
+Files Created:
+==============
+
+1. README_SCRIPT_FORMAT.md (THIS FILE - START HERE)
+   - Master index and quick navigation guide
+   - 30-second overview of binary format
+   - Implementation checklist
+   - File descriptions and next steps
+
+2. SCRIPT_FORMAT_SUMMARY.md
+   - Executive summary (181 lines)
+   - Binary structure diagrams
+   - Code structures showing relationships
+   - Key facts and critical implementation points
+   - Byte-level example with hex dump
+
+3. NDS_SCRIPT_FORMAT.md
+   - Complete technical specification (260 lines)
+   - Detailed header format (bytes 0-15)
+   - Container offset tables with terminators
+   - Command structure and encoding
+   - Command reference (0x0002-0x0347)
+   - Offset/pointer handling details
+   - Key implementation details
+   - File size calculations
+   - Binary serialization pseudocode
+
+4. SCRIPT_SERIALIZATION_GUIDE.md
+   - Implementation guide (395 lines)
+   - Byte-level layout diagram
+   - FromBinary() pseudocode (50+ lines)
+   - ToBytes() pseudocode (40+ lines)
+   - Helper function implementations
+   - Critical implementation notes
+   - Testing checklist
+   - Example file trace with offsets
+   - Current status in codebase
+
+5. IMPLEMENTATION_REFERENCE.md
+   - Quick reference (295 lines)
+   - Exact file locations in repo
+   - Supporting classes already implemented
+   - Binary format quick reference
+   - Critical implementation details (5 sections)
+   - Parameter parsing code patterns
+   - Offset table writing patterns
+   - Related utility classes
+   - Test cases (3 complete examples)
+   - Debugging hints
+   - Code patterns in codebase
+
+Total Documentation: ~1,100 lines
+Covering: Format, Implementation, Reference, Examples, Testing
+
+Content Quality:
+================
+✓ Byte-level accurate
+✓ Little-endian handling specified
+✓ Terminator (0xFD13) documented
+✓ Offset calculation explained (most common mistake highlighted)
+✓ Parameter type mapping complete
+✓ Code patterns provided
+✓ Test cases included
+✓ Debugging hints included
+✓ Cross-referenced documents
+
+Main Implementation File:
+========================
+/home/user/clockwork/src/Clockwork.Core/Formats/NDS/Scripts/ScriptFile.cs
+
+Methods to implement:
+- Line 51: FromBinary(byte[] data, int fileID = 0) 
+- Line 82: ToBytes()
+
+Supporting files (already complete):
+- ScriptCommand.cs (use as reference)
+- ScriptContainer.cs (partial reference)
+- ScriptDatabase.cs (fully functional)
+- ScriptCommands.json (210 commands defined)
+
+Key Findings:
+=============
+
+1. File Structure: Header → Offset Tables → Command Data
+2. Offsets: Relative to command data start (NOT absolute)
+3. Terminators: 0xFD13 required after each offset table
+4. Endianness: Little-endian throughout
+5. Database: ScriptCommands.json required for parameter parsing
+6. Commands: ID (2 bytes) + Parameters (variable based on type)
+7. Parameter Types: Byte, Word, DWord, Offset, Variable
+
+Critical Implementation Points:
+================================
+
+1. OFFSET CALCULATION (Most Common Mistake!)
+   dataBaseOffset = 16 + (scriptCount*4+2) + (functionCount*4+2) + (actionCount*4+2)
+
+2. TERMINATOR HANDLING (Mandatory!)
+   0xFD13 after each offset table (not optional)
+
+3. PARAMETER PARSING (Database Required!)
+   Must lookup command in ScriptDatabase to know parameter types
+
+4. OFFSET TABLE STRUCTURE
+   [4 bytes per container] + [0xFD13 terminator]
+
+5. CONTAINER BOUNDARIES
+   Detected by comparing offsets in tables
+
+Research Sources:
+==================
+- Clockwork codebase analysis
+- Pokemon ROM hacking communities (Project Pokemon, PokéCommunity)
+- PokePlat disassembly (github.com/JimB16/PokePlat)
+- PPRE source (github.com/projectpokemon/PPRE)
+- NDS binary format standards
+
+Documentation Conventions:
+===========================
+- Offsets shown in 0x notation (hexadecimal)
+- Byte counts in decimal
+- All values little-endian unless noted
+- Code examples in C# (matching codebase)
+- Pseudocode shows algorithm clearly
+
+Quick Navigation:
+==================
+
+For 5-minute overview:
+  → SCRIPT_FORMAT_SUMMARY.md
+
+For implementation:
+  → SCRIPT_SERIALIZATION_GUIDE.md
+  → IMPLEMENTATION_REFERENCE.md
+
+For complete specification:
+  → NDS_SCRIPT_FORMAT.md
+
+For code patterns:
+  → IMPLEMENTATION_REFERENCE.md
+  → ScriptCommand.cs (in codebase)
+
+Status:
+=======
+Documentation: COMPLETE
+Testing Framework: PROVIDED (test cases included)
+Implementation: READY TO START
