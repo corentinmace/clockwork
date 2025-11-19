@@ -47,6 +47,15 @@ public static class ScriptDatabase
         return info?.Name ?? $"CMD_0x{commandID:X4}";
     }
 
+    /// <summary>
+    /// Gets command info by name, returns null if not found
+    /// </summary>
+    public static ScriptCommandInfo? GetCommandInfo(string commandName)
+    {
+        var commands = PlatinumCommands.Values;
+        return commands.FirstOrDefault(c => c.Name.Equals(commandName, StringComparison.OrdinalIgnoreCase));
+    }
+
     private static void LoadFromJson()
     {
         try

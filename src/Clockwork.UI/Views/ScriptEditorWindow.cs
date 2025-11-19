@@ -3,6 +3,7 @@ using Clockwork.Core.Formats.NDS.Scripts;
 using Clockwork.Core.Services;
 using ImGuiNET;
 using System.Numerics;
+using System.IO;
 
 namespace Clockwork.UI.Views;
 
@@ -323,8 +324,29 @@ public class ScriptEditorWindow : IView
 
     private void CompileAndSaveToROM()
     {
-        // TODO: Implement script compilation (text -> binary) and save to ROM
-        SetStatus("Compilation not yet implemented", new Vector4(1.0f, 0.6f, 0.0f, 1.0f));
+        if (_currentFileID < 0) return;
+
+        try
+        {
+            // Compile text to binary
+            var scriptFile = ScriptCompiler.CompileScriptFile(
+                _currentFileID,
+                _scriptTabText,
+                _functionTabText,
+                _actionTabText
+            );
+
+            // Save to ROM unpacked directory
+            string binaryPath = Path.Combine(_scriptsDir, _currentFileID.ToString());
+            scriptFile.SaveToFile(binaryPath);
+
+            _isDirty = false;
+            SetStatus($"Compiled and saved Script File {_currentFileID} to ROM", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
+        }
+        catch (Exception ex)
+        {
+            SetStatus($"Compilation error: {ex.Message}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+        }
     }
 
     private void SaveCurrentFile()
