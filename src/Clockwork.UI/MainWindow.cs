@@ -30,6 +30,7 @@ public class MainWindow
     private readonly LogViewerWindow _logViewerWindow;
     private readonly SettingsWindow _settingsWindow;
     private readonly ThemeEditorView _themeEditorView;
+    private readonly MatrixEditorView _matrixEditorView;
 
     // Sidebar state and metrics
     private bool _isSidebarCollapsed = false;
@@ -55,6 +56,7 @@ public class MainWindow
         _logViewerWindow = new LogViewerWindow(_appContext);
         _settingsWindow = new SettingsWindow(_appContext);
         _themeEditorView = new ThemeEditorView();
+        _matrixEditorView = new MatrixEditorView();
 
         // Connect theme editor to settings window
         _settingsWindow.SetThemeEditorView(_themeEditorView);
@@ -90,6 +92,9 @@ public class MainWindow
 
         // Initialize theme editor view
         _themeEditorView.Initialize(_appContext);
+
+        // Initialize matrix editor view
+        _matrixEditorView.Initialize(_appContext);
 
         // Apply theme from settings
         string themeName = SettingsManager.Settings.CurrentThemeName;
@@ -255,6 +260,10 @@ public class MainWindow
                 {
                     _mapEditorView.IsVisible = true;
                 }
+                if (ImGui.MenuItem("Matrix Editor"))
+                {
+                    _matrixEditorView.IsVisible = true;
+                }
                 if (ImGui.MenuItem("Text Editor"))
                 {
                     _textEditorWindow.IsVisible = true;
@@ -314,6 +323,7 @@ public class MainWindow
         _romLoaderView.Draw();
         _headerEditorView.Draw();
         _mapEditorView.Draw();
+        _matrixEditorView.Draw();
         _textEditorWindow.Draw();
         _scriptEditorWindow.Draw();
         _logViewerWindow.Draw();
