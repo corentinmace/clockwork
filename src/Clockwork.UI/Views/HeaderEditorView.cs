@@ -270,14 +270,14 @@ public class HeaderEditorView : IView
                 _currentHeader.MusicNightID = (ushort)Math.Clamp(musicNightID, 0, ushort.MaxValue);
             }
 
-            // Weather dropdown with names
+            // Weather dropdown with names (using Platinum weather)
             ImGui.Text("Weather:");
             ImGui.SameLine(150);
             string weatherName = GameConstants.GetWeatherName(_currentHeader.WeatherID);
-            ImGui.SetNextItemWidth(250);
+            ImGui.SetNextItemWidth(300);
             if (ImGui.BeginCombo("##weathercombo", weatherName))
             {
-                foreach (var kvp in GameConstants.WeatherNames.OrderBy(x => x.Key))
+                foreach (var kvp in GameConstants.PtWeatherNames.OrderBy(x => x.Key))
                 {
                     bool isSelected = _currentHeader.WeatherID == kvp.Key;
                     if (ImGui.Selectable($"{kvp.Key}: {kvp.Value}", isSelected))
@@ -290,14 +290,14 @@ public class HeaderEditorView : IView
                 ImGui.EndCombo();
             }
 
-            // Camera Angle dropdown with names
+            // Camera Angle dropdown with names (using DPPt cameras)
             ImGui.Text("Camera Angle:");
             ImGui.SameLine(150);
             string cameraName = GameConstants.GetCameraAngleName(_currentHeader.CameraAngleID);
-            ImGui.SetNextItemWidth(250);
+            ImGui.SetNextItemWidth(300);
             if (ImGui.BeginCombo("##cameracombo", cameraName))
             {
-                foreach (var kvp in GameConstants.CameraAngles.OrderBy(x => x.Key))
+                foreach (var kvp in GameConstants.DPPtCameraAngles.OrderBy(x => x.Key))
                 {
                     bool isSelected = _currentHeader.CameraAngleID == kvp.Key;
                     if (ImGui.Selectable($"{kvp.Key}: {kvp.Value}", isSelected))
