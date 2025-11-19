@@ -338,10 +338,11 @@ namespace Clockwork.Core.Formats.NDS.MessageEnc
             return initialKey;
         }
 
-        public static bool WriteMessageArchive(string filePath, List<string> messages, bool isTrainerName = false)
+        /// <summary>
+        /// Writes messages to a binary archive with a specific encryption key
+        /// </summary>
+        public static bool WriteMessageArchive(string filePath, List<string> messages, ushort initialKey, bool isTrainerName = false)
         {
-            int initialKey = GetInitialKey(filePath);
-
             var stream = new MemoryStream();
             using (BinaryWriter writer = new BinaryWriter(stream))
             {
@@ -393,6 +394,15 @@ namespace Clockwork.Core.Formats.NDS.MessageEnc
         }
 
         /// <summary>
+        /// Writes messages to a binary archive, preserving the original encryption key from the file
+        /// </summary>
+        public static bool WriteMessageArchive(string filePath, List<string> messages, bool isTrainerName = false)
+        {
+            ushort initialKey = (ushort)GetInitialKey(filePath);
+            return WriteMessageArchive(filePath, messages, initialKey, isTrainerName);
+        }
+
+        /// <summary>
         /// Exports all messages from a binary archive to a text file
         /// </summary>
         public static void ExportToTextFile(string binaryPath, string textPath)
@@ -413,6 +423,58 @@ namespace Clockwork.Core.Formats.NDS.MessageEnc
 
             var messages = new List<string>(File.ReadAllLines(textPath));
             return WriteMessageArchive(binaryPath, messages, isTrainerName);
+        }
+
+        /// <summary>
+        /// Repacks a text archive from expanded/ format to binary unpacked/ format
+        /// Format: First line contains "# Key: 0xXXXX", followed by message lines
+        /// </summary>
+        public static bool RepackTextArchive(string expandedTextPath, string unpackedBinaryPath, bool isTrainerName = false)
+        {
+            if (!File.Exists(expandedTextPath))
+            {
+                throw new FileNotFoundException($"Text archive not found: {expandedTextPath}");
+            }
+
+            try
+            {
+                var lines = File.ReadAllLines(expandedTextPath).ToList();
+
+                if (lines.Count == 0)
+                {
+                    throw new InvalidDataException("Text archive is empty");
+                }
+
+                // Parse encryption key from first line
+                ushort encryptionKey = 0;
+                string firstLine = lines[0];
+                if (firstLine.StartsWith("# Key: 0x") || firstLine.StartsWith("# Key: "))
+                {
+                    string keyStr = firstLine.Substring(7).Trim();
+                    if (keyStr.StartsWith("0x"))
+                        keyStr = keyStr.Substring(2);
+
+                    if (!ushort.TryParse(keyStr, System.Globalization.NumberStyles.HexNumber, null, out encryptionKey))
+                    {
+                        throw new InvalidDataException($"Invalid encryption key format: {firstLine}");
+                    }
+
+                    // Remove key line from messages
+                    lines.RemoveAt(0);
+                }
+                else
+                {
+                    throw new InvalidDataException("Text archive missing encryption key header (# Key: 0xXXXX)");
+                }
+
+                // Write binary archive with the extracted key
+                return WriteMessageArchive(unpackedBinaryPath, lines, encryptionKey, isTrainerName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error repacking text archive: {ex.Message}");
+                return false;
+            }
         }
     }
 }

@@ -149,7 +149,7 @@ namespace Clockwork.UI.Views
         }
 
         /// <summary>
-        /// Save the current message archive (.txt format to expanded/)
+        /// Save the current message archive (.txt format to expanded/ and repack to binary in unpacked/)
         /// </summary>
         public void SaveFile()
         {
@@ -167,18 +167,73 @@ namespace Clockwork.UI.Views
                     messages[selectedMessageIndex] = editBuffer;
                 }
 
-                // Write with key in first line
+                // Write with key in first line to expanded/ .txt file
                 var lines = new List<string>();
                 lines.Add($"# Key: 0x{encryptionKey:X4}");
                 lines.AddRange(messages);
 
                 File.WriteAllLines(currentFilePath, lines);
                 isDirty = false;
-                SetStatusMessage($"Saved {messages.Count} messages to {Path.GetFileName(currentFilePath)}");
+
+                // Repack to binary format in unpacked/
+                RepackToBinary();
+
+                SetStatusMessage($"Saved {messages.Count} messages to {Path.GetFileName(currentFilePath)} and repacked to ROM");
             }
             catch (Exception ex)
             {
                 SetStatusMessage($"Error saving file: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Repacks the current text archive to binary format in unpacked/
+        /// </summary>
+        private void RepackToBinary()
+        {
+            try
+            {
+                // Determine the binary file path
+                // Example: expanded/textArchives/0000.txt -> unpacked/textArchives/0000
+
+                // Use Path methods for cross-platform compatibility
+                string normalizedPath = currentFilePath.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
+
+                // Check if path contains "expanded"
+                if (!normalizedPath.Contains($"{Path.DirectorySeparatorChar}expanded{Path.DirectorySeparatorChar}"))
+                {
+                    SetStatusMessage("Warning: File is not in expanded/ directory, cannot repack");
+                    return;
+                }
+
+                string binaryPath = normalizedPath
+                    .Replace($"{Path.DirectorySeparatorChar}expanded{Path.DirectorySeparatorChar}",
+                             $"{Path.DirectorySeparatorChar}unpacked{Path.DirectorySeparatorChar}");
+
+                // Remove .txt extension if present
+                if (binaryPath.EndsWith(".txt", StringComparison.OrdinalIgnoreCase))
+                {
+                    binaryPath = binaryPath.Substring(0, binaryPath.Length - 4);
+                }
+
+                // Ensure the directory exists
+                string? binaryDir = Path.GetDirectoryName(binaryPath);
+                if (!string.IsNullOrEmpty(binaryDir) && !Directory.Exists(binaryDir))
+                {
+                    Directory.CreateDirectory(binaryDir);
+                }
+
+                // Repack using EncryptText
+                bool success = MessageEnc.EncryptText.RepackTextArchive(currentFilePath, binaryPath, false);
+
+                if (!success)
+                {
+                    SetStatusMessage("Warning: Failed to repack to binary format");
+                }
+            }
+            catch (Exception ex)
+            {
+                SetStatusMessage($"Warning: Failed to repack binary: {ex.Message}");
             }
         }
 
@@ -234,17 +289,15 @@ namespace Clockwork.UI.Views
             {
                 ImGui.Text("Text Archive:");
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(150);
+                ImGui.SetNextItemWidth(200);
                 if (ImGui.Combo("##archive", ref selectedArchiveIndex, archiveNames, archiveNames.Length))
                 {
-                    // Archive selection changed
-                }
-
-                ImGui.SameLine();
-                if (ImGui.Button("Load Selected") && selectedArchiveIndex >= 0 && selectedArchiveIndex < availableTextArchives.Count)
-                {
-                    string archivePath = availableTextArchives[selectedArchiveIndex];
-                    LoadFile(archivePath);
+                    // Archive selection changed - auto-load the selected archive
+                    if (selectedArchiveIndex >= 0 && selectedArchiveIndex < availableTextArchives.Count)
+                    {
+                        string archivePath = availableTextArchives[selectedArchiveIndex];
+                        LoadFile(archivePath);
+                    }
                 }
 
                 ImGui.SameLine();
