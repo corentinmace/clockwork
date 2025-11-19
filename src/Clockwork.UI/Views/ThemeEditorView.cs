@@ -355,6 +355,40 @@ public class ThemeEditorView : IView
         if (_editingTheme == null) return;
 
         ImGui.Text("Propriétés de style:");
+
+        ImGui.Separator();
+        ImGui.Text("Police:");
+        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f), "(Redémarrage requis pour appliquer)");
+
+        // Font selection
+        string[] availableFonts = new[] { "Default", "Arial", "Consolas", "Courier New", "Segoe UI", "Tahoma", "Times New Roman", "Verdana" };
+        string currentFont = _editingTheme.FontName;
+        if (ImGui.BeginCombo("Police", currentFont))
+        {
+            foreach (var font in availableFonts)
+            {
+                bool isSelected = currentFont == font;
+                if (ImGui.Selectable(font, isSelected))
+                {
+                    _editingTheme.FontName = font;
+                    _hasUnsavedChanges = true;
+                }
+                if (isSelected)
+                    ImGui.SetItemDefaultFocus();
+            }
+            ImGui.EndCombo();
+        }
+
+        // Font size
+        float fontSize = _editingTheme.FontSize;
+        if (ImGui.SliderFloat("Taille de police", ref fontSize, 10f, 32f, "%.0f px"))
+        {
+            _editingTheme.FontSize = fontSize;
+            _hasUnsavedChanges = true;
+        }
+
+        ImGui.Separator();
+
         float windowRounding = _editingTheme.WindowRounding;
         if (ImGui.SliderFloat("Arrondi fenêtres", ref windowRounding, 0f, 12f))
             _hasUnsavedChanges = true;
