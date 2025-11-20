@@ -542,6 +542,40 @@ public class WildEditorView : IView
             ImGui.Spacing();
         }
 
+        // Regional Forms (Shellos/Gastrodon)
+        if (ImGui.CollapsingHeader("Regional Forms (Shellos/Gastrodon)", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Indent();
+            ImGui.TextDisabled("Regional variants for Shellos and Gastrodon (East Sea / West Sea)");
+            ImGui.Spacing();
+
+            DrawSpecialEncounterTable("RegionalForms", encounter.RegionalForms, 5);
+
+            ImGui.Unindent();
+            ImGui.Spacing();
+        }
+
+        // Unown Forms
+        if (ImGui.CollapsingHeader("Unown Forms"))
+        {
+            ImGui.Indent();
+            ImGui.TextDisabled("Unown form table (exact usage unknown)");
+            ImGui.Spacing();
+
+            int unknownTableValue = (int)encounter.UnknownTable;
+            ImGui.Text("Unknown Table:");
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(200);
+            if (ImGui.InputInt("##unknowntable", ref unknownTableValue, 1, 10))
+            {
+                encounter.UnknownTable = (uint)Math.Clamp(unknownTableValue, 0, uint.MaxValue);
+                _isDirty = true;
+            }
+
+            ImGui.Unindent();
+            ImGui.Spacing();
+        }
+
         ImGui.EndChild();
     }
 
