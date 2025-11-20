@@ -445,6 +445,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Level Script ID:");
             ImGui.SameLine(150);
             int levelScriptID = _currentHeader.LevelScriptID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##levelscriptid", ref levelScriptID, 1, 10))
             {
                 _currentHeader.LevelScriptID = (ushort)Math.Clamp(levelScriptID, 0, ushort.MaxValue);
@@ -462,6 +463,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Event File ID:");
             ImGui.SameLine(150);
             int eventID = _currentHeader.EventFileID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##eventid", ref eventID, 1, 10))
             {
                 _currentHeader.EventFileID = (ushort)Math.Clamp(eventID, 0, ushort.MaxValue);
