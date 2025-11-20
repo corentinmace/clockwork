@@ -60,7 +60,7 @@ internal class Program
                 Y = 100,
                 WindowWidth = settings.WindowWidth,
                 WindowHeight = settings.WindowHeight,
-                WindowTitle = "Clockwork - Pokémon ROM Editor",
+                WindowTitle = "Clockwork - Pokémon: Lost in Time Editor",
                 WindowInitialState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal
             };
 

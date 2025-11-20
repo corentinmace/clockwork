@@ -480,11 +480,11 @@ public class MainWindow
             // Editors section
             if (ImGui.CollapsingHeader("Editors", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                _headerEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.FileLines, "Header Editor", "[H]", _headerEditorView.IsVisible);
-                _mapEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Map, "Map Editor", "[M]", _mapEditorView.IsVisible);
-                _matrixEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Grid, "Matrix Editor", "[G]", _matrixEditorView.IsVisible);
-                _textEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Font, "Text Editor", "[T]", _textEditorWindow.IsVisible);
-                _scriptEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Code, "Script Editor", "[S]", _scriptEditorWindow.IsVisible);
+                _headerEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.FileLines, "Header Editor", _headerEditorView.IsVisible);
+                _mapEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Map, "Map Editor", _mapEditorView.IsVisible);
+                _matrixEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
+                _textEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
+                _scriptEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Code, "Script Editor", _scriptEditorWindow.IsVisible);
             }
 
             ImGui.Spacing();
@@ -492,8 +492,8 @@ public class MainWindow
             // Tools section
             if (ImGui.CollapsingHeader("Tools"))
             {
-                _addressHelperWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Calculator, "Address Helper", "", _addressHelperWindow.IsVisible);
-                _scrcmdTableHelperWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Terminal, "Script Cmd Helper", "", _scrcmdTableHelperWindow.IsVisible);
+                _addressHelperWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Calculator, "Address Helper", _addressHelperWindow.IsVisible);
+                _scrcmdTableHelperWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Terminal, "Script Cmd Helper", _scrcmdTableHelperWindow.IsVisible);
             }
         }
 
@@ -503,14 +503,9 @@ public class MainWindow
     /// <summary>
     /// Draw a sidebar item with icon and label (expanded mode)
     /// </summary>
-    private bool DrawSidebarItem(string icon, string label, string shortcut, bool isVisible)
+    private bool DrawSidebarItem(string icon, string label, bool isVisible)
     {
         string displayText = $"{icon}  {label}";
-        if (!string.IsNullOrEmpty(shortcut))
-        {
-            displayText = $"{icon}  {shortcut} {label}";
-        }
-
         if (ImGui.Selectable(displayText, isVisible))
         {
             return !isVisible;

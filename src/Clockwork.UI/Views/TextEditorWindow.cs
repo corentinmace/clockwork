@@ -493,7 +493,7 @@ namespace Clockwork.UI.Views
                     }
 
                     ImGui.Separator();
-                    ImGui.TextWrapped("Special characters: \\n (newline), \\r (return), \\f (form feed), [PK] (Pokémon), [MN] (Move name)");
+                    ImGui.TextWrapped("Special characters: \\n (newline), \\r (return), \\f (form feed)");
 
                     if (ImGui.Button("Apply Changes"))
                     {
