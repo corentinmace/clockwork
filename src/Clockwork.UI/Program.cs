@@ -34,6 +34,7 @@ internal class Program
             var mapService = new MapService();
             var colorTableService = new ColorTableService();
             var levelScriptService = new LevelScriptService(appContext);
+            var wildEncounterService = new WildEncounterService(appContext);
 
             appContext.AddService(romService);
             appContext.AddService(new NdsToolService());
@@ -42,6 +43,7 @@ internal class Program
             appContext.AddService(mapService);
             appContext.AddService(colorTableService);
             appContext.AddService(levelScriptService);
+            appContext.AddService(wildEncounterService);
 
             // Initialize context
             AppLogger.Debug("Initializing application context");
