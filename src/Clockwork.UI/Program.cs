@@ -36,6 +36,7 @@ internal class Program
             var levelScriptService = new LevelScriptService(appContext);
             var wildEncounterService = new WildEncounterService(appContext);
             var textArchiveService = new TextArchiveService(appContext);
+            var romPackingService = new RomPackingService(appContext);
 
             appContext.AddService(romService);
             appContext.AddService(new NdsToolService());
@@ -46,6 +47,7 @@ internal class Program
             appContext.AddService(levelScriptService);
             appContext.AddService(wildEncounterService);
             appContext.AddService(textArchiveService);
+            appContext.AddService(romPackingService);
 
             // Initialize context
             AppLogger.Debug("Initializing application context");

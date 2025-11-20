@@ -698,6 +698,25 @@ public class MainWindow
         Task.Run(() =>
         {
             var ndsToolService = _appContext.GetService<NdsToolService>();
+            var romPackingService = _appContext.GetService<RomPackingService>();
+
+            // Step 1: Pack all NARC archives
+            _saveRomLog += "=== Step 1: Packing NARC Archives ===\n";
+            bool narcPackingSuccess = romPackingService?.PackAllNarcs(
+                (msg) => { _saveRomLog += msg + "\n"; }
+            ) ?? false;
+
+            if (!narcPackingSuccess)
+            {
+                AppLogger.Error("NARC packing failed");
+                _saveRomLog += "\n=== NARC packing failed! ===\n";
+                _isSavingRom = false;
+                return;
+            }
+
+            _saveRomLog += "\n=== Step 2: Creating ROM File ===\n";
+
+            // Step 2: Pack ROM with ndstool
             bool success = ndsToolService?.PackRom(
                 romService.CurrentRom.RomPath,
                 savePath,
@@ -708,13 +727,13 @@ public class MainWindow
 
             if (success)
             {
-                AppLogger.Info("ROM packing completed successfully via UI");
+                AppLogger.Info("ROM saved successfully via UI");
                 _saveRomLog += "\n=== ROM saved successfully! ===\n";
             }
             else
             {
-                AppLogger.Error("ROM packing failed via UI");
-                _saveRomLog += "\n=== ROM save failed! ===\n";
+                AppLogger.Error("ROM creation failed via UI");
+                _saveRomLog += "\n=== ROM creation failed! ===\n";
             }
         });
     }
