@@ -615,6 +615,41 @@ public class MainWindow
             ImGui.PopStyleColor();
         }
 
+        // Error message (if any)
+        var lastError = AppLogger.GetLastError();
+        if (lastError != null)
+        {
+            ImGui.SameLine();
+            ImGui.Spacing();
+            ImGui.SameLine();
+            ImGui.Text("|");
+            ImGui.SameLine();
+
+            ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(1.0f, 0.3f, 0.3f, 1.0f)); // Bright red
+            string errorIcon = lastError.Level == LogLevel.Fatal ? FontAwesomeIcons.ExclamationTriangle : FontAwesomeIcons.TimesCircle;
+            ImGui.Text($"{errorIcon} {lastError.Message}");
+            ImGui.PopStyleColor();
+
+            // Show full error details on hover
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.BeginTooltip();
+                ImGui.Text($"Time: {lastError.Timestamp:HH:mm:ss}");
+                ImGui.Text($"Level: {lastError.Level}");
+                ImGui.Separator();
+                ImGui.TextWrapped(lastError.Message);
+                ImGui.Spacing();
+                ImGui.TextDisabled("Click to open Log Viewer");
+                ImGui.EndTooltip();
+            }
+
+            // Click to open log viewer
+            if (ImGui.IsItemClicked())
+            {
+                _logViewerWindow.IsVisible = true;
+            }
+        }
+
         // Log viewer button (right side)
         ImGui.SameLine(viewport.WorkSize.X - 120);
         if (ImGui.Button($"{FontAwesomeIcons.FileLines} Log Viewer"))

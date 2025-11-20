@@ -149,6 +149,16 @@ public static class AppLogger
         return _recentLogs.Select(FormatLogEntry).ToList();
     }
 
+    /// <summary>
+    /// Gets the last error or fatal message (for status bar display)
+    /// </summary>
+    public static LogEntry? GetLastError()
+    {
+        return _recentLogs
+            .Where(e => e.Level == LogLevel.Error || e.Level == LogLevel.Fatal)
+            .LastOrDefault();
+    }
+
     // Convenience methods for different log levels
 
     public static void Debug(string message) => Log(LogLevel.Debug, message);
