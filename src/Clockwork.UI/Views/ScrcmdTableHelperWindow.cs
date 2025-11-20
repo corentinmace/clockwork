@@ -175,31 +175,22 @@ public class ScrcmdTableHelperWindow : IView
         _statusMessage = "";
         _isLoaded = false;
 
-        if (!_romService.CurrentRom.GameDirectories.TryGetValue("root", out var romPath))
+        if (!_romService.CurrentRom.GameDirectories.TryGetValue("unpacked", out var unpackedPath))
         {
-            _statusMessage = "ROM path not found";
+            _statusMessage = "Unpacked directory not found in ROM";
             _statusColor = new Vector4(1.0f, 0.4f, 0.4f, 1.0f);
             return;
         }
 
-        // Try to find overlay 65 (synth overlay)
-        string overlayPath = Path.Combine(romPath, $"overlay_{OVERLAY_ID:D4}.bin");
-
-        // Alternative naming conventions
-        if (!File.Exists(overlayPath))
-        {
-            overlayPath = Path.Combine(romPath, "overlay", $"overlay_{OVERLAY_ID:D4}.bin");
-        }
-        if (!File.Exists(overlayPath))
-        {
-            overlayPath = Path.Combine(romPath, $"overlay{OVERLAY_ID}.bin");
-        }
+        // Synth overlay is in unpacked/synthOverlay/0065
+        string synthOverlayDir = Path.Combine(unpackedPath, "synthOverlay");
+        string overlayPath = Path.Combine(synthOverlayDir, OVERLAY_ID.ToString("D4"));
 
         if (!File.Exists(overlayPath))
         {
-            _statusMessage = $"Overlay {OVERLAY_ID} not found. Expected at: overlay_{OVERLAY_ID:D4}.bin";
+            _statusMessage = $"Synth overlay {OVERLAY_ID} not found. Expected at: unpacked/synthOverlay/{OVERLAY_ID:D4}";
             _statusColor = new Vector4(1.0f, 0.4f, 0.4f, 1.0f);
-            AppLogger.Error($"[ScrcmdTableHelper] Overlay {OVERLAY_ID} not found");
+            AppLogger.Error($"[ScrcmdTableHelper] Synth overlay {OVERLAY_ID} not found at {overlayPath}");
             return;
         }
 
