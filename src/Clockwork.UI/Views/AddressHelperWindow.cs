@@ -275,59 +275,45 @@ public class AddressHelperWindow : IView
             return;
         }
 
-        string synthOverlayDir = Path.Combine(unpackedPath, "synthOverlay");
-        if (!Directory.Exists(synthOverlayDir))
+        // SynthOverlay is specifically the file 0065 in unpacked/synthOverlay/
+        string synthOverlayPath = Path.Combine(unpackedPath, "synthOverlay", "0065");
+
+        if (!File.Exists(synthOverlayPath))
         {
-            AppLogger.Warn($"[AddressHelper] SynthOverlay directory not found at {synthOverlayDir}");
+            AppLogger.Warn($"[AddressHelper] SynthOverlay file not found at {synthOverlayPath}");
             return;
         }
 
         try
         {
-            // Calculate offset from synth overlay base
-            uint baseOffset = address - SYNTH_OVERLAY_BASE_ADDRESS;
+            // Calculate offset from synth overlay base address
+            uint offset = address - SYNTH_OVERLAY_BASE_ADDRESS;
 
-            // Get all files in synthOverlay directory, sorted by name
-            var files = Directory.GetFiles(synthOverlayDir)
-                .OrderBy(f => f)
-                .ToList();
+            var fileInfo = new FileInfo(synthOverlayPath);
+            uint fileSize = (uint)fileInfo.Length;
 
-            uint currentOffset = 0;
-            foreach (var file in files)
-            {
-                var fileInfo = new FileInfo(file);
-                uint fileSize = (uint)fileInfo.Length;
-                uint fileEnd = currentOffset + fileSize;
-
-                // Check if address falls in this file's range
-                if (baseOffset >= currentOffset && baseOffset < fileEnd)
-                {
-                    uint localOffset = baseOffset - currentOffset;
-                    string fileName = Path.GetFileName(file);
-
-                    _results.Add(new AddressResult
-                    {
-                        LocationName = "SynthOverlay",
-                        Offset = $"0x{localOffset:X}",
-                        FileName = fileName
-                    });
-
-                    AppLogger.Debug($"[AddressHelper] Found in SynthOverlay file {fileName} at offset 0x{localOffset:X}");
-                }
-
-                currentOffset = fileEnd;
-            }
-
-            // If no specific file found, just show the overall offset
-            if (_results.Count == 0)
+            // Check if offset is within file bounds
+            if (offset < fileSize)
             {
                 _results.Add(new AddressResult
                 {
                     LocationName = "SynthOverlay",
-                    Offset = $"0x{baseOffset:X}",
-                    FileName = "synthOverlay (offset from base)"
+                    Offset = $"0x{offset:X}",
+                    FileName = "0065"
                 });
-                AppLogger.Debug($"[AddressHelper] Address in SynthOverlay range, offset 0x{baseOffset:X} from base");
+
+                AppLogger.Debug($"[AddressHelper] Found in SynthOverlay (0065) at offset 0x{offset:X}");
+            }
+            else
+            {
+                // Address is in synth overlay range but beyond file size
+                _results.Add(new AddressResult
+                {
+                    LocationName = "SynthOverlay",
+                    Offset = $"0x{offset:X} (beyond file size)",
+                    FileName = "0065"
+                });
+                AppLogger.Warn($"[AddressHelper] Address in SynthOverlay range but offset 0x{offset:X} exceeds file size {fileSize}");
             }
         }
         catch (Exception ex)
