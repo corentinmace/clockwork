@@ -18,12 +18,17 @@ public class WildEditorView : IView
     private RomService? _romService;
     private HeaderService? _headerService;
     private WildEncounterService? _wildEncounterService;
+    private TextArchiveService? _textArchiveService;
 
     public bool IsVisible { get; set; } = false;
 
     // Current state
     private int _currentEncounterID = 0;
     private bool _isDirty = false;
+
+    // Encounter selector
+    private string _encounterSearchText = "";
+    private int _selectedEncounterIndex = -1;
 
     // Tab selection
     private enum EditorTab
@@ -44,6 +49,7 @@ public class WildEditorView : IView
         _romService = appContext.GetService<RomService>();
         _headerService = appContext.GetService<HeaderService>();
         _wildEncounterService = appContext.GetService<WildEncounterService>();
+        _textArchiveService = appContext.GetService<TextArchiveService>();
 
         AppLogger.Debug("WildEditorView initialized");
     }
@@ -138,10 +144,11 @@ public class WildEditorView : IView
 
     private void DrawEncounterSelector()
     {
-        ImGui.Text("Encounter File:");
+        // ID selector
+        ImGui.Text("Encounter:");
         ImGui.SameLine();
 
-        ImGui.SetNextItemWidth(100);
+        ImGui.SetNextItemWidth(80);
         int encounterID = _currentEncounterID;
 
         if (ImGui.InputInt("##encounterID", ref encounterID))
@@ -154,6 +161,18 @@ public class WildEditorView : IView
 
         ImGui.SameLine();
 
+        // Show location names for this encounter
+        if (_textArchiveService != null && _wildEncounterService?.EncounterExists(_currentEncounterID) == true)
+        {
+            string locationNames = _textArchiveService.GetEncounterLocationNames(_currentEncounterID);
+            ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), locationNames);
+        }
+        else if (_wildEncounterService?.EncounterExists(_currentEncounterID) != true)
+        {
+            ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "(not found)");
+        }
+
+        // Buttons
         if (ImGui.Button("Load"))
         {
             LoadEncounter(_currentEncounterID);
@@ -168,13 +187,18 @@ public class WildEditorView : IView
 
         ImGui.SameLine();
 
-        if (_wildEncounterService?.EncounterExists(_currentEncounterID) == true)
+        if (ImGui.Button("Prev") && _currentEncounterID > 0)
         {
-            ImGui.TextColored(new Vector4(0.4f, 1.0f, 0.4f, 1.0f), "(exists)");
+            _currentEncounterID--;
+            LoadEncounter(_currentEncounterID);
         }
-        else
+
+        ImGui.SameLine();
+
+        if (ImGui.Button("Next"))
         {
-            ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "(not found)");
+            _currentEncounterID++;
+            LoadEncounter(_currentEncounterID);
         }
     }
 
@@ -208,12 +232,13 @@ public class WildEditorView : IView
         ImGui.TextColored(new Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Pokemon Encounters");
         ImGui.Spacing();
 
-        if (ImGui.BeginTable("WalkingEncounters", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.BeginTable("WalkingEncounters", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
         {
             ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 50);
-            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 120);
-            ImGui.TableSetupColumn("Level", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Rate", ImGuiTableColumnFlags.WidthFixed, 80);
+            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 100);
+            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Level", ImGuiTableColumnFlags.WidthFixed, 80);
+            ImGui.TableSetupColumn("Rate", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableHeadersRow();
 
             string[] rateLabels = new[]
@@ -239,6 +264,18 @@ public class WildEditorView : IView
                     if (pokemonID < 0) pokemonID = 0;
                     encounter.WalkingPokemon[i] = (uint)pokemonID;
                     _isDirty = true;
+                }
+
+                // Pokemon Name
+                ImGui.TableNextColumn();
+                if (_textArchiveService != null && pokemonID > 0)
+                {
+                    string pokemonName = _textArchiveService.GetPokemonName((uint)pokemonID);
+                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), pokemonName);
+                }
+                else
+                {
+                    ImGui.TextDisabled("---");
                 }
 
                 // Level
@@ -348,13 +385,14 @@ public class WildEditorView : IView
         ImGui.TextColored(new Vector4(0.4f, 0.7f, 1.0f, 1.0f), $"{name} Encounters");
         ImGui.Spacing();
 
-        if (ImGui.BeginTable($"{name}Encounters", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.BeginTable($"{name}Encounters", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
         {
             ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 50);
-            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 120);
-            ImGui.TableSetupColumn("Min Level", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Max Level", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Rate", ImGuiTableColumnFlags.WidthFixed, 80);
+            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 100);
+            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Min Lv", ImGuiTableColumnFlags.WidthFixed, 70);
+            ImGui.TableSetupColumn("Max Lv", ImGuiTableColumnFlags.WidthFixed, 70);
+            ImGui.TableSetupColumn("Rate", ImGuiTableColumnFlags.WidthFixed, 60);
             ImGui.TableHeadersRow();
 
             string[] rateLabels = new[] { "60%", "30%", "5%", "4%", "1%" };
@@ -376,6 +414,18 @@ public class WildEditorView : IView
                     if (pokemonID < 0) pokemonID = 0;
                     pokemon[i] = (ushort)pokemonID;
                     _isDirty = true;
+                }
+
+                // Pokemon Name
+                ImGui.TableNextColumn();
+                if (_textArchiveService != null && pokemonID > 0)
+                {
+                    string pokemonName = _textArchiveService.GetPokemonName((uint)pokemonID);
+                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), pokemonName);
+                }
+                else
+                {
+                    ImGui.TextDisabled("---");
                 }
 
                 // Min Level
