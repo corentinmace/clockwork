@@ -561,14 +561,15 @@ public class WildEditorView : IView
 
             ImGui.Text("Unown Table:");
             ImGui.SameLine(150);
-            ImGui.SetNextItemWidth(250);
+            ImGui.SetNextItemWidth(300);
 
             uint tableValue = encounter.UnknownTable;
             string currentTable = PokemonFormsHelper.GetUnownTableName(tableValue);
 
             if (ImGui.BeginCombo("##unowntable", currentTable))
             {
-                for (uint table = 0; table <= 2; table++)
+                // 0: All forms, 1-6: F R I E N D, 7-8: ! ?
+                for (uint table = 0; table <= 8; table++)
                 {
                     bool isSelected = tableValue == table;
                     if (ImGui.Selectable(PokemonFormsHelper.GetUnownTableName(table), isSelected))

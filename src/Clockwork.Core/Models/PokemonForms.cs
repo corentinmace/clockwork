@@ -15,9 +15,15 @@ public enum ShellosForm : uint
 /// </summary>
 public enum UnownFormTable : uint
 {
-    MostForms = 0,           // A-Z forms available
-    OnlyFRIEND = 1,          // Only F, R, I, E, N, D forms
-    ExclamationQuestion = 2  // Only ! and ? forms
+    AllForms = 0,        // All forms (A-Z, !, ?)
+    OnlyF = 1,           // Only F form
+    OnlyR = 2,           // Only R form
+    OnlyI = 3,           // Only I form
+    OnlyE = 4,           // Only E form
+    OnlyN = 5,           // Only N form
+    OnlyD = 6,           // Only D form
+    Exclamation = 7,     // Only ! form
+    Question = 8         // Only ? form
 }
 
 /// <summary>
@@ -39,9 +45,15 @@ public static class PokemonFormsHelper
     {
         return tableValue switch
         {
-            0 => "Most Forms (A-Z)",
-            1 => "Only FRIEND",
-            2 => "Exclamation/Question (! ?)",
+            0 => "All Forms (A-Z, !, ?)",
+            1 => "Only F",
+            2 => "Only R",
+            3 => "Only I",
+            4 => "Only E",
+            5 => "Only N",
+            6 => "Only D",
+            7 => "Only !",
+            8 => "Only ?",
             _ => $"Unknown ({tableValue})"
         };
     }
