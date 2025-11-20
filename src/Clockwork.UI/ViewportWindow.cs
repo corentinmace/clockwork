@@ -95,7 +95,7 @@ public unsafe class ViewportWindow : IDisposable
         _gcHandle = System.Runtime.InteropServices.GCHandle.Alloc(this);
         unsafe
         {
-            viewport.NativePtr->PlatformUserData = (IntPtr)_gcHandle;
+            viewport.NativePtr->PlatformUserData = (void*)(IntPtr)_gcHandle;
         }
 
         // Set up window resize handler
@@ -147,8 +147,8 @@ public unsafe class ViewportWindow : IDisposable
 
     public void SetSize(Vector2 size)
     {
-        Window.Width = (uint)size.X;
-        Window.Height = (uint)size.Y;
+        Window.Width = (int)size.X;
+        Window.Height = (int)size.Y;
         GraphicsDevice.ResizeMainWindow((uint)size.X, (uint)size.Y);
         ImGuiRenderer.WindowResized((int)size.X, (int)size.Y);
     }
