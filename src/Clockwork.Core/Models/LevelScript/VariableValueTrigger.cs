@@ -4,39 +4,28 @@ namespace Clockwork.Core.Models.LevelScript;
 
 /// <summary>
 /// Trigger that activates when a game variable has a specific value
-/// Type 0x0002: Variable Value Trigger
+/// Format: Header (1 byte marker + 4 bytes offset + 1 padding) + entries (2 bytes varID + 2 bytes value + 2 bytes scriptID)
 /// </summary>
 public class VariableValueTrigger : ILevelScriptTrigger
 {
-    public ushort TriggerType => 0x0002;
+    public const byte VARIABLEVALUE_MARKER = 0x05;
 
-    public ushort VariableNumber { get; set; }
-    public ushort VariableValue { get; set; }
-    public ushort ScriptFileID { get; set; }
-    public ushort Unknown { get; set; }
+    public ushort VariableID { get; set; }
+    public ushort ExpectedValue { get; set; }
+    public ushort ScriptToTrigger { get; set; }
 
-    public static VariableValueTrigger ReadFromStream(BinaryReader reader)
-    {
-        return new VariableValueTrigger
-        {
-            Unknown = reader.ReadUInt16(),
-            VariableNumber = reader.ReadUInt16(),
-            VariableValue = reader.ReadUInt16(),
-            ScriptFileID = reader.ReadUInt16()
-        };
-    }
+    ushort ILevelScriptTrigger.TriggerType => VARIABLEVALUE_MARKER;
 
     public void WriteToStream(BinaryWriter writer)
     {
-        writer.Write(TriggerType);
-        writer.Write(Unknown);
-        writer.Write(VariableNumber);
-        writer.Write(VariableValue);
-        writer.Write(ScriptFileID);
+        // Note: The header is written by LevelScriptFile, not individual triggers
+        writer.Write(VariableID);
+        writer.Write(ExpectedValue);
+        writer.Write(ScriptToTrigger);
     }
 
     public string GetDisplayString()
     {
-        return $"Var {VariableNumber:X4} == {VariableValue:X4} → Script: {ScriptFileID}";
+        return $"Var {VariableID:X4} == {ExpectedValue:X4} → Script: {ScriptToTrigger}";
     }
 }

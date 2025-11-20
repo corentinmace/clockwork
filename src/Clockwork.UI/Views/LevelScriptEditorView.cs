@@ -30,6 +30,7 @@ public class LevelScriptEditorView : IView
 
     // Add trigger UI
     private int _selectedTriggerType = 0; // 0 = Map Load, 1 = Variable Value
+    private int _newMapLoadTriggerType = 1; // 1-6 (Map Load, On Foot, Surf, Bike, Fly, Special)
     private int _newMapLoadScript = 0;
     private int _newVarNumber = 0;
     private int _newVarValue = 0;
@@ -198,18 +199,19 @@ public class LevelScriptEditorView : IView
 
     private void DrawTriggersList(LevelScriptFile script)
     {
-        ImGui.Text($"Triggers ({script.Triggers.Count}):");
+        var allTriggers = script.GetAllTriggers();
+        ImGui.Text($"Triggers ({allTriggers.Count}):");
         ImGui.Separator();
 
-        if (script.Triggers.Count == 0)
+        if (allTriggers.Count == 0)
         {
             ImGui.TextDisabled("No triggers defined");
             return;
         }
 
-        for (int i = 0; i < script.Triggers.Count; i++)
+        for (int i = 0; i < allTriggers.Count; i++)
         {
-            var trigger = script.Triggers[i];
+            var trigger = allTriggers[i];
             bool isSelected = (i == _selectedTriggerIndex);
 
             string displayText = FormatTriggerDisplay(trigger);
@@ -224,7 +226,7 @@ public class LevelScriptEditorView : IView
             {
                 if (ImGui.MenuItem($"{FontAwesomeIcons.Trash}  Remove"))
                 {
-                    script.Triggers.RemoveAt(i);
+                    RemoveTriggerByIndex(script, i);
                     _selectedTriggerIndex = -1;
                     _statusMessage = "Trigger removed";
                     _statusColor = new Vector4(1, 0.7f, 0.3f, 1);
@@ -273,6 +275,15 @@ public class LevelScriptEditorView : IView
 
     private void DrawMapLoadTriggerInputs()
     {
+        ImGui.Text("Trigger Type:");
+        ImGui.SetNextItemWidth(200);
+        string[] triggerTypes = { "Map Load (1)", "On Foot (2)", "Surf (3)", "Bike (4)", "Fly (5)", "Special (6)" };
+        int typeIndex = _newMapLoadTriggerType - 1; // Convert 1-6 to 0-5
+        if (ImGui.Combo("##triggertype", ref typeIndex, triggerTypes, triggerTypes.Length))
+        {
+            _newMapLoadTriggerType = typeIndex + 1; // Convert back to 1-6
+        }
+
         ImGui.Text("Script File ID:");
         ImGui.SetNextItemWidth(200);
         ImGui.InputInt("##maploadscript", ref _newMapLoadScript);
@@ -298,31 +309,27 @@ public class LevelScriptEditorView : IView
         var currentScript = _levelScriptService!.CurrentScript;
         if (currentScript == null) return;
 
-        ILevelScriptTrigger? newTrigger = null;
-
         if (_selectedTriggerType == 0)
         {
-            newTrigger = new MapLoadTrigger
+            var newTrigger = new MapLoadTrigger
             {
-                Unknown = 0,
-                ScriptFileID = (ushort)Math.Clamp(_newMapLoadScript, 0, ushort.MaxValue)
+                TriggerType = (byte)Math.Clamp(_newMapLoadTriggerType, 1, 6),
+                ScriptToTrigger = (uint)Math.Clamp(_newMapLoadScript, 0, uint.MaxValue)
             };
+            currentScript.MapLoadTriggers.Add(newTrigger);
+            _statusMessage = "Map Load Trigger added";
+            _statusColor = new Vector4(0.3f, 1, 0.3f, 1);
         }
         else
         {
-            newTrigger = new VariableValueTrigger
+            var newTrigger = new VariableValueTrigger
             {
-                Unknown = 0,
-                VariableNumber = (ushort)Math.Clamp(_newVarNumber, 0, ushort.MaxValue),
-                VariableValue = (ushort)Math.Clamp(_newVarValue, 0, ushort.MaxValue),
-                ScriptFileID = (ushort)Math.Clamp(_newVarScript, 0, ushort.MaxValue)
+                VariableID = (ushort)Math.Clamp(_newVarNumber, 0, ushort.MaxValue),
+                ExpectedValue = (ushort)Math.Clamp(_newVarValue, 0, ushort.MaxValue),
+                ScriptToTrigger = (ushort)Math.Clamp(_newVarScript, 0, ushort.MaxValue)
             };
-        }
-
-        if (newTrigger != null)
-        {
-            currentScript.Triggers.Add(newTrigger);
-            _statusMessage = "Trigger added";
+            currentScript.VariableValueTriggers.Add(newTrigger);
+            _statusMessage = "Variable Value Trigger added";
             _statusColor = new Vector4(0.3f, 1, 0.3f, 1);
         }
     }
@@ -330,10 +337,14 @@ public class LevelScriptEditorView : IView
     private void RemoveSelectedTrigger()
     {
         var currentScript = _levelScriptService!.CurrentScript;
-        if (currentScript == null || _selectedTriggerIndex < 0 || _selectedTriggerIndex >= currentScript.Triggers.Count)
+        if (currentScript == null || _selectedTriggerIndex < 0)
             return;
 
-        currentScript.Triggers.RemoveAt(_selectedTriggerIndex);
+        var allTriggers = currentScript.GetAllTriggers();
+        if (_selectedTriggerIndex >= allTriggers.Count)
+            return;
+
+        RemoveTriggerByIndex(currentScript, _selectedTriggerIndex);
         _selectedTriggerIndex = -1;
         _statusMessage = "Trigger removed";
         _statusColor = new Vector4(1, 0.7f, 0.3f, 1);
@@ -345,8 +356,8 @@ public class LevelScriptEditorView : IView
         {
             return trigger switch
             {
-                MapLoadTrigger mt => $"Map Load → Script: 0x{mt.ScriptFileID:X4}",
-                VariableValueTrigger vt => $"Var 0x{vt.VariableNumber:X4} == 0x{vt.VariableValue:X4} → Script: 0x{vt.ScriptFileID:X4}",
+                MapLoadTrigger mt => $"Map Load → Script: 0x{mt.ScriptToTrigger:X4}",
+                VariableValueTrigger vt => $"Var 0x{vt.VariableID:X4} == 0x{vt.ExpectedValue:X4} → Script: 0x{vt.ScriptToTrigger:X4}",
                 _ => trigger.GetDisplayString()
             };
         }
@@ -354,14 +365,27 @@ public class LevelScriptEditorView : IView
         {
             return trigger switch
             {
-                MapLoadTrigger mt => $"Map Load → Script: {mt.ScriptFileID}",
-                VariableValueTrigger vt => $"Var {vt.VariableNumber} == {vt.VariableValue} → Script: {vt.ScriptFileID}",
+                MapLoadTrigger mt => $"Map Load → Script: {mt.ScriptToTrigger}",
+                VariableValueTrigger vt => $"Var {vt.VariableID} == {vt.ExpectedValue} → Script: {vt.ScriptToTrigger}",
                 _ => trigger.GetDisplayString()
             };
         }
         else // Auto
         {
             return trigger.GetDisplayString();
+        }
+    }
+
+    private void RemoveTriggerByIndex(LevelScriptFile script, int index)
+    {
+        int mapLoadCount = script.MapLoadTriggers.Count;
+        if (index < mapLoadCount)
+        {
+            script.MapLoadTriggers.RemoveAt(index);
+        }
+        else
+        {
+            script.VariableValueTriggers.RemoveAt(index - mapLoadCount);
         }
     }
 
@@ -372,7 +396,8 @@ public class LevelScriptEditorView : IView
         {
             _selectedScriptId = scriptId;
             _selectedTriggerIndex = -1;
-            _statusMessage = $"Loaded script {scriptId} with {script.Triggers.Count} triggers";
+            int totalTriggers = script.MapLoadTriggers.Count + script.VariableValueTriggers.Count;
+            _statusMessage = $"Loaded script {scriptId} with {totalTriggers} triggers";
             _statusColor = new Vector4(0.3f, 1, 0.3f, 1);
         }
         else

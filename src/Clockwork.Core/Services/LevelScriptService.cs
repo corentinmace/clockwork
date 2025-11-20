@@ -41,6 +41,7 @@ public class LevelScriptService : IApplicationService
 
     /// <summary>
     /// Load available level script IDs from ROM
+    /// Scripts are in unpacked/scripts/{id:D4}/ folders
     /// </summary>
     public void LoadAvailableScripts()
     {
@@ -52,27 +53,29 @@ public class LevelScriptService : IApplicationService
             return;
         }
 
-        string scriptsPath = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "levelScripts");
+        string scriptsPath = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "scripts");
 
         if (!Directory.Exists(scriptsPath))
         {
-            AppLogger.Warn($"[LevelScriptService] Level scripts directory not found: {scriptsPath}");
+            AppLogger.Warn($"[LevelScriptService] Scripts directory not found: {scriptsPath}");
             return;
         }
 
-        var scriptFiles = Directory.GetFiles(scriptsPath, "*.bin")
-            .Select(Path.GetFileNameWithoutExtension)
-            .Where(name => !string.IsNullOrEmpty(name) && int.TryParse(name, out _))
+        // Scripts are in folders named with 4-digit IDs (e.g., 0001, 0042)
+        var scriptDirs = Directory.GetDirectories(scriptsPath)
+            .Select(Path.GetFileName)
+            .Where(name => !string.IsNullOrEmpty(name) && name.Length == 4 && int.TryParse(name, out _))
             .Select(name => int.Parse(name!))
             .OrderBy(id => id)
             .ToList();
 
-        AvailableScriptIds = scriptFiles;
-        AppLogger.Info($"[LevelScriptService] Loaded {AvailableScriptIds.Count} level scripts");
+        AvailableScriptIds = scriptDirs;
+        AppLogger.Info($"[LevelScriptService] Loaded {AvailableScriptIds.Count} level scripts from {scriptsPath}");
     }
 
     /// <summary>
     /// Load a level script by ID
+    /// Scripts are in unpacked/scripts/{id:D4}/ folders
     /// </summary>
     public LevelScriptFile? LoadScript(int scriptId)
     {
@@ -82,19 +85,36 @@ public class LevelScriptService : IApplicationService
             return null;
         }
 
-        string scriptPath = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "levelScripts", $"{scriptId}.bin");
+        // Format ID as 4-digit string (e.g., "0001", "0042")
+        string scriptFolder = scriptId.ToString("D4");
+        string scriptDir = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "scripts", scriptFolder);
 
-        if (!File.Exists(scriptPath))
+        if (!Directory.Exists(scriptDir))
         {
-            AppLogger.Warn($"[LevelScriptService] Script file not found: {scriptPath}");
+            AppLogger.Warn($"[LevelScriptService] Script directory not found: {scriptDir}");
             return null;
         }
+
+        // The level script file is typically the first/main file in the directory
+        // We look for any file in the directory (they're usually numbered sequentially)
+        var files = Directory.GetFiles(scriptDir);
+        if (files.Length == 0)
+        {
+            AppLogger.Warn($"[LevelScriptService] No files found in script directory: {scriptDir}");
+            return null;
+        }
+
+        // Use the first file (typically the level script)
+        string scriptPath = files[0];
 
         try
         {
             byte[] data = File.ReadAllBytes(scriptPath);
             CurrentScript = LevelScriptFile.ReadFromBytes(data, scriptId);
-            AppLogger.Info($"[LevelScriptService] Loaded level script {scriptId} with {CurrentScript.Triggers.Count} triggers");
+
+            int totalTriggers = CurrentScript.MapLoadTriggers.Count + CurrentScript.VariableValueTriggers.Count;
+            AppLogger.Info($"[LevelScriptService] Loaded level script {scriptId} with {totalTriggers} triggers " +
+                          $"({CurrentScript.MapLoadTriggers.Count} map, {CurrentScript.VariableValueTriggers.Count} var)");
             return CurrentScript;
         }
         catch (Exception ex)
@@ -129,13 +149,32 @@ public class LevelScriptService : IApplicationService
             return false;
         }
 
-        string scriptPath = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "levelScripts", $"{script.ScriptID}.bin");
+        // Format ID as 4-digit string (e.g., "0001", "0042")
+        string scriptFolder = script.ScriptID.ToString("D4");
+        string scriptDir = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "scripts", scriptFolder);
+
+        if (!Directory.Exists(scriptDir))
+        {
+            AppLogger.Warn($"[LevelScriptService] Script directory not found: {scriptDir}");
+            return false;
+        }
+
+        // Get the first file in the directory (the level script file)
+        var files = Directory.GetFiles(scriptDir);
+        if (files.Length == 0)
+        {
+            AppLogger.Warn($"[LevelScriptService] No files found in script directory: {scriptDir}");
+            return false;
+        }
+
+        string scriptPath = files[0];
 
         try
         {
             byte[] data = script.ToBytes();
             File.WriteAllBytes(scriptPath, data);
-            AppLogger.Info($"[LevelScriptService] Saved level script {script.ScriptID}");
+            int totalTriggers = script.MapLoadTriggers.Count + script.VariableValueTriggers.Count;
+            AppLogger.Info($"[LevelScriptService] Saved level script {script.ScriptID} with {totalTriggers} triggers");
             return true;
         }
         catch (Exception ex)
