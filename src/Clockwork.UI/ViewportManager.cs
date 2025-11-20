@@ -127,8 +127,8 @@ public unsafe class ViewportManager : IDisposable
         unsafe
         {
             // Store a reference to indicate this is the main window (ID 0 means no custom window)
-            mainViewport.NativePtr->PlatformHandle = IntPtr.Zero;
-            mainViewport.NativePtr->PlatformHandleRaw = IntPtr.Zero;
+            mainViewport.NativePtr->PlatformHandle = (void*)IntPtr.Zero;
+            mainViewport.NativePtr->PlatformHandleRaw = (void*)IntPtr.Zero;
         }
 
         AppLogger.Info("ViewportManager: All platform callbacks registered successfully");
