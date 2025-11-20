@@ -104,7 +104,9 @@ public class EncounterFile
             // Skip 3 unused regional form slots (3 * 4 = 12 bytes)
             reader.BaseStream.Position += 12;
 
-            encounter.UnknownTable = reader.ReadUInt32();
+            // Read UnknownTable with -1 offset (file stores 1-based values, we use 0-based)
+            uint fileValue = reader.ReadUInt32();
+            encounter.UnknownTable = fileValue > 0 ? fileValue - 1 : 0;
 
             // Dual slot encounters
             for (int i = 0; i < 2; i++)
@@ -240,7 +242,8 @@ public class EncounterFile
                 writer.Write((uint)0);
             }
 
-            writer.Write(UnknownTable);
+            // Write UnknownTable with +1 offset (we use 0-based, file stores 1-based)
+            writer.Write(UnknownTable + 1);
 
             // Dual slot encounters
             for (int i = 0; i < 2; i++)
