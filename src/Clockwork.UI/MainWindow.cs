@@ -77,7 +77,7 @@ public class MainWindow
         _settingsWindow.SetThemeEditorView(_themeEditorView);
 
         // Connect editors to header editor for navigation
-        _headerEditorView.SetEditorReferences(_textEditorWindow, _scriptEditorWindow, _matrixEditorView);
+        _headerEditorView.SetEditorReferences(_textEditorWindow, _scriptEditorWindow, _levelScriptEditorView, _matrixEditorView);
 
         // Connect tools (ScrcmdTableHelper -> AddressHelper integration)
         _scrcmdTableHelperWindow.SetAddressHelperWindow(_addressHelperWindow);

@@ -55,6 +55,21 @@ public class LevelScriptEditorView : IView
         }
     }
 
+    /// <summary>
+    /// Open the level script editor and load a specific script by its ID
+    /// </summary>
+    /// <param name="scriptId">The script ID to load</param>
+    public void OpenWithScriptID(int scriptId)
+    {
+        AppLogger.Info($"[LevelScriptEditor] OpenWithScriptID called with ID: {scriptId}");
+
+        // Always open the window
+        IsVisible = true;
+
+        // Load the script
+        LoadScript(scriptId);
+    }
+
     public void Draw()
     {
         if (!IsVisible) return;

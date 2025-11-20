@@ -23,6 +23,7 @@ public class HeaderEditorView : IView
     // References to other editors for navigation
     private TextEditorWindow? _textEditorWindow;
     private ScriptEditorWindow? _scriptEditorWindow;
+    private LevelScriptEditorView? _levelScriptEditorView;
     private MatrixEditorView? _matrixEditorView;
 
     private MapHeader? _currentHeader;
@@ -47,10 +48,11 @@ public class HeaderEditorView : IView
     /// <summary>
     /// Set references to other editor windows for navigation
     /// </summary>
-    public void SetEditorReferences(TextEditorWindow textEditor, ScriptEditorWindow scriptEditor, MatrixEditorView matrixEditor)
+    public void SetEditorReferences(TextEditorWindow textEditor, ScriptEditorWindow scriptEditor, LevelScriptEditorView levelScriptEditor, MatrixEditorView matrixEditor)
     {
         _textEditorWindow = textEditor;
         _scriptEditorWindow = scriptEditor;
+        _levelScriptEditorView = levelScriptEditor;
         _matrixEditorView = matrixEditor;
     }
 
@@ -446,6 +448,15 @@ public class HeaderEditorView : IView
             if (ImGui.InputInt("##levelscriptid", ref levelScriptID, 1, 10))
             {
                 _currentHeader.LevelScriptID = (ushort)Math.Clamp(levelScriptID, 0, ushort.MaxValue);
+            }
+
+            // Button to open Level Script Editor
+            if (_levelScriptEditorView != null)
+            {
+                DrawOpenEditorButton("openLevelScript", "Ouvrir dans l'éditeur de level scripts", "Level Script Editor", () =>
+                {
+                    _levelScriptEditorView.OpenWithScriptID(_currentHeader.LevelScriptID);
+                });
             }
 
             ImGui.Text("Event File ID:");
