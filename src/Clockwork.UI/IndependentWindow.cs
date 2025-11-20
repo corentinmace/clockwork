@@ -70,7 +70,10 @@ public class IndependentWindow : IDisposable
         {
             // Get the font atlas from the main context
             var mainIo = ImGui.GetIO();
-            sharedFontAtlas = mainIo.Fonts.NativePtr;
+            unsafe
+            {
+                sharedFontAtlas = (IntPtr)mainIo.Fonts.NativePtr;
+            }
         }
 
         // Create a NEW ImGui context for this window (isolated from main window)
@@ -87,7 +90,10 @@ public class IndependentWindow : IDisposable
         // No viewports needed for independent windows
 
         // Apply same theme as main window (must be done while this context is active)
-        Themes.ThemeManager.ApplyCurrentTheme();
+        if (Themes.ThemeManager.CurrentTheme != null)
+        {
+            Themes.ThemeManager.ApplyTheme(Themes.ThemeManager.CurrentTheme);
+        }
 
         // Create ImGui renderer for this window
         _imguiRenderer = new ImGuiRenderer(
