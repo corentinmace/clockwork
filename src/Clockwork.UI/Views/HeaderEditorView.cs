@@ -31,6 +31,7 @@ public class HeaderEditorView : IView
     private System.Numerics.Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
     private string _searchFilter = string.Empty;
     private string? _lastLoadedRomPath;
+    private bool _shouldScrollToSelection = false;
 
     // Location names loaded from text archives
     private List<string> _locationNames = new();
@@ -242,6 +243,14 @@ public class HeaderEditorView : IView
                 _currentHeader = header;
                 _statusMessage = $"Selected header {header.HeaderID}: {header.InternalName}";
                 _statusColor = new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f);
+                _shouldScrollToSelection = true;
+            }
+
+            // Scroll to selected item
+            if (isSelected && _shouldScrollToSelection)
+            {
+                ImGui.SetScrollHereY(0.5f); // Center the item
+                _shouldScrollToSelection = false;
             }
         }
 

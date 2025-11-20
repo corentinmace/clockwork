@@ -54,6 +54,7 @@ public class MatrixEditorView : IView
 
     // Focus management
     private bool _shouldFocus = false;
+    private bool _shouldScrollToSelection = false;
 
     public void Initialize(ApplicationContext appContext)
     {
@@ -551,6 +552,9 @@ public class MatrixEditorView : IView
 
         // Load the matrix
         LoadMatrix(matrixID);
+
+        // Scroll to the loaded matrix in the list
+        _shouldScrollToSelection = true;
     }
 
     private void LoadMatrix(int matrixIndex)

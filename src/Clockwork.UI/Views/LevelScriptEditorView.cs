@@ -27,6 +27,8 @@ public class LevelScriptEditorView : IView
     private int _selectedTriggerIndex = -1;
     private string _statusMessage = "";
     private Vector4 _statusColor = new(1, 1, 1, 1);
+    private bool _shouldFocus = false;
+    private bool _shouldScrollToSelection = false;
 
     // Add trigger UI
     private int _selectedTriggerType = 0; // 0 = Map Load, 1 = Variable Value
@@ -63,11 +65,15 @@ public class LevelScriptEditorView : IView
     {
         AppLogger.Info($"[LevelScriptEditor] OpenWithScriptID called with ID: {scriptId}");
 
-        // Always open the window
+        // Always open the window and request focus
         IsVisible = true;
+        _shouldFocus = true;
 
         // Load the script
         LoadScript(scriptId);
+
+        // Scroll to the loaded script in the list
+        _shouldScrollToSelection = true;
     }
 
     public void Draw()
@@ -79,6 +85,13 @@ public class LevelScriptEditorView : IView
         bool isVisible = IsVisible;
         if (ImGui.Begin($"{FontAwesomeIcons.Terminal}  Level Script Editor", ref isVisible))
         {
+            // Handle window focus request
+            if (_shouldFocus)
+            {
+                ImGui.SetWindowFocus();
+                _shouldFocus = false;
+            }
+
             // Check services
             if (_levelScriptService == null)
             {
@@ -180,6 +193,13 @@ public class LevelScriptEditorView : IView
                 if (ImGui.Selectable(label, isSelected))
                 {
                     LoadScript(scriptId);
+                }
+
+                // Scroll to selected item
+                if (isSelected && _shouldScrollToSelection)
+                {
+                    ImGui.SetScrollHereY(0.5f); // Center the item
+                    _shouldScrollToSelection = false;
                 }
             }
         }
