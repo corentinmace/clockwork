@@ -71,6 +71,9 @@ public static class FontAwesomeIcons
     public const string Seedling = "\uf4d8";          // fa-seedling (grass)
     public const string Water = "\uf773";             // fa-water (water encounters)
     public const string Star = "\uf005";              // fa-star (special)
+    public const string Sun = "\uf185";               // fa-sun (day/time)
+    public const string Radar = "\uf140";             // fa-bullseye (radar)
+    public const string Gamepad = "\uf11b";           // fa-gamepad (GBA)
 
     // Status
     public const string CheckCircle = "\uf058";       // fa-check-circle

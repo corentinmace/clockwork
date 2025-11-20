@@ -475,10 +475,164 @@ public class WildEditorView : IView
         if (encounter == null)
             return;
 
-        ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.4f, 1.0f),
-            "Special encounters (Swarms, Day/Night, Radar, Dual Slot, etc.) will be added in future updates.");
-        ImGui.Spacing();
-        ImGui.TextDisabled("For now, use the Walking and Water tabs to edit basic encounters.");
+        ImGui.BeginChild("SpecialEncountersScroll");
+
+        // Swarm Encounters
+        if (ImGui.CollapsingHeader($"{FontAwesomeIcons.Star} Swarms (2 slots)", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Indent();
+            DrawSpecialEncounterTableUshort("Swarms", encounter.SwarmPokemon, 2);
+            ImGui.Unindent();
+            ImGui.Spacing();
+        }
+
+        // Time-Based Encounters
+        if (ImGui.CollapsingHeader($"{FontAwesomeIcons.Sun} Day/Night Encounters", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Indent();
+
+            ImGui.TextColored(new Vector4(1.0f, 0.9f, 0.6f, 1.0f), "Day (Morning) - 2 slots");
+            DrawSpecialEncounterTable("Day", encounter.DayPokemon, 2);
+
+            ImGui.Spacing();
+
+            ImGui.TextColored(new Vector4(0.7f, 0.7f, 1.0f, 1.0f), "Night - 2 slots");
+            DrawSpecialEncounterTable("Night", encounter.NightPokemon, 2);
+
+            ImGui.Unindent();
+            ImGui.Spacing();
+        }
+
+        // Poké Radar Encounters
+        if (ImGui.CollapsingHeader($"{FontAwesomeIcons.Radar} Poké Radar (4 slots)", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Indent();
+            DrawSpecialEncounterTable("Radar", encounter.RadarPokemon, 4);
+            ImGui.Unindent();
+            ImGui.Spacing();
+        }
+
+        // Dual-Slot Encounters
+        if (ImGui.CollapsingHeader($"{FontAwesomeIcons.Gamepad} Dual-Slot (GBA in Slot 2)", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Indent();
+            ImGui.TextDisabled("Insert a GBA game in Slot 2 to enable these encounters");
+            ImGui.Spacing();
+
+            ImGui.TextColored(new Vector4(0.9f, 0.4f, 0.4f, 1.0f), "Ruby - 2 slots");
+            DrawSpecialEncounterTable("Ruby", encounter.RubyPokemon, 2);
+            ImGui.Spacing();
+
+            ImGui.TextColored(new Vector4(0.4f, 0.5f, 0.9f, 1.0f), "Sapphire - 2 slots");
+            DrawSpecialEncounterTable("Sapphire", encounter.SapphirePokemon, 2);
+            ImGui.Spacing();
+
+            ImGui.TextColored(new Vector4(0.4f, 0.9f, 0.5f, 1.0f), "Emerald - 2 slots");
+            DrawSpecialEncounterTable("Emerald", encounter.EmeraldPokemon, 2);
+            ImGui.Spacing();
+
+            ImGui.TextColored(new Vector4(0.9f, 0.5f, 0.3f, 1.0f), "FireRed - 2 slots");
+            DrawSpecialEncounterTable("FireRed", encounter.FireRedPokemon, 2);
+            ImGui.Spacing();
+
+            ImGui.TextColored(new Vector4(0.5f, 0.9f, 0.4f, 1.0f), "LeafGreen - 2 slots");
+            DrawSpecialEncounterTable("LeafGreen", encounter.LeafGreenPokemon, 2);
+
+            ImGui.Unindent();
+            ImGui.Spacing();
+        }
+
+        ImGui.EndChild();
+    }
+
+    private void DrawSpecialEncounterTable(string category, uint[] pokemonArray, int count)
+    {
+        if (ImGui.BeginTable($"Table_{category}", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        {
+            // Setup columns
+            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 50);
+            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 100);
+            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableHeadersRow();
+
+            for (int i = 0; i < count; i++)
+            {
+                ImGui.TableNextRow();
+
+                // Slot number
+                ImGui.TableNextColumn();
+                ImGui.Text($"{i}");
+
+                // Pokemon ID input
+                ImGui.TableNextColumn();
+                int pokemonID = (int)pokemonArray[i];
+                ImGui.SetNextItemWidth(-1);
+                if (ImGui.InputInt($"##{category}_pokemon_{i}", ref pokemonID, 1, 10))
+                {
+                    pokemonArray[i] = (uint)Math.Clamp(pokemonID, 0, 493);
+                    _isDirty = true;
+                }
+
+                // Pokemon name
+                ImGui.TableNextColumn();
+                if (_textArchiveService != null && pokemonArray[i] > 0)
+                {
+                    string pokemonName = _textArchiveService.GetPokemonName(pokemonArray[i]);
+                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), pokemonName);
+                }
+                else
+                {
+                    ImGui.TextDisabled("(Empty)");
+                }
+            }
+
+            ImGui.EndTable();
+        }
+    }
+
+    private void DrawSpecialEncounterTableUshort(string category, ushort[] pokemonArray, int count)
+    {
+        if (ImGui.BeginTable($"Table_{category}", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        {
+            // Setup columns
+            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 50);
+            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 100);
+            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableHeadersRow();
+
+            for (int i = 0; i < count; i++)
+            {
+                ImGui.TableNextRow();
+
+                // Slot number
+                ImGui.TableNextColumn();
+                ImGui.Text($"{i}");
+
+                // Pokemon ID input
+                ImGui.TableNextColumn();
+                int pokemonID = (int)pokemonArray[i];
+                ImGui.SetNextItemWidth(-1);
+                if (ImGui.InputInt($"##{category}_pokemon_{i}", ref pokemonID, 1, 10))
+                {
+                    pokemonArray[i] = (ushort)Math.Clamp(pokemonID, 0, 493);
+                    _isDirty = true;
+                }
+
+                // Pokemon name
+                ImGui.TableNextColumn();
+                if (_textArchiveService != null && pokemonArray[i] > 0)
+                {
+                    string pokemonName = _textArchiveService.GetPokemonName(pokemonArray[i]);
+                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), pokemonName);
+                }
+                else
+                {
+                    ImGui.TextDisabled("(Empty)");
+                }
+            }
+
+            ImGui.EndTable();
+        }
     }
 
     private void LoadEncounter(int encounterID)
