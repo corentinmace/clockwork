@@ -16,13 +16,14 @@ public unsafe class ViewportWindow : IDisposable
     public GraphicsDevice GraphicsDevice { get; private set; }
     public ImGuiRenderer ImGuiRenderer { get; private set; }
     public CommandList CommandList { get; private set; }
-    public ImGuiViewportPtr Viewport { get; private set; }
+    public uint ViewportID { get; private set; }
 
     private bool _disposed = false;
+    private System.Runtime.InteropServices.GCHandle _gcHandle;
 
     public ViewportWindow(ImGuiViewportPtr viewport, GraphicsDevice mainGraphicsDevice)
     {
-        Viewport = viewport;
+        ViewportID = viewport.ID;
 
         // Create SDL2 window with OpenGL support (same as main window)
         Window = new Sdl2Window(
@@ -43,7 +44,22 @@ public unsafe class ViewportWindow : IDisposable
             preferDepthRangeZeroToOne: true,
             preferStandardClipSpaceYDirection: true);
 
-        GraphicsDevice = GraphicsDevice.CreateOpenGL(options, Window, GraphicsBackend.OpenGL);
+        // Create OpenGL platform info from SDL2 window
+        var platformInfo = new OpenGLPlatformInfo(
+            openGLContextHandle: Window.OpenGLContextHandle,
+            getProcAddress: Window.GetProcAddress,
+            makeCurrent: Window.MakeCurrent,
+            getCurrentContext: Window.GetCurrentContext,
+            clearCurrentContext: Window.ClearCurrentContext,
+            deleteContext: Window.DeleteContext,
+            swapBuffers: Window.SwapBuffers,
+            setSyncToVerticalBlank: Window.SetVSync);
+
+        GraphicsDevice = GraphicsDevice.CreateOpenGL(
+            options,
+            platformInfo,
+            (uint)Window.Width,
+            (uint)Window.Height);
 
         // Create command list
         CommandList = GraphicsDevice.ResourceFactory.CreateCommandList();
@@ -55,8 +71,12 @@ public unsafe class ViewportWindow : IDisposable
             (int)Window.Width,
             (int)Window.Height);
 
-        // Store this window in the viewport's platform user data
-        viewport.PlatformUserData = (IntPtr)System.Runtime.InteropServices.GCHandle.Alloc(this);
+        // Store GC handle to prevent garbage collection
+        _gcHandle = System.Runtime.InteropServices.GCHandle.Alloc(this);
+        unsafe
+        {
+            viewport.NativePtr->PlatformUserData = (IntPtr)_gcHandle;
+        }
 
         // Set up window resize handler
         Window.Resized += OnWindowResized;
@@ -138,12 +158,9 @@ public unsafe class ViewportWindow : IDisposable
         _disposed = true;
 
         // Release GCHandle
-        if (Viewport.PlatformUserData != IntPtr.Zero)
+        if (_gcHandle.IsAllocated)
         {
-            var handle = System.Runtime.InteropServices.GCHandle.FromIntPtr(Viewport.PlatformUserData);
-            if (handle.IsAllocated)
-                handle.Free();
-            Viewport.PlatformUserData = IntPtr.Zero;
+            _gcHandle.Free();
         }
 
         Window.Resized -= OnWindowResized;

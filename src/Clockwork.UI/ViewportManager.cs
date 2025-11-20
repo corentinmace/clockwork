@@ -14,7 +14,7 @@ namespace Clockwork.UI;
 public unsafe class ViewportManager : IDisposable
 {
     private readonly GraphicsDevice _mainGraphicsDevice;
-    private readonly Dictionary<IntPtr, ViewportWindow> _viewportWindows = new();
+    private readonly Dictionary<uint, ViewportWindow> _viewportWindows = new();
     private bool _disposed = false;
 
     // Define delegate types matching ImGui's expected signatures
@@ -160,7 +160,7 @@ public unsafe class ViewportManager : IDisposable
         var viewportPtr = new ImGuiViewportPtr(viewport);
         if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
-            return new Vector2(window.Window.X, window.Window.Y);
+            return new Vector2((float)window.Window.X, (float)window.Window.Y);
         }
         return Vector2.Zero;
     }
@@ -179,7 +179,7 @@ public unsafe class ViewportManager : IDisposable
         var viewportPtr = new ImGuiViewportPtr(viewport);
         if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
-            return new Vector2(window.Window.Width, window.Window.Height);
+            return new Vector2((float)window.Window.Width, (float)window.Window.Height);
         }
         return Vector2.Zero;
     }
@@ -208,7 +208,7 @@ public unsafe class ViewportManager : IDisposable
         var viewportPtr = new ImGuiViewportPtr(viewport);
         if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
-            return (byte)(window.Window.WindowState == Veldrid.Sdl2.WindowState.Minimized ? 1 : 0);
+            return (byte)(window.Window.WindowState == WindowState.Minimized ? 1 : 0);
         }
         return 0;
     }
