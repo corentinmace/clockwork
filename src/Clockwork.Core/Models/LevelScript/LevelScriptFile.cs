@@ -65,11 +65,11 @@ public class LevelScriptFile
                 !MapLoadTrigger.IsValidTriggerType(triggerType))
             {
                 // Not a valid trigger type, end of trigger section
-                ms.Position -= 1;
+                // Don't rewind - LiTRE doesn't rewind here
                 break;
             }
 
-            // Update conditional structure offset if we have one
+            // Subtract trigger type byte from offset AFTER validating it
             if (hasConditionalStructure)
                 conditionalStructureOffset -= sizeof(byte);
 
@@ -96,30 +96,37 @@ public class LevelScriptFile
                 ScriptToTrigger = scriptToTrigger
             });
 
-            // Update conditional structure offset if we have one
+            // Subtract script ID from offset after reading it
             if (hasConditionalStructure)
                 conditionalStructureOffset -= sizeof(uint);
         }
 
         // Check for minimum valid file size
         const int SMALLEST_TRIGGER_SIZE = 5;
-        if (ms.Position == 1)
+
+        // If we only read 1 byte and it was invalid, check if it's an empty file
+        if (ms.Position == 1 && !hasConditionalStructure)
         {
+            // Check if it's truly empty (next 2 bytes are 0 and file is small)
             if (ms.Position + 2 <= ms.Length)
             {
+                long savedPos = ms.Position;
+                ms.Position -= 1;
                 ushort check = reader.ReadUInt16();
                 if (check == 0 && data.Length < SMALLEST_TRIGGER_SIZE)
                 {
                     // Empty level script
                     return file;
                 }
+                // Not empty, restore position
+                ms.Position = savedPos;
             }
         }
 
         // Validate file structure
-        if (ms.Position < SMALLEST_TRIGGER_SIZE && file.MapLoadTriggers.Count == 0)
+        if (ms.Position < SMALLEST_TRIGGER_SIZE && file.MapLoadTriggers.Count == 0 && !hasConditionalStructure)
         {
-            // Invalid file
+            // Invalid file - no triggers at all
             return file;
         }
 
