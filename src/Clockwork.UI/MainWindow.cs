@@ -141,11 +141,13 @@ public class MainWindow
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable; // Enable multi-viewport with custom Veldrid backend
+        // NOTE: Multi-viewport is complex with Veldrid but we'll try
+        // io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
 
         // Initialize viewport manager for multi-window support
-        _viewportManager = new ViewportManager(_graphicsDevice);
-        AppLogger.Debug("ViewportManager initialized");
+        // Disabled for now - too complex with Veldrid's ImGuiRenderer
+        // _viewportManager = new ViewportManager(_graphicsDevice);
+        AppLogger.Info("Multi-viewport disabled - Veldrid doesn't support multiple ImGuiRenderer instances easily");
 
         // Initialize theme manager
         ThemeManager.Initialize();
