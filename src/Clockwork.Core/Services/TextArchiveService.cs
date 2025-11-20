@@ -238,7 +238,7 @@ public class TextArchiveService : IApplicationService
         string romPath = _romService.CurrentRom.RomPath;
 
         // Text archives are in: unpacked/textArchives/[ID].bin
-        string archiveFileName = archiveID.ToString("D4") + ".bin";
+        string archiveFileName = archiveID.ToString("D4");
         return Path.Combine(romPath, "unpacked", "textArchives", archiveFileName);
     }
 
