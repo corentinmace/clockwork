@@ -138,8 +138,8 @@ public class WildEncounterService : IApplicationService
         string romPath = _romService.CurrentRom.RomPath;
 
         // Encounter files are in: unpacked/dynamicHeaders/encounters/[ID].bin
-        string encounterFileName = encounterID.ToString("D4") + ".bin";
-        return Path.Combine(romPath, "unpacked", "dynamicHeaders", "encounters", encounterFileName);
+        string encounterFileName = encounterID.ToString("D4");
+        return Path.Combine(romPath, "unpacked", "encounters", encounterFileName);
     }
 
     /// <summary>
@@ -183,7 +183,7 @@ public class WildEncounterService : IApplicationService
                 return 0;
             }
 
-            string[] files = Directory.GetFiles(encountersDir, "*.bin");
+            string[] files = Directory.GetFiles(encountersDir);
             return files.Length;
         }
         catch (Exception ex)
