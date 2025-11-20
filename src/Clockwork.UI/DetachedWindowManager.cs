@@ -72,9 +72,13 @@ public static class DetachedWindowManager
         // Set window size on first use
         ImGui.SetNextWindowSize(state.DefaultSize, ImGuiCond.FirstUseEver);
 
-        // Create window with viewport support (can be pulled outside main window)
+        // Position the window at center of viewport on first use
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.FirstUseEver, new Vector2(0.5f, 0.5f));
+
+        // Create a floating window (not docked by default)
         bool isOpen = state.IsOpen;
-        ImGuiWindowFlags flags = ImGuiWindowFlags.None;
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoDocking; // Prevent docking to keep it floating
 
         if (ImGui.Begin(title, ref isOpen, flags))
         {

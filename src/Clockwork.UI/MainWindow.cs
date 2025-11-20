@@ -139,7 +139,7 @@ public class MainWindow
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable; // Enable multi-viewport / platform windows
+        // Note: ViewportsEnable not supported with Veldrid backend - would require custom viewport callbacks
 
         // Initialize theme manager
         ThemeManager.Initialize();
@@ -215,14 +215,6 @@ public class MainWindow
 
         // Swap buffers
         _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
-
-        // Update and render platform windows (for viewports)
-        var io = ImGui.GetIO();
-        if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
-        {
-            ImGui.UpdatePlatformWindows();
-            ImGui.RenderPlatformWindowsDefault();
-        }
     }
 
     private void OnClosing()
