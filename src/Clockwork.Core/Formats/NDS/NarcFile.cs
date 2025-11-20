@@ -8,7 +8,7 @@ namespace Clockwork.Core.Formats.NDS;
 /// Handles packing and unpacking of NARC archives.
 /// Based on LiTRE implementation.
 /// </summary>
-public class NarcFile
+public class NarcFile : IDisposable
 {
     // NARC format constants
     private const uint NARC_FILE_MAGIC_NUM = 0x4352414E; // "NARC"
