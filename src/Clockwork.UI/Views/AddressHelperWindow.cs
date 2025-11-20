@@ -1,5 +1,6 @@
 using Clockwork.Core;
 using Clockwork.Core.Logging;
+using Clockwork.Core.Models;
 using Clockwork.Core.Services;
 using ImGuiNET;
 using System.Numerics;
@@ -22,10 +23,6 @@ public class AddressHelperWindow : IView
     private List<AddressResult> _results = new();
     private string _statusMessage = "";
     private Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
-
-    // DS Constants
-    private const uint ARM9_LOAD_ADDRESS = 0x02000000;
-    private const uint SYNTH_OVERLAY_BASE_ADDRESS = 0x023DC800;
 
     public AddressHelperWindow(ApplicationContext appContext)
     {
@@ -160,8 +157,8 @@ public class AddressHelperWindow : IView
             return;
         }
 
-        // Check if address is in Synth Overlay range (>= 0x023DC800)
-        if (address >= SYNTH_OVERLAY_BASE_ADDRESS)
+        // Check if address is in Synth Overlay range (>= 0x023C8000)
+        if (address >= DsConstants.SYNTH_OVERLAY_BASE_ADDRESS)
         {
             CheckSynthOverlay(address);
         }
@@ -199,11 +196,11 @@ public class AddressHelperWindow : IView
         {
             var arm9Info = new FileInfo(arm9Path);
             uint arm9Size = (uint)arm9Info.Length;
-            uint arm9End = ARM9_LOAD_ADDRESS + arm9Size;
+            uint arm9End = DsConstants.ARM9_LOAD_ADDRESS + arm9Size;
 
-            if (address >= ARM9_LOAD_ADDRESS && address < arm9End)
+            if (address >= DsConstants.ARM9_LOAD_ADDRESS && address < arm9End)
             {
-                uint offset = address - ARM9_LOAD_ADDRESS;
+                uint offset = address - DsConstants.ARM9_LOAD_ADDRESS;
                 _results.Add(new AddressResult
                 {
                     LocationName = "ARM9",
@@ -287,7 +284,7 @@ public class AddressHelperWindow : IView
         try
         {
             // Calculate offset from synth overlay base address
-            uint offset = address - SYNTH_OVERLAY_BASE_ADDRESS;
+            uint offset = address - DsConstants.SYNTH_OVERLAY_BASE_ADDRESS;
 
             var fileInfo = new FileInfo(synthOverlayPath);
             uint fileSize = (uint)fileInfo.Length;
