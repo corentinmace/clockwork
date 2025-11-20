@@ -4,6 +4,7 @@ using System;
 using System.Numerics;
 using Veldrid;
 using Veldrid.Sdl2;
+using Veldrid.StartupUtilities;
 
 namespace Clockwork.UI;
 
@@ -44,7 +45,7 @@ public class IndependentWindow : IDisposable
             SDL_WindowFlags.OpenGL | SDL_WindowFlags.Shown | SDL_WindowFlags.Resizable,
             false);
 
-        // Create graphics device
+        // Create graphics device using VeldridStartup helper
         var options = new GraphicsDeviceOptions(
             debug: false,
             swapchainDepthFormat: null,
@@ -53,10 +54,8 @@ public class IndependentWindow : IDisposable
             preferDepthRangeZeroToOne: true,
             preferStandardClipSpaceYDirection: true);
 
-        _graphicsDevice = GraphicsDevice.CreateOpenGL(
-            options,
-            _window.Width,
-            _window.Height);
+        // Use VeldridStartup to create the GraphicsDevice from the SDL2 window
+        _graphicsDevice = VeldridStartup.CreateGraphicsDevice(_window, options, GraphicsBackend.OpenGL);
 
         AppLogger.Debug($"IndependentWindow: GraphicsDevice created for '{title}'");
 
