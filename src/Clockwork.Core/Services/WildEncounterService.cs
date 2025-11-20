@@ -44,7 +44,7 @@ public class WildEncounterService : IApplicationService
     /// </summary>
     public EncounterFile? LoadEncounter(int encounterID)
     {
-        if (_romService == null || !_romService.IsLoaded)
+        if (_romService?.CurrentRom?.IsLoaded != true)
         {
             AppLogger.Warn("Cannot load encounter: ROM not loaded");
             return null;
@@ -95,7 +95,7 @@ public class WildEncounterService : IApplicationService
     /// </summary>
     public bool SaveEncounter(int encounterID, EncounterFile encounter)
     {
-        if (_romService == null || !_romService.IsLoaded)
+        if (_romService?.CurrentRom?.IsLoaded != true)
         {
             AppLogger.Warn("Cannot save encounter: ROM not loaded");
             return false;
@@ -130,12 +130,12 @@ public class WildEncounterService : IApplicationService
     /// </summary>
     public string GetEncounterPath(int encounterID)
     {
-        if (_romService == null || !_romService.IsLoaded)
+        if (_romService?.CurrentRom?.IsLoaded != true)
         {
             throw new InvalidOperationException("ROM not loaded");
         }
 
-        string romPath = _romService.CurrentRom!.RomPath;
+        string romPath = _romService.CurrentRom.RomPath;
 
         // Encounter files are in: unpacked/dynamicHeaders/encounters/[ID].bin
         string encounterFileName = encounterID.ToString("D4") + ".bin";
@@ -147,7 +147,7 @@ public class WildEncounterService : IApplicationService
     /// </summary>
     public bool EncounterExists(int encounterID)
     {
-        if (_romService == null || !_romService.IsLoaded)
+        if (_romService?.CurrentRom?.IsLoaded != true)
         {
             return false;
         }
@@ -168,14 +168,14 @@ public class WildEncounterService : IApplicationService
     /// </summary>
     public int GetEncounterCount()
     {
-        if (_romService == null || !_romService.IsLoaded)
+        if (_romService?.CurrentRom?.IsLoaded != true)
         {
             return 0;
         }
 
         try
         {
-            string romPath = _romService.CurrentRom!.RomPath;
+            string romPath = _romService.CurrentRom.RomPath;
             string encountersDir = Path.Combine(romPath, "unpacked", "dynamicHeaders", "encounters");
 
             if (!Directory.Exists(encountersDir))
