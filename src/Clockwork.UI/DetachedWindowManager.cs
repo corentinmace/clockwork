@@ -76,9 +76,9 @@ public static class DetachedWindowManager
         var viewport = ImGui.GetMainViewport();
         ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.FirstUseEver, new Vector2(0.5f, 0.5f));
 
-        // Create a floating window (not docked by default)
+        // Create a window that can be dragged outside the main window with viewports
         bool isOpen = state.IsOpen;
-        ImGuiWindowFlags flags = ImGuiWindowFlags.NoDocking; // Prevent docking to keep it floating
+        ImGuiWindowFlags flags = ImGuiWindowFlags.None; // Allow docking and viewport detachment
 
         if (ImGui.Begin(title, ref isOpen, flags))
         {
