@@ -8,6 +8,10 @@ namespace Clockwork.Core.Models.LevelScript;
 /// </summary>
 public class VariableValueTrigger : ILevelScriptTrigger
 {
+    // Trigger type constant (from LiTRE)
+    public const byte VARIABLEVALUE = 1;
+
+    // Binary format marker for the header section
     public const byte VARIABLEVALUE_MARKER = 0x05;
 
     public ushort VariableID { get; set; }

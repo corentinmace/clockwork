@@ -8,8 +8,13 @@ namespace Clockwork.Core.Models.LevelScript;
 /// </summary>
 public class MapLoadTrigger : ILevelScriptTrigger
 {
+    // Trigger type constants (from LiTRE)
+    public const byte MAPCHANGE = 2;
+    public const byte SCREENRESET = 3;
+    public const byte LOADGAME = 4;
+
     // Valid trigger types for map/screen load
-    private static readonly byte[] ValidTriggerTypes = { 1, 2, 3, 4, 5, 6 };
+    private static readonly byte[] ValidTriggerTypes = { MAPCHANGE, SCREENRESET, LOADGAME };
 
     public byte TriggerType { get; set; }
     public uint ScriptToTrigger { get; set; }
@@ -31,12 +36,9 @@ public class MapLoadTrigger : ILevelScriptTrigger
     {
         string triggerName = TriggerType switch
         {
-            1 => "Map Load",
-            2 => "On Foot",
-            3 => "Surf",
-            4 => "Bike",
-            5 => "Fly",
-            6 => "Special",
+            MAPCHANGE => "Map Change",
+            SCREENRESET => "Screen Reset",
+            LOADGAME => "Load Game",
             _ => $"Type {TriggerType}"
         };
 

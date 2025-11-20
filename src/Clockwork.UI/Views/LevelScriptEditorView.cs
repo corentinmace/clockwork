@@ -30,7 +30,7 @@ public class LevelScriptEditorView : IView
 
     // Add trigger UI
     private int _selectedTriggerType = 0; // 0 = Map Load, 1 = Variable Value
-    private int _newMapLoadTriggerType = 1; // 1-6 (Map Load, On Foot, Surf, Bike, Fly, Special)
+    private int _newMapLoadTriggerType = 2; // 2-4 (Map Change, Screen Reset, Load Game)
     private int _newMapLoadScript = 0;
     private int _newVarNumber = 0;
     private int _newVarValue = 0;
@@ -277,11 +277,11 @@ public class LevelScriptEditorView : IView
     {
         ImGui.Text("Trigger Type:");
         ImGui.SetNextItemWidth(200);
-        string[] triggerTypes = { "Map Load (1)", "On Foot (2)", "Surf (3)", "Bike (4)", "Fly (5)", "Special (6)" };
-        int typeIndex = _newMapLoadTriggerType - 1; // Convert 1-6 to 0-5
+        string[] triggerTypes = { "Map Change (2)", "Screen Reset (3)", "Load Game (4)" };
+        int typeIndex = _newMapLoadTriggerType - 2; // Convert 2-4 to 0-2
         if (ImGui.Combo("##triggertype", ref typeIndex, triggerTypes, triggerTypes.Length))
         {
-            _newMapLoadTriggerType = typeIndex + 1; // Convert back to 1-6
+            _newMapLoadTriggerType = typeIndex + 2; // Convert back to 2-4
         }
 
         ImGui.Text("Script File ID:");
@@ -313,7 +313,7 @@ public class LevelScriptEditorView : IView
         {
             var newTrigger = new MapLoadTrigger
             {
-                TriggerType = (byte)Math.Clamp(_newMapLoadTriggerType, 1, 6),
+                TriggerType = (byte)Math.Clamp(_newMapLoadTriggerType, 2, 4),
                 ScriptToTrigger = (uint)Math.Clamp(_newMapLoadScript, 0, uint.MaxValue)
             };
             currentScript.MapLoadTriggers.Add(newTrigger);
