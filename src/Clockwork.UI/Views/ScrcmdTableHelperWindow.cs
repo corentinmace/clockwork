@@ -50,9 +50,11 @@ public class ScrcmdTableHelperWindow : IView
         if (!IsVisible) return;
 
         ImGui.SetNextWindowSize(new Vector2(800, 600), ImGuiCond.FirstUseEver);
-        if (!ImGui.Begin($"{FontAwesomeIcons.Terminal} Script Command Table Helper", ref IsVisible))
+        bool isOpen = IsVisible;
+        if (!ImGui.Begin($"{FontAwesomeIcons.Terminal} Script Command Table Helper", ref isOpen))
         {
             ImGui.End();
+            IsVisible = isOpen;
             return;
         }
 
@@ -67,6 +69,7 @@ public class ScrcmdTableHelperWindow : IView
         {
             ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "No ROM loaded. Please load a ROM first.");
             ImGui.End();
+            IsVisible = isOpen;
             return;
         }
 
@@ -85,6 +88,7 @@ public class ScrcmdTableHelperWindow : IView
             }
 
             ImGui.End();
+            IsVisible = isOpen;
             return;
         }
 
@@ -166,6 +170,7 @@ public class ScrcmdTableHelperWindow : IView
         }
 
         ImGui.End();
+        IsVisible = isOpen;
     }
 
     private void LoadScriptCommandTable()
