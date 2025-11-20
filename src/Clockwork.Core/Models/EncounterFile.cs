@@ -263,7 +263,7 @@ public class EncounterFile
             {
                 writer.Write(SurfMaxLevels[i]);
                 writer.Write(SurfMinLevels[i]);
-                writer.BaseStream.Position += 0x2; // Skip 2 bytes padding (write zeros)
+                writer.Write((ushort)0); // Write 2 bytes padding
                 writer.Write((uint)SurfPokemon[i]);
             }
 
@@ -274,7 +274,7 @@ public class EncounterFile
             {
                 writer.Write(OldRodMaxLevels[i]);
                 writer.Write(OldRodMinLevels[i]);
-                writer.BaseStream.Position += 0x2; // Skip 2 bytes padding
+                writer.Write((ushort)0); // Write 2 bytes padding
                 writer.Write((uint)OldRodPokemon[i]);
             }
 
@@ -285,7 +285,7 @@ public class EncounterFile
             {
                 writer.Write(GoodRodMaxLevels[i]);
                 writer.Write(GoodRodMinLevels[i]);
-                writer.BaseStream.Position += 0x2; // Skip 2 bytes padding
+                writer.Write((ushort)0); // Write 2 bytes padding
                 writer.Write((uint)GoodRodPokemon[i]);
             }
 
@@ -296,8 +296,20 @@ public class EncounterFile
             {
                 writer.Write(SuperRodMaxLevels[i]);
                 writer.Write(SuperRodMinLevels[i]);
-                writer.BaseStream.Position += 0x2; // Skip 2 bytes padding
+                writer.Write((ushort)0); // Write 2 bytes padding
                 writer.Write((uint)SuperRodPokemon[i]);
+            }
+
+            // Ensure file is exactly the expected size (padding at end if needed)
+            long currentSize = ms.Position;
+            const long expectedSize = 0x18A; // 394 bytes
+            if (currentSize < expectedSize)
+            {
+                // Write padding zeros to reach expected size
+                for (long i = currentSize; i < expectedSize; i++)
+                {
+                    writer.Write((byte)0);
+                }
             }
 
             return ms.ToArray();
