@@ -159,10 +159,7 @@ public class EncounterFile
                 encounter.OldRodPokemon[i] = (ushort)reader.ReadUInt32();
             }
 
-            // Skip 44 bytes padding between Old Rod and Good Rod
-            reader.BaseStream.Position += 44;
-
-            // Good Rod encounters
+            // Good Rod encounters (directly after Old Rod, no padding)
             encounter.GoodRodRate = (byte)reader.ReadUInt32();
 
             for (int i = 0; i < 5; i++)
@@ -173,10 +170,7 @@ public class EncounterFile
                 encounter.GoodRodPokemon[i] = (ushort)reader.ReadUInt32();
             }
 
-            // Skip 44 bytes padding between Good Rod and Super Rod
-            reader.BaseStream.Position += 44;
-
-            // Super Rod encounters
+            // Super Rod encounters (directly after Good Rod, no padding)
             encounter.SuperRodRate = (byte)reader.ReadUInt32();
 
             for (int i = 0; i < 5; i++)
@@ -302,13 +296,7 @@ public class EncounterFile
                 writer.Write((uint)OldRodPokemon[i]);
             }
 
-            // Write 44 bytes padding between Old Rod and Good Rod
-            for (int i = 0; i < 44; i++)
-            {
-                writer.Write((byte)0);
-            }
-
-            // Good Rod encounters
+            // Good Rod encounters (directly after Old Rod, no padding)
             writer.Write((uint)GoodRodRate);
 
             for (int i = 0; i < 5; i++)
@@ -319,13 +307,7 @@ public class EncounterFile
                 writer.Write((uint)GoodRodPokemon[i]);
             }
 
-            // Write 44 bytes padding between Good Rod and Super Rod
-            for (int i = 0; i < 44; i++)
-            {
-                writer.Write((byte)0);
-            }
-
-            // Super Rod encounters
+            // Super Rod encounters (directly after Good Rod, no padding)
             writer.Write((uint)SuperRodRate);
 
             for (int i = 0; i < 5; i++)
