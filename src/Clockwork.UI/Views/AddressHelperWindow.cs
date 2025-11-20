@@ -37,7 +37,8 @@ public class AddressHelperWindow : IView
         if (!IsVisible) return;
 
         ImGui.SetNextWindowSize(new Vector2(700, 500), ImGuiCond.FirstUseEver);
-        if (!ImGui.Begin("Address Helper", ref IsVisible))
+        bool isVisible = IsVisible;
+        if (!ImGui.Begin("Address Helper", ref isVisible))
         {
             ImGui.End();
             return;
@@ -120,6 +121,7 @@ public class AddressHelperWindow : IView
         }
 
         ImGui.End();
+        IsVisible = isVisible;
     }
 
     /// <summary>
