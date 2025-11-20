@@ -17,20 +17,60 @@ public unsafe class ViewportManager : IDisposable
     private readonly Dictionary<IntPtr, ViewportWindow> _viewportWindows = new();
     private bool _disposed = false;
 
+    // Define delegate types matching ImGui's expected signatures
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void CreateWindowDelegate(ImGuiViewport* viewport);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void DestroyWindowDelegate(ImGuiViewport* viewport);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void ShowWindowDelegate(ImGuiViewport* viewport);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void SetWindowPosDelegate(ImGuiViewport* viewport, Vector2 pos);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate Vector2 GetWindowPosDelegate(ImGuiViewport* viewport);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void SetWindowSizeDelegate(ImGuiViewport* viewport, Vector2 size);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate Vector2 GetWindowSizeDelegate(ImGuiViewport* viewport);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void SetWindowFocusDelegate(ImGuiViewport* viewport);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate byte GetWindowFocusDelegate(ImGuiViewport* viewport);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate byte GetWindowMinimizedDelegate(ImGuiViewport* viewport);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void SetWindowTitleDelegate(ImGuiViewport* viewport, IntPtr title);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void RenderWindowDelegate(ImGuiViewport* viewport, IntPtr renderArg);
+
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+    private delegate void SwapBuffersDelegate(ImGuiViewport* viewport, IntPtr renderArg);
+
     // Store delegates to prevent garbage collection
-    private ImGuiPlatformIO.CreateWindow_Delegate _createWindowDelegate;
-    private ImGuiPlatformIO.DestroyWindow_Delegate _destroyWindowDelegate;
-    private ImGuiPlatformIO.ShowWindow_Delegate _showWindowDelegate;
-    private ImGuiPlatformIO.SetWindowPos_Delegate _setWindowPosDelegate;
-    private ImGuiPlatformIO.GetWindowPos_Delegate _getWindowPosDelegate;
-    private ImGuiPlatformIO.SetWindowSize_Delegate _setWindowSizeDelegate;
-    private ImGuiPlatformIO.GetWindowSize_Delegate _getWindowSizeDelegate;
-    private ImGuiPlatformIO.SetWindowFocus_Delegate _setWindowFocusDelegate;
-    private ImGuiPlatformIO.GetWindowFocus_Delegate _getWindowFocusDelegate;
-    private ImGuiPlatformIO.GetWindowMinimized_Delegate _getWindowMinimizedDelegate;
-    private ImGuiPlatformIO.SetWindowTitle_Delegate _setWindowTitleDelegate;
-    private ImGuiPlatformIO.RenderWindow_Delegate _renderWindowDelegate;
-    private ImGuiPlatformIO.SwapBuffers_Delegate _swapBuffersDelegate;
+    private CreateWindowDelegate _createWindowDelegate;
+    private DestroyWindowDelegate _destroyWindowDelegate;
+    private ShowWindowDelegate _showWindowDelegate;
+    private SetWindowPosDelegate _setWindowPosDelegate;
+    private GetWindowPosDelegate _getWindowPosDelegate;
+    private SetWindowSizeDelegate _setWindowSizeDelegate;
+    private GetWindowSizeDelegate _getWindowSizeDelegate;
+    private SetWindowFocusDelegate _setWindowFocusDelegate;
+    private GetWindowFocusDelegate _getWindowFocusDelegate;
+    private GetWindowMinimizedDelegate _getWindowMinimizedDelegate;
+    private SetWindowTitleDelegate _setWindowTitleDelegate;
+    private RenderWindowDelegate _renderWindowDelegate;
+    private SwapBuffersDelegate _swapBuffersDelegate;
 
     public ViewportManager(GraphicsDevice mainGraphicsDevice)
     {
@@ -57,7 +97,7 @@ public unsafe class ViewportManager : IDisposable
         _renderWindowDelegate = RenderWindow;
         _swapBuffersDelegate = SwapBuffers;
 
-        // Assign callbacks
+        // Assign callbacks to ImGui platform IO
         platformIO.Platform_CreateWindow = Marshal.GetFunctionPointerForDelegate(_createWindowDelegate);
         platformIO.Platform_DestroyWindow = Marshal.GetFunctionPointerForDelegate(_destroyWindowDelegate);
         platformIO.Platform_ShowWindow = Marshal.GetFunctionPointerForDelegate(_showWindowDelegate);
@@ -73,12 +113,13 @@ public unsafe class ViewportManager : IDisposable
         platformIO.Platform_SwapBuffers = Marshal.GetFunctionPointerForDelegate(_swapBuffersDelegate);
     }
 
-    private void CreateWindow(ImGuiViewportPtr viewport)
+    private void CreateWindow(ImGuiViewport* viewport)
     {
         try
         {
-            var window = new ViewportWindow(viewport, _mainGraphicsDevice);
-            _viewportWindows[viewport.ID] = window;
+            var viewportPtr = new ImGuiViewportPtr(viewport);
+            var window = new ViewportWindow(viewportPtr, _mainGraphicsDevice);
+            _viewportWindows[viewportPtr.ID] = window;
         }
         catch (Exception ex)
         {
@@ -86,98 +127,108 @@ public unsafe class ViewportManager : IDisposable
         }
     }
 
-    private void DestroyWindow(ImGuiViewportPtr viewport)
+    private void DestroyWindow(ImGuiViewport* viewport)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             window.Dispose();
-            _viewportWindows.Remove(viewport.ID);
+            _viewportWindows.Remove(viewportPtr.ID);
         }
     }
 
-    private void ShowWindow(ImGuiViewportPtr viewport)
+    private void ShowWindow(ImGuiViewport* viewport)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             window.SetVisible(true);
         }
     }
 
-    private void SetWindowPos(ImGuiViewportPtr viewport, Vector2 pos)
+    private void SetWindowPos(ImGuiViewport* viewport, Vector2 pos)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             window.SetPosition(pos);
         }
     }
 
-    private Vector2 GetWindowPos(ImGuiViewportPtr viewport)
+    private Vector2 GetWindowPos(ImGuiViewport* viewport)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             return new Vector2(window.Window.X, window.Window.Y);
         }
         return Vector2.Zero;
     }
 
-    private void SetWindowSize(ImGuiViewportPtr viewport, Vector2 size)
+    private void SetWindowSize(ImGuiViewport* viewport, Vector2 size)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             window.SetSize(size);
         }
     }
 
-    private Vector2 GetWindowSize(ImGuiViewportPtr viewport)
+    private Vector2 GetWindowSize(ImGuiViewport* viewport)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             return new Vector2(window.Window.Width, window.Window.Height);
         }
         return Vector2.Zero;
     }
 
-    private void SetWindowFocus(ImGuiViewportPtr viewport)
+    private void SetWindowFocus(ImGuiViewport* viewport)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             window.SetFocus();
         }
     }
 
-    private byte GetWindowFocus(ImGuiViewportPtr viewport)
+    private byte GetWindowFocus(ImGuiViewport* viewport)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             return (byte)(window.Window.Focused ? 1 : 0);
         }
         return 0;
     }
 
-    private byte GetWindowMinimized(ImGuiViewportPtr viewport)
+    private byte GetWindowMinimized(ImGuiViewport* viewport)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             return (byte)(window.Window.WindowState == Veldrid.Sdl2.WindowState.Minimized ? 1 : 0);
         }
         return 0;
     }
 
-    private void SetWindowTitle(ImGuiViewportPtr viewport, IntPtr title)
+    private void SetWindowTitle(ImGuiViewport* viewport, IntPtr title)
     {
-        if (_viewportWindows.TryGetValue(viewport.ID, out var window))
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
             string titleStr = Marshal.PtrToStringUTF8(title) ?? "Viewport";
             window.SetTitle(titleStr);
         }
     }
 
-    private void RenderWindow(ImGuiViewportPtr viewport, IntPtr renderArg)
+    private void RenderWindow(ImGuiViewport* viewport, IntPtr renderArg)
     {
         // Rendering is handled in UpdateAndRender
     }
 
-    private void SwapBuffers(ImGuiViewportPtr viewport, IntPtr renderArg)
+    private void SwapBuffers(ImGuiViewport* viewport, IntPtr renderArg)
     {
         // Swapping is handled in UpdateAndRender
     }
