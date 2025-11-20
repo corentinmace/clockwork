@@ -1,5 +1,6 @@
 using Clockwork.Core.Logging;
 using Clockwork.Core.Models;
+using Clockwork.Core.Formats.NDS.MessageEnc;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -51,9 +52,9 @@ public class TextArchiveService : IApplicationService
     }
 
     /// <summary>
-    /// Load a text archive by ID.
+    /// Load a text archive by ID using LiTRE's EncryptText implementation.
     /// </summary>
-    public TextArchive? LoadTextArchive(int archiveID)
+    public List<string>? LoadTextArchive(int archiveID)
     {
         if (_romService?.CurrentRom?.IsLoaded != true)
         {
@@ -71,11 +72,11 @@ public class TextArchiveService : IApplicationService
                 return null;
             }
 
-            byte[] data = File.ReadAllBytes(archivePath);
-            var archive = TextArchive.ReadFromBytes(data);
+            // Use LiTRE's proven implementation
+            var messages = EncryptText.ReadMessageArchive(archivePath, discardLines: false);
 
-            AppLogger.Debug($"Loaded text archive {archiveID} with {archive.Messages.Count} messages");
-            return archive;
+            AppLogger.Debug($"Loaded text archive {archiveID} with {messages.Count} messages");
+            return messages;
         }
         catch (Exception ex)
         {
@@ -94,10 +95,10 @@ public class TextArchiveService : IApplicationService
 
         try
         {
-            var archive = LoadTextArchive(PLATINUM_POKEMON_NAMES_ID);
-            if (archive != null)
+            var messages = LoadTextArchive(PLATINUM_POKEMON_NAMES_ID);
+            if (messages != null)
             {
-                _pokemonNames = archive.Messages.ToArray();
+                _pokemonNames = messages.ToArray();
                 AppLogger.Info($"Loaded {_pokemonNames.Length} Pokemon names");
                 return _pokemonNames;
             }
@@ -122,10 +123,10 @@ public class TextArchiveService : IApplicationService
 
         try
         {
-            var archive = LoadTextArchive(PLATINUM_LOCATION_NAMES_ID);
-            if (archive != null)
+            var messages = LoadTextArchive(PLATINUM_LOCATION_NAMES_ID);
+            if (messages != null)
             {
-                _locationNames = archive.Messages.ToArray();
+                _locationNames = messages.ToArray();
                 AppLogger.Info($"Loaded {_locationNames.Length} location names");
                 return _locationNames;
             }
