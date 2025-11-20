@@ -46,6 +46,9 @@ public class MainWindow
     private bool _isSidebarCollapsed = false;
     private bool _showMetricsWindow = false;
 
+    // Status bar
+    private const float STATUS_BAR_HEIGHT = 25.0f;
+
     // ROM Save state
     private bool _isShowingSaveRomDialog = false;
     private string _saveRomLog = "";
@@ -275,8 +278,8 @@ public class MainWindow
         var viewport = ImGui.GetMainViewport();
         float menuBarHeight = ImGui.GetFrameHeight();
 
-        // DockSpace size (offset to leave space for sidebar)
-        var dockspaceSize = new System.Numerics.Vector2(viewport.WorkSize.X - sidebarWidth, viewport.WorkSize.Y);
+        // DockSpace size (offset to leave space for sidebar and status bar)
+        var dockspaceSize = new System.Numerics.Vector2(viewport.WorkSize.X - sidebarWidth, viewport.WorkSize.Y - STATUS_BAR_HEIGHT);
 
         ImGui.SetNextWindowPos(viewport.WorkPos);
         ImGui.SetNextWindowSize(viewport.WorkSize);
@@ -301,7 +304,7 @@ public class MainWindow
             ImGui.SetCursorPos(new System.Numerics.Vector2(sidebarWidth, menuBarHeight));
 
             uint dockspaceId = ImGui.GetID("MainDockSpace");
-            ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(dockspaceSize.X, dockspaceSize.Y - menuBarHeight), ImGuiDockNodeFlags.None);
+            ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(dockspaceSize.X, dockspaceSize.Y - menuBarHeight - STATUS_BAR_HEIGHT), ImGuiDockNodeFlags.None);
         }
 
         // Main menu
@@ -412,6 +415,9 @@ public class MainWindow
         // Sidebar menu
         DrawSidebar();
 
+        // Status bar
+        DrawStatusBar();
+
         // Draw all views
         _aboutView.Draw();
         _romLoaderView.Draw();
@@ -446,9 +452,9 @@ public class MainWindow
         var viewport = ImGui.GetMainViewport();
         float menuBarHeight = ImGui.GetFrameHeight();
 
-        // Position sidebar on the left, below menu
+        // Position sidebar on the left, below menu, above status bar
         ImGui.SetNextWindowPos(new System.Numerics.Vector2(viewport.WorkPos.X, viewport.WorkPos.Y + menuBarHeight));
-        ImGui.SetNextWindowSize(new System.Numerics.Vector2(sidebarWidth, viewport.WorkSize.Y - menuBarHeight));
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(sidebarWidth, viewport.WorkSize.Y - menuBarHeight - STATUS_BAR_HEIGHT));
 
         // Fixed window that cannot be moved or resized
         ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking;
@@ -557,6 +563,66 @@ public class MainWindow
             return !isVisible;
         }
         return isVisible;
+    }
+
+    /// <summary>
+    /// Draw the status bar at the bottom of the window
+    /// </summary>
+    private void DrawStatusBar()
+    {
+        var viewport = ImGui.GetMainViewport();
+        float menuBarHeight = ImGui.GetFrameHeight();
+
+        // Position status bar at the bottom of the window
+        float statusBarY = viewport.WorkPos.Y + viewport.WorkSize.Y - STATUS_BAR_HEIGHT;
+        ImGui.SetNextWindowPos(new System.Numerics.Vector2(viewport.WorkPos.X, statusBarY));
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(viewport.WorkSize.X, STATUS_BAR_HEIGHT));
+
+        // Fixed window that cannot be moved or resized
+        ImGuiWindowFlags statusBarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+                                          ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking | ImGuiWindowFlags.NoScrollbar;
+
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new System.Numerics.Vector2(8.0f, 4.0f));
+        ImGui.Begin("StatusBar", statusBarFlags);
+        ImGui.PopStyleVar();
+
+        // Get ROM service
+        var romService = _appContext.GetService<RomService>();
+        bool isRomLoaded = romService?.CurrentRom?.IsLoaded == true;
+
+        // ROM status
+        if (isRomLoaded)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.4f, 0.8f, 0.4f, 1.0f)); // Green
+            ImGui.Text($"{FontAwesomeIcons.CheckCircle} ROM Loaded");
+            ImGui.PopStyleColor();
+
+            // Show ROM info on hover
+            if (ImGui.IsItemHovered())
+            {
+                var romInfo = romService?.CurrentRom;
+                ImGui.BeginTooltip();
+                ImGui.Text($"Game: {romInfo?.GameCode}");
+                ImGui.Text($"Version: {romInfo?.Version}");
+                ImGui.Text($"Path: {romInfo?.RomPath}");
+                ImGui.EndTooltip();
+            }
+        }
+        else
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.8f, 0.4f, 0.4f, 1.0f)); // Red
+            ImGui.Text($"{FontAwesomeIcons.TimesCircle} No ROM Loaded");
+            ImGui.PopStyleColor();
+        }
+
+        // Log viewer button (right side)
+        ImGui.SameLine(viewport.WorkSize.X - 120);
+        if (ImGui.Button($"{FontAwesomeIcons.FileLines} Log Viewer"))
+        {
+            _logViewerWindow.IsVisible = true;
+        }
+
+        ImGui.End();
     }
 
     private void SaveRomDialog()
