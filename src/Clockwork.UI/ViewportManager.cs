@@ -1,3 +1,4 @@
+using Clockwork.Core.Logging;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
@@ -75,7 +76,9 @@ public unsafe class ViewportManager : IDisposable
     public ViewportManager(GraphicsDevice mainGraphicsDevice)
     {
         _mainGraphicsDevice = mainGraphicsDevice;
+        AppLogger.Debug("ViewportManager: Initializing platform callbacks");
         InitializePlatformCallbacks();
+        AppLogger.Info("ViewportManager: Multi-viewport support initialized");
     }
 
     private void InitializePlatformCallbacks()
@@ -118,12 +121,15 @@ public unsafe class ViewportManager : IDisposable
         try
         {
             var viewportPtr = new ImGuiViewportPtr(viewport);
+            AppLogger.Debug($"ViewportManager: Creating viewport window (ID: {viewportPtr.ID})");
             var window = new ViewportWindow(viewportPtr, _mainGraphicsDevice);
             _viewportWindows[viewportPtr.ID] = window;
+            AppLogger.Info($"ViewportManager: Viewport window created successfully (ID: {viewportPtr.ID})");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ViewportManager] Error creating viewport window: {ex.Message}");
+            AppLogger.Error($"ViewportManager: Error creating viewport window: {ex.Message}");
+            AppLogger.Debug($"ViewportManager: Stack trace: {ex.StackTrace}");
         }
     }
 
@@ -132,8 +138,10 @@ public unsafe class ViewportManager : IDisposable
         var viewportPtr = new ImGuiViewportPtr(viewport);
         if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
         {
+            AppLogger.Debug($"ViewportManager: Destroying viewport window (ID: {viewportPtr.ID})");
             window.Dispose();
             _viewportWindows.Remove(viewportPtr.ID);
+            AppLogger.Info($"ViewportManager: Viewport window destroyed (ID: {viewportPtr.ID})");
         }
     }
 

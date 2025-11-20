@@ -1,3 +1,4 @@
+using Clockwork.Core.Logging;
 using ImGuiNET;
 using System;
 using System.Numerics;
@@ -24,6 +25,7 @@ public unsafe class ViewportWindow : IDisposable
     public ViewportWindow(ImGuiViewportPtr viewport, GraphicsDevice mainGraphicsDevice)
     {
         ViewportID = viewport.ID;
+        AppLogger.Debug($"ViewportWindow: Creating window for viewport {ViewportID}");
 
         // Create SDL2 window with OpenGL support (same as main window)
         Window = new Sdl2Window(
@@ -34,6 +36,20 @@ public unsafe class ViewportWindow : IDisposable
             (int)Math.Max(viewport.Size.Y, 240),  // Minimum height
             SDL_WindowFlags.OpenGL | SDL_WindowFlags.Shown | SDL_WindowFlags.Resizable,
             false);
+        AppLogger.Debug($"ViewportWindow: SDL2 window created for viewport {ViewportID}");
+
+        // Get native SDL window handle
+        IntPtr nativeWindow = Window.SdlWindowHandle;
+        AppLogger.Debug($"ViewportWindow: Native SDL window handle: {nativeWindow}");
+
+        // Create OpenGL context for this window
+        IntPtr glContext = SDL2Native.SDL_GL_CreateContext(nativeWindow);
+        if (glContext == IntPtr.Zero)
+        {
+            AppLogger.Error($"ViewportWindow: Failed to create OpenGL context for viewport {ViewportID}");
+            throw new Exception("Failed to create OpenGL context for viewport window");
+        }
+        AppLogger.Debug($"ViewportWindow: OpenGL context created: {glContext}");
 
         // Create graphics device for this window with OpenGL (same backend as main window)
         var options = new GraphicsDeviceOptions(
@@ -44,25 +60,27 @@ public unsafe class ViewportWindow : IDisposable
             preferDepthRangeZeroToOne: true,
             preferStandardClipSpaceYDirection: true);
 
-        // Create OpenGL platform info from SDL2 window
+        // Create OpenGL platform info using SDL2Native P/Invoke functions
         var platformInfo = new OpenGLPlatformInfo(
-            openGLContextHandle: Window.OpenGLContextHandle,
-            getProcAddress: Window.GetProcAddress,
-            makeCurrent: Window.MakeCurrent,
-            getCurrentContext: Window.GetCurrentContext,
-            clearCurrentContext: Window.ClearCurrentContext,
-            deleteContext: Window.DeleteContext,
-            swapBuffers: Window.SwapBuffers,
-            setSyncToVerticalBlank: Window.SetVSync);
+            openGLContextHandle: glContext,
+            getProcAddress: (name) => SDL2Native.SDL_GL_GetProcAddress(name),
+            makeCurrent: (ctx) => SDL2Native.SDL_GL_MakeCurrent(nativeWindow, ctx),
+            getCurrentContext: () => SDL2Native.SDL_GL_GetCurrentContext(),
+            clearCurrentContext: () => SDL2Native.SDL_GL_MakeCurrent(IntPtr.Zero, IntPtr.Zero),
+            deleteContext: (ctx) => SDL2Native.SDL_GL_DeleteContext(ctx),
+            swapBuffers: () => SDL2Native.SDL_GL_SwapWindow(nativeWindow),
+            setSyncToVerticalBlank: (enabled) => SDL2Native.SDL_GL_SetSwapInterval(enabled ? 1 : 0));
 
         GraphicsDevice = GraphicsDevice.CreateOpenGL(
             options,
             platformInfo,
             (uint)Window.Width,
             (uint)Window.Height);
+        AppLogger.Debug($"ViewportWindow: GraphicsDevice created for viewport {ViewportID}");
 
         // Create command list
         CommandList = GraphicsDevice.ResourceFactory.CreateCommandList();
+        AppLogger.Debug($"ViewportWindow: CommandList created for viewport {ViewportID}");
 
         // Create ImGui renderer for this window
         ImGuiRenderer = new ImGuiRenderer(
@@ -70,6 +88,7 @@ public unsafe class ViewportWindow : IDisposable
             GraphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
             (int)Window.Width,
             (int)Window.Height);
+        AppLogger.Debug($"ViewportWindow: ImGuiRenderer created for viewport {ViewportID}");
 
         // Store GC handle to prevent garbage collection
         _gcHandle = System.Runtime.InteropServices.GCHandle.Alloc(this);
@@ -80,6 +99,8 @@ public unsafe class ViewportWindow : IDisposable
 
         // Set up window resize handler
         Window.Resized += OnWindowResized;
+
+        AppLogger.Info($"ViewportWindow: Viewport window {ViewportID} fully initialized");
     }
 
     private void OnWindowResized()
@@ -155,6 +176,7 @@ public unsafe class ViewportWindow : IDisposable
         if (_disposed)
             return;
 
+        AppLogger.Debug($"ViewportWindow: Disposing viewport window {ViewportID}");
         _disposed = true;
 
         // Release GCHandle
@@ -169,5 +191,7 @@ public unsafe class ViewportWindow : IDisposable
         ImGuiRenderer?.Dispose();
         GraphicsDevice?.Dispose();
         Window?.Close();
+
+        AppLogger.Info($"ViewportWindow: Viewport window {ViewportID} disposed");
     }
 }
