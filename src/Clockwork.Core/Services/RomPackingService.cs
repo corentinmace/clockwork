@@ -124,22 +124,48 @@ public class RomPackingService : IApplicationService
         var unpackedBasePath = Path.Combine(romPath, "unpacked");
         var dataBasePath = Path.Combine(romPath, "data");
 
-        // Map of unpacked directories to their corresponding NARC file paths
-        // Based on LiTRE structure and Platinum file layout
+        // Complete map of unpacked directories to their corresponding NARC file paths
+        // Based on LiTRE RomInfo.cs SetNarcDirs() for Platinum (line 1520+)
         var narcMappings = new Dictionary<string, string>
         {
-            // Fielddata NARCs
-            ["areadata"] = "fielddata/areadata/area_data.narc",
-            ["build_model"] = "fielddata/build_model/build_model.narc",
+            // === Pokemon Data ===
+            ["personalPokeData"] = "poketool/personal/pl_personal.narc",
+            ["pokemonBattleSprites"] = "poketool/pokegra/pl_pokegra.narc",
+            ["otherPokemonBattleSprites"] = "poketool/pokegra/pl_otherpoke.narc",
+            ["monIcons"] = "poketool/icongra/pl_poke_icon.narc",
+            ["learnsets"] = "poketool/personal/wotbl.narc",
+            ["evolutions"] = "poketool/personal/evo.narc",
 
-            // Main game NARCs - Platinum paths
-            ["dynamicHeaders"] = "debug/cb_edit/d_test.narc",           // Map headers
-            ["scripts"] = "fielddata/script/scr_seq.narc",              // Scripts
-            ["eventFiles"] = "fielddata/eventdata/zone_event.narc",     // Event files
-            ["matrices"] = "fielddata/mapmatrix/map_matrix.narc",       // Matrices
-            ["maps"] = "fielddata/land_data/land_data.narc",            // Map files
-            ["textArchives"] = "msgdata/pl_msg.narc",                   // Text archives
-            ["encounters"] = "fielddata/encountdata/pl_enc_data.narc",  // Wild encounters
+            // === Map & Field Data ===
+            ["dynamicHeaders"] = "debug/cb_edit/d_test.narc",
+            ["matrices"] = "fielddata/mapmatrix/map_matrix.narc",
+            ["maps"] = "fielddata/land_data/land_data.narc",
+            ["exteriorBuildingModels"] = "fielddata/build_model/build_model.narc",
+            ["buildingConfigFiles"] = "fielddata/areadata/area_build_model/area_build.narc",
+            ["buildingTextures"] = "fielddata/areadata/area_build_model/areabm_texset.narc",
+            ["mapTextures"] = "fielddata/areadata/area_map_tex/map_tex_set.narc",
+            ["areaData"] = "fielddata/areadata/area_data.narc",
+            ["eventFiles"] = "fielddata/eventdata/zone_event.narc",
+            ["scripts"] = "fielddata/script/scr_seq.narc",
+            ["encounters"] = "fielddata/encountdata/pl_enc_data.narc",
+
+            // === Trainer & Battle Data ===
+            ["trainerProperties"] = "poketool/trainer/trdata.narc",
+            ["trainerParty"] = "poketool/trainer/trpoke.narc",
+            ["trainerGraphics"] = "poketool/trgra/trfgra.narc",
+            ["moveData"] = "poketool/waza/pl_waza_tbl.narc",
+
+            // === Item Data ===
+            ["itemData"] = "itemtool/itemdata/pl_item_data.narc",
+            ["itemIcons"] = "itemtool/itemdata/item_icon.narc",
+
+            // === Graphics & Sprites ===
+            ["OWSprites"] = "data/mmodel/mmodel.narc",
+
+            // === System & Misc ===
+            ["synthOverlay"] = "data/weather_sys.narc",
+            ["textArchives"] = "msgdata/pl_msg.narc",
+            ["tradeData"] = "fielddata/pokemon_trade/fld_trade.narc",
         };
 
         foreach (var (dirName, narcRelativePath) in narcMappings)
