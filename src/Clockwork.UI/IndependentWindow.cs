@@ -62,17 +62,32 @@ public class IndependentWindow : IDisposable
         // Create command list
         _commandList = _graphicsDevice.ResourceFactory.CreateCommandList();
 
+        // Save the main ImGui context to get the shared FontAtlas
+        IntPtr mainContext = ImGui.GetCurrentContext();
+        IntPtr sharedFontAtlas = IntPtr.Zero;
+
+        if (mainContext != IntPtr.Zero)
+        {
+            // Get the font atlas from the main context
+            var mainIo = ImGui.GetIO();
+            sharedFontAtlas = mainIo.Fonts.NativePtr;
+        }
+
         // Create a NEW ImGui context for this window (isolated from main window)
-        _imguiContext = ImGui.CreateContext();
+        // But share the FontAtlas to avoid font rendering issues
+        _imguiContext = ImGui.CreateContext(sharedFontAtlas);
         ImGui.SetCurrentContext(_imguiContext);
 
-        AppLogger.Debug($"IndependentWindow: Created new ImGui context {_imguiContext} for '{title}'");
+        AppLogger.Debug($"IndependentWindow: Created new ImGui context {_imguiContext} for '{title}' with shared FontAtlas");
 
         // Configure ImGui for this context
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         // No viewports needed for independent windows
+
+        // Apply same theme as main window (must be done while this context is active)
+        Themes.ThemeManager.ApplyCurrentTheme();
 
         // Create ImGui renderer for this window
         _imguiRenderer = new ImGuiRenderer(
@@ -83,8 +98,11 @@ public class IndependentWindow : IDisposable
 
         AppLogger.Debug($"IndependentWindow: ImGuiRenderer created for '{title}'");
 
-        // Apply same theme as main window
-        Themes.ThemeManager.ApplyCurrentTheme();
+        // Restore the main context
+        if (mainContext != IntPtr.Zero)
+        {
+            ImGui.SetCurrentContext(mainContext);
+        }
 
         // Set up event handlers
         _window.Resized += OnWindowResized;
@@ -179,13 +197,23 @@ public class IndependentWindow : IDisposable
         _window.Resized -= OnWindowResized;
         _window.Closed -= OnWindowClosed;
 
-        // Switch to this context before destroying
+        // Save main context to restore after cleanup
+        IntPtr mainContext = ImGui.GetCurrentContext();
+
+        // Switch to this context before destroying resources
         ImGui.SetCurrentContext(_imguiContext);
 
         // Dispose resources
         _commandList?.Dispose();
         _imguiRenderer?.Dispose();
         _graphicsDevice?.Dispose();
+
+        // Restore main context before destroying this context
+        // (important: don't leave a destroyed context as current)
+        if (mainContext != IntPtr.Zero && mainContext != _imguiContext)
+        {
+            ImGui.SetCurrentContext(mainContext);
+        }
 
         // Destroy ImGui context
         ImGui.DestroyContext(_imguiContext);
