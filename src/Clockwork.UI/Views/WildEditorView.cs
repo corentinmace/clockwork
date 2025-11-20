@@ -568,8 +568,8 @@ public class WildEditorView : IView
 
             if (ImGui.BeginCombo("##unowntable", currentTable))
             {
-                // 0: All forms, 1-6: F R I E N D, 7-8: ! ?
-                for (uint table = 0; table <= 8; table++)
+                // 0: All forms, 1-6: F R I E N D, 7: !
+                for (uint table = 0; table <= 7; table++)
                 {
                     bool isSelected = tableValue == table;
                     if (ImGui.Selectable(PokemonFormsHelper.GetUnownTableName(table), isSelected))

@@ -22,8 +22,7 @@ public enum UnownFormTable : uint
     OnlyE = 4,           // Only E form
     OnlyN = 5,           // Only N form
     OnlyD = 6,           // Only D form
-    Exclamation = 7,     // Only ! form
-    Question = 8         // Only ? form
+    Exclamation = 7      // Only ! form
 }
 
 /// <summary>
@@ -53,7 +52,6 @@ public static class PokemonFormsHelper
             5 => "Only N",
             6 => "Only D",
             7 => "Only !",
-            8 => "Only ?",
             _ => $"Unknown ({tableValue})"
         };
     }
