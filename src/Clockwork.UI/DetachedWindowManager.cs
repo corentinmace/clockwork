@@ -2,14 +2,13 @@ using Clockwork.Core.Logging;
 using ImGuiNET;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 
 namespace Clockwork.UI;
 
 /// <summary>
-/// Manages detached windows as independent OS windows with their own SDL2 window and ImGui context.
-/// Each detached window is a completely separate window that can be moved to other monitors.
+/// Manages detached windows as floating ImGui windows within the main window.
+/// These windows can be moved freely, docked, or undocked within the main window space.
 /// </summary>
 public static class DetachedWindowManager
 {
@@ -18,9 +17,11 @@ public static class DetachedWindowManager
     private class DetachedWindowState
     {
         public Vector2 DefaultSize { get; set; }
-        public IndependentWindow? Window { get; set; }
+        public bool IsOpen { get; set; }
         public string Title { get; set; } = "";
         public Action? DrawContent { get; set; }
+        public Vector2 Position { get; set; }
+        public bool PositionSet { get; set; }
     }
 
     /// <summary>
@@ -33,13 +34,13 @@ public static class DetachedWindowManager
             _windows[id] = new DetachedWindowState
             {
                 DefaultSize = defaultSize,
-                Window = null
+                IsOpen = false
             };
         }
     }
 
     /// <summary>
-    /// Toggle a detached window (create if not exists, close if exists)
+    /// Toggle a detached window (open if closed, close if open)
     /// </summary>
     public static void Toggle(string id, string title, Action drawContent)
     {
@@ -51,92 +52,101 @@ public static class DetachedWindowManager
 
         var state = _windows[id];
 
-        if (state.Window != null && state.Window.IsOpen)
+        if (state.IsOpen)
         {
             // Window is open, close it
-            AppLogger.Debug($"DetachedWindowManager: Closing window '{id}'");
-            state.Window.Dispose();
-            state.Window = null;
+            AppLogger.Debug($"DetachedWindowManager: Closing floating window '{id}'");
+            state.IsOpen = false;
         }
         else
         {
-            // Window is closed or doesn't exist, create it
-            AppLogger.Debug($"DetachedWindowManager: Opening window '{id}'");
-
-            // Get main window position to offset the detached window
-            var mainViewport = ImGui.GetMainViewport();
-            Vector2 position = new Vector2(
-                mainViewport.Pos.X + mainViewport.Size.X + 20,
-                mainViewport.Pos.Y + 50
-            );
+            // Window is closed, open it
+            AppLogger.Debug($"DetachedWindowManager: Opening floating window '{id}'");
 
             state.Title = title;
             state.DrawContent = drawContent;
-            state.Window = new IndependentWindow(title, state.DefaultSize, position, drawContent);
+            state.IsOpen = true;
+            state.PositionSet = false; // Reset position flag to center on first open
 
-            AppLogger.Info($"DetachedWindowManager: Created independent window '{id}'");
+            AppLogger.Info($"DetachedWindowManager: Opened floating window '{id}'");
         }
     }
 
     /// <summary>
-    /// Check if a window is currently detached (open)
+    /// Check if a window is currently open
     /// </summary>
     public static bool IsOpen(string id)
     {
         if (!_windows.ContainsKey(id))
             return false;
 
-        var state = _windows[id];
-        return state.Window != null && state.Window.IsOpen;
+        return _windows[id].IsOpen;
     }
 
     /// <summary>
-    /// Update all detached windows. Call this in the main render loop.
+    /// Draw all open detached windows. Call this in the main render loop.
     /// </summary>
-    public static void UpdateAll(double deltaTime)
+    public static void DrawAll()
     {
-        // Store current ImGui context to restore it later
-        IntPtr mainContext = ImGui.GetCurrentContext();
-
-        // Update all open windows
-        foreach (var kvp in _windows.ToList()) // ToList to avoid modification during iteration
+        foreach (var kvp in _windows)
         {
             var state = kvp.Value;
 
-            if (state.Window != null)
+            if (state.IsOpen)
             {
-                if (state.Window.IsOpen)
-                {
-                    state.Window.Update(deltaTime);
-                }
-                else
-                {
-                    // Window was closed, dispose it
-                    AppLogger.Debug($"DetachedWindowManager: Window '{kvp.Key}' was closed, disposing");
-                    state.Window.Dispose();
-                    state.Window = null;
-                }
+                DrawFloatingWindow(kvp.Key, state);
             }
         }
+    }
 
-        // Restore main ImGui context
-        ImGui.SetCurrentContext(mainContext);
+    private static void DrawFloatingWindow(string id, DetachedWindowState state)
+    {
+        // Set initial position and size on first draw
+        if (!state.PositionSet)
+        {
+            // Center the window on first open
+            var viewport = ImGui.GetMainViewport();
+            state.Position = new Vector2(
+                viewport.Pos.X + (viewport.Size.X - state.DefaultSize.X) * 0.5f,
+                viewport.Pos.Y + (viewport.Size.Y - state.DefaultSize.Y) * 0.5f
+            );
+
+            ImGui.SetNextWindowPos(state.Position, ImGuiCond.FirstUseEver);
+            ImGui.SetNextWindowSize(state.DefaultSize, ImGuiCond.FirstUseEver);
+            state.PositionSet = true;
+        }
+
+        // Window flags for floating behavior
+        ImGuiWindowFlags flags = ImGuiWindowFlags.None;
+
+        // Draw the window
+        bool isOpen = state.IsOpen;
+        if (ImGui.Begin(state.Title, ref isOpen, flags))
+        {
+            // Draw the content
+            state.DrawContent?.Invoke();
+
+            ImGui.End();
+        }
+
+        // Update open state if user closed the window
+        if (!isOpen)
+        {
+            AppLogger.Debug($"DetachedWindowManager: User closed floating window '{id}'");
+            state.IsOpen = false;
+        }
     }
 
     /// <summary>
-    /// Close and dispose all detached windows
+    /// Close all detached windows
     /// </summary>
     public static void CloseAll()
     {
-        AppLogger.Debug("DetachedWindowManager: Closing all windows");
+        AppLogger.Debug("DetachedWindowManager: Closing all floating windows");
 
         foreach (var state in _windows.Values)
         {
-            if (state.Window != null)
-            {
-                state.Window.Dispose();
-                state.Window = null;
-            }
+            state.IsOpen = false;
         }
     }
 }

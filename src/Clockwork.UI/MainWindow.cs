@@ -192,9 +192,6 @@ public class MainWindow
         // Update application context
         _appContext.Update(deltaTime);
 
-        // Update all detached independent windows
-        DetachedWindowManager.UpdateAll(deltaTime);
-
         // Close if requested
         if (!_appContext.IsRunning)
         {
@@ -450,6 +447,9 @@ public class MainWindow
         _logViewerWindow.Draw();
         _settingsWindow.Draw();
         _themeEditorView.Draw();
+
+        // Draw detached floating windows
+        DetachedWindowManager.DrawAll();
 
         // Draw tools
         _addressHelperWindow.Draw();
