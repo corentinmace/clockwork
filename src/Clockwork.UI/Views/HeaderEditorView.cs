@@ -73,7 +73,7 @@ public class HeaderEditorView : IView
 
         bool isVisible = IsVisible;
         ImGui.SetNextWindowSize(new System.Numerics.Vector2(900, 600), ImGuiCond.FirstUseEver);
-        ImGui.Begin("Header Editor", ref isVisible);
+        ImGui.Begin($"{FontAwesomeIcons.BookOpenReader} Header Editor", ref isVisible);
 
         // Check if ROM is loaded
         bool romLoaded = _romService?.CurrentRom != null;
@@ -650,7 +650,7 @@ public class HeaderEditorView : IView
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new System.Numerics.Vector4(0.35f, 0.65f, 0.35f, 1.0f));
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, new System.Numerics.Vector4(0.20f, 0.50f, 0.20f, 1.0f));
 
-        if (ImGui.Button("Save Header", new System.Numerics.Vector2(-1, 40)))
+        if (ImGui.Button($"{FontAwesomeIcons.Save} Save Header", new System.Numerics.Vector2(-1, 40)))
         {
             if (_headerService != null && _headerService.SaveHeader(_currentHeader))
             {

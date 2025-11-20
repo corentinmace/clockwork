@@ -3,6 +3,7 @@ using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using ImGuiNET;
 using System.Numerics;
+using Clockwork.UI.Icons;
 
 namespace Clockwork.UI.Views;
 
@@ -50,7 +51,7 @@ public class ScrcmdTableHelperWindow : IView
 
         ImGui.SetNextWindowSize(new Vector2(800, 600), ImGuiCond.FirstUseEver);
         bool isVisible = IsVisible;
-        if (!ImGui.Begin("Script Command Table Helper", ref isVisible))
+        if (!ImGui.Begin($"{FontAwesomeIcons.Terminal} Script Command Table Helper", ref isVisible))
         {
             ImGui.End();
             return;
@@ -94,7 +95,7 @@ public class ScrcmdTableHelperWindow : IView
         ImGui.SetNextItemWidth(150);
         ImGui.InputText("##search", ref _searchCommandId, 16, ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.CharsUppercase);
         ImGui.SameLine();
-        if (ImGui.Button("Find"))
+        if (ImGui.Button($"{FontAwesomeIcons.Search}  Find"))
         {
             FindCommandId();
         }

@@ -150,6 +150,11 @@ public class LevelScriptService : IApplicationService
         try
         {
             byte[] data = script.ToBytes();
+            if (data.Length == 2 && data[0] + data[1] == 0)
+            {
+                data = new byte[4];
+            }
+            
             File.WriteAllBytes(scriptPath, data);
             int totalTriggers = script.MapLoadTriggers.Count + script.VariableValueTriggers.Count;
             AppLogger.Info($"[LevelScriptService] Saved level script {script.ScriptID} with {totalTriggers} triggers");

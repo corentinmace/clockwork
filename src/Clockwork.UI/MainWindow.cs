@@ -47,7 +47,7 @@ public class MainWindow
     private bool _showMetricsWindow = false;
 
     // Status bar
-    private const float STATUS_BAR_HEIGHT = 25.0f;
+    private const float STATUS_BAR_HEIGHT = 30.0f;
 
     // ROM Save state
     private bool _isShowingSaveRomDialog = false;
@@ -474,7 +474,7 @@ public class MainWindow
             ImGui.Separator();
             ImGui.Spacing();
 
-            _headerEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.FileLines, "Header Editor", _headerEditorView.IsVisible);
+            _headerEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.BookOpenReader, "Header Editor", _headerEditorView.IsVisible);
             _mapEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Map, "Map Editor", _mapEditorView.IsVisible);
             _matrixEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
             _wildEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Paw, "Wild Editor", _wildEditorView.IsVisible);
@@ -500,7 +500,7 @@ public class MainWindow
             // Editors section
             if (ImGui.CollapsingHeader("Editors", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                _headerEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.FileLines, "Header Editor", _headerEditorView.IsVisible);
+                _headerEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.BookOpenReader, "Header Editor", _headerEditorView.IsVisible);
                 _mapEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Map, "Map Editor", _mapEditorView.IsVisible);
                 _matrixEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
                 _wildEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Paw, "Wild Editor", _wildEditorView.IsVisible);
@@ -619,7 +619,7 @@ public class MainWindow
         ImGui.SameLine(viewport.WorkSize.X - 120);
         if (ImGui.Button($"{FontAwesomeIcons.FileLines} Log Viewer"))
         {
-            _logViewerWindow.IsVisible = true;
+            _logViewerWindow.IsVisible = !_logViewerWindow.IsVisible;
         }
 
         ImGui.End();

@@ -83,7 +83,7 @@ public class LevelScriptEditorView : IView
         ImGui.SetNextWindowSize(new Vector2(900, 700), ImGuiCond.FirstUseEver);
 
         bool isVisible = IsVisible;
-        if (ImGui.Begin($"{FontAwesomeIcons.Terminal}  Level Script Editor", ref isVisible))
+        if (ImGui.Begin($"{FontAwesomeIcons.Database}  Level Script Editor", ref isVisible))
         {
             // Handle window focus request
             if (_shouldFocus)

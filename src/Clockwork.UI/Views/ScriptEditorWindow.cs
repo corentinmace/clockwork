@@ -5,6 +5,7 @@ using ImGuiNET;
 using System.Numerics;
 using System.IO;
 using Clockwork.Core.Logging;
+using Clockwork.UI.Icons;
 
 namespace Clockwork.UI.Views;
 
@@ -80,7 +81,7 @@ public class ScriptEditorWindow : IView
 
         bool isVisible = IsVisible;
         ImGui.SetNextWindowSize(new Vector2(1200, 800), ImGuiCond.FirstUseEver);
-        if (ImGui.Begin("Script Editor", ref isVisible, ImGuiWindowFlags.MenuBar))
+        if (ImGui.Begin($"{FontAwesomeIcons.Code} Script Editor", ref isVisible, ImGuiWindowFlags.MenuBar))
         {
             // Apply focus if requested
             if (_shouldFocus)

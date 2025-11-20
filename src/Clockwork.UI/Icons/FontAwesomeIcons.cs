@@ -74,6 +74,7 @@ public static class FontAwesomeIcons
     public const string Sun = "\uf185";               // fa-sun (day/time)
     public const string Radar = "\uf140";             // fa-bullseye (radar)
     public const string Gamepad = "\uf11b";           // fa-gamepad (GBA)
+    public const string Eraser = "\uf12d";
 
     // Status
     public const string CheckCircle = "\uf058";       // fa-check-circle
@@ -87,4 +88,5 @@ public static class FontAwesomeIcons
     public const string Users = "\uf0c0";             // fa-users
     public const string Book = "\uf02d";              // fa-book
     public const string Bookmark = "\uf02e";          // fa-bookmark
+    public const string BookOpenReader = "\uf5da";
 }

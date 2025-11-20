@@ -76,7 +76,7 @@ public class WildEditorView : IView
             {
                 if (ImGui.BeginMenu("File"))
                 {
-                    if (ImGui.MenuItem("Save", "Ctrl+S", false, _wildEncounterService?.IsLoaded ?? false))
+                    if (ImGui.MenuItem($"{FontAwesomeIcons.Save}  LSave", "Ctrl+S", false, _wildEncounterService?.IsLoaded ?? false))
                     {
                         SaveCurrentEncounter();
                     }
@@ -181,21 +181,21 @@ public class WildEditorView : IView
         }
 
         // Buttons
-        if (ImGui.Button("Load"))
+        if (ImGui.Button($"{FontAwesomeIcons.Refresh}  Load"))
         {
             LoadEncounter(_currentEncounterID);
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Save"))
+        if (ImGui.Button($"{FontAwesomeIcons.Save}  Save"))
         {
             SaveCurrentEncounter();
         }
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Prev") && _currentEncounterID > 0)
+        if (ImGui.Button($"{FontAwesomeIcons.ArrowLeft}  Prev") && _currentEncounterID > 0)
         {
             _currentEncounterID--;
             LoadEncounter(_currentEncounterID);
@@ -203,7 +203,7 @@ public class WildEditorView : IView
 
         ImGui.SameLine();
 
-        if (ImGui.Button("Next"))
+        if (ImGui.Button($"Next  {FontAwesomeIcons.ArrowRight}"))
         {
             _currentEncounterID++;
             LoadEncounter(_currentEncounterID);

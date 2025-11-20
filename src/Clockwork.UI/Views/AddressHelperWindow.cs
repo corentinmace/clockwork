@@ -5,6 +5,7 @@ using Clockwork.Core.Models;
 using Clockwork.Core.Services;
 using ImGuiNET;
 using System.Numerics;
+using Clockwork.UI.Icons;
 
 namespace Clockwork.UI.Views;
 
@@ -37,7 +38,7 @@ public class AddressHelperWindow : IView
 
         ImGui.SetNextWindowSize(new Vector2(700, 500), ImGuiCond.FirstUseEver);
         bool isVisible = IsVisible;
-        if (!ImGui.Begin("Address Helper", ref isVisible))
+        if (!ImGui.Begin($"{FontAwesomeIcons.Calculator} Address Helper", ref isVisible))
         {
             ImGui.End();
             return;
@@ -67,7 +68,7 @@ public class AddressHelperWindow : IView
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Search") || ImGui.IsKeyPressed(ImGuiKey.Enter))
+        if (ImGui.Button($"{FontAwesomeIcons.Search}  Search") || ImGui.IsKeyPressed(ImGuiKey.Enter))
         {
             SearchAddress();
         }

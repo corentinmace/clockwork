@@ -8,6 +8,7 @@ using Clockwork.Core;
 using Clockwork.Core.Services;
 using Clockwork.Core.Formats.NDS.MessageEnc;
 using Clockwork.Core.Logging;
+using Clockwork.UI.Icons;
 
 namespace Clockwork.UI.Views
 {
@@ -267,7 +268,7 @@ namespace Clockwork.UI.Views
             }
 
             bool isVisible = IsVisible;
-            if (ImGui.Begin("Text Editor", ref isVisible))
+            if (ImGui.Begin($"{FontAwesomeIcons.Font} Text Editor", ref isVisible))
             {
                 // Apply focus if requested
                 if (_shouldFocus)
@@ -324,7 +325,7 @@ namespace Clockwork.UI.Views
             {
                 ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.0f, 1.0f), "No text archives found");
                 ImGui.SameLine();
-                if (ImGui.Button("Refresh"))
+                if (ImGui.Button($"{FontAwesomeIcons.Refresh}  Refresh"))
                 {
                     RefreshTextArchivesList();
                 }
@@ -337,13 +338,13 @@ namespace Clockwork.UI.Views
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Save") && !string.IsNullOrEmpty(currentFilePath))
+            if (ImGui.Button($"{FontAwesomeIcons.Save}  Save") && !string.IsNullOrEmpty(currentFilePath))
             {
                 SaveFile();
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Add Message"))
+            if (ImGui.Button($"{FontAwesomeIcons.Plus}  Add Message"))
             {
                 messages.Add("");
                 selectedMessageIndex = messages.Count - 1;
@@ -360,7 +361,7 @@ namespace Clockwork.UI.Views
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Search"))
+            if (ImGui.Button($"{FontAwesomeIcons.Search}  Search"))
             {
                 PerformSearch();
             }
