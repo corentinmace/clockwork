@@ -171,6 +171,9 @@ public class MainWindow
         // Update ImGui input
         _imguiRenderer?.Update((float)deltaTime, snapshot);
 
+        // Update animated textures (GIFs)
+        _textureManager?.Update(deltaTime);
+
         // Update application context
         _appContext.Update(deltaTime);
 
