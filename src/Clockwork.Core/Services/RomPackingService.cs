@@ -129,19 +129,17 @@ public class RomPackingService : IApplicationService
         var narcMappings = new Dictionary<string, string>
         {
             // Fielddata NARCs
-            ["land_data"] = "fielddata/land_data/land_data.narc",
-            ["mapmatrix"] = "fielddata/mapmatrix/mapmatrix.narc",
-            ["areadata"] = "fielddata/areadata/areadata.narc",
+            ["areadata"] = "fielddata/areadata/area_data.narc",
             ["build_model"] = "fielddata/build_model/build_model.narc",
 
-            // Main game NARCs in root data folder
-            ["dynamicHeaders"] = "a/0/0/7",     // Map headers
-            ["scripts"] = "a/0/1/2",            // Scripts
-            ["eventFiles"] = "a/0/3/2",         // Event files
-            ["matrices"] = "a/0/4/1",           // Matrices
-            ["maps"] = "a/0/4/2",               // Map files
-            ["textArchives"] = "a/0/2/7",       // Text archives
-            ["encounters"] = "a/0/1/3",         // Wild encounters
+            // Main game NARCs - Platinum paths
+            ["dynamicHeaders"] = "debug/cb_edit/d_test.narc",           // Map headers
+            ["scripts"] = "fielddata/script/scr_seq.narc",              // Scripts
+            ["eventFiles"] = "fielddata/eventdata/zone_event.narc",     // Event files
+            ["matrices"] = "fielddata/mapmatrix/map_matrix.narc",       // Matrices
+            ["maps"] = "fielddata/land_data/land_data.narc",            // Map files
+            ["textArchives"] = "msgdata/pl_msg.narc",                   // Text archives
+            ["encounters"] = "fielddata/encountdata/pl_enc_data.narc",  // Wild encounters
         };
 
         foreach (var (dirName, narcRelativePath) in narcMappings)
