@@ -183,7 +183,7 @@ public class MainWindow
 
     private void OnUpdate(double deltaTime, InputSnapshot snapshot)
     {
-        // Update ImGui input
+        // Update ImGui input (for main window)
         _imguiRenderer?.Update((float)deltaTime, snapshot);
 
         // Update animated textures (GIFs)
@@ -191,6 +191,9 @@ public class MainWindow
 
         // Update application context
         _appContext.Update(deltaTime);
+
+        // Update all detached independent windows
+        DetachedWindowManager.UpdateAll(deltaTime);
 
         // Close if requested
         if (!_appContext.IsRunning)
@@ -236,6 +239,10 @@ public class MainWindow
     private void OnClosing()
     {
         AppLogger.Info("MainWindow OnClosing: Cleaning up resources");
+
+        // Close all detached windows first
+        DetachedWindowManager.CloseAll();
+        AppLogger.Debug("All detached windows closed");
 
         // Save window state to settings
         SettingsManager.Settings.WindowWidth = (int)_window.Width;

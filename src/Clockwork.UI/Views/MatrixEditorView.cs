@@ -112,21 +112,8 @@ public class MatrixEditorView : IView
 
         ImGui.End();
 
-        // Draw detached window using manager
-        DetachedWindowManager.DrawWindow("MatrixEditor",
-            $"{FontAwesomeIcons.ExternalLink}  Matrix Editor (Détaché)",
-            () =>
-            {
-                if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
-                {
-                    ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Veuillez d'abord charger une ROM.");
-                }
-                else
-                {
-                    DrawEditorContent();
-                    DrawDeleteConfirmationDialog();
-                }
-            });
+        // Detached window is managed automatically by DetachedWindowManager.UpdateAll()
+        // No need to draw it here - independent windows render themselves
     }
 
     private void DrawEditorContent()
@@ -241,7 +228,20 @@ public class MatrixEditorView : IView
         ImGui.SameLine();
         if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
         {
-            DetachedWindowManager.Toggle("MatrixEditor");
+            DetachedWindowManager.Toggle("MatrixEditor",
+                $"{FontAwesomeIcons.Grid}  Matrix Editor (Détaché)",
+                () =>
+                {
+                    if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+                    {
+                        ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Veuillez d'abord charger une ROM.");
+                    }
+                    else
+                    {
+                        DrawEditorContent();
+                        DrawDeleteConfirmationDialog();
+                    }
+                });
         }
     }
 

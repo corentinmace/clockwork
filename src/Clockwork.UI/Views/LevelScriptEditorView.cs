@@ -109,18 +109,8 @@ public class LevelScriptEditorView : IView
             IsVisible = isVisible;
         }
 
-        // Draw detached window using manager
-        DetachedWindowManager.DrawWindow("LevelScriptEditor",
-            $"{FontAwesomeIcons.ExternalLink}  Level Script Editor (Détaché)",
-            () =>
-            {
-                if (_levelScriptService == null)
-                {
-                    ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1), "Level Script Service not available");
-                    return;
-                }
-                DrawEditorContent();
-            });
+        // Detached window is managed automatically by DetachedWindowManager.UpdateAll()
+        // No need to draw it here - independent windows render themselves
     }
 
     private void DrawEditorContent()
@@ -195,7 +185,17 @@ public class LevelScriptEditorView : IView
 
         if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
         {
-            DetachedWindowManager.Toggle("LevelScriptEditor");
+            DetachedWindowManager.Toggle("LevelScriptEditor",
+                $"{FontAwesomeIcons.Terminal}  Level Script Editor (Détaché)",
+                () =>
+                {
+                    if (_levelScriptService == null)
+                    {
+                        ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1), "Level Script Service not available");
+                        return;
+                    }
+                    DrawEditorContent();
+                });
         }
     }
 

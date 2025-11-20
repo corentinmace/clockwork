@@ -101,7 +101,23 @@ public class HeaderEditorView : IView
                 // Detach button
                 if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
                 {
-                    DetachedWindowManager.Toggle("HeaderEditor");
+                    DetachedWindowManager.Toggle("HeaderEditor",
+                        $"{FontAwesomeIcons.FileLines}  Header Editor (Détaché)",
+                        () =>
+                        {
+                            bool romLoaded = _romService?.CurrentRom != null;
+                            bool headersLoaded = _headerService?.IsLoaded ?? false;
+
+                            if (!romLoaded || !headersLoaded)
+                            {
+                                ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
+                                    "No ROM loaded or headers not loaded.");
+                            }
+                            else
+                            {
+                                DrawEditorContent();
+                            }
+                        });
                 }
                 ImGui.Spacing();
 
@@ -126,27 +142,8 @@ public class HeaderEditorView : IView
         ImGui.End();
         IsVisible = isVisible;
 
-        // Draw detached window using manager
-        DetachedWindowManager.DrawWindow("HeaderEditor",
-            $"{FontAwesomeIcons.ExternalLink}  Header Editor (Détaché)",
-            () =>
-            {
-                bool romLoaded = _romService?.CurrentRom != null;
-                bool headersLoaded = _headerService?.IsLoaded ?? false;
-
-                if (!romLoaded || !headersLoaded)
-                {
-                    ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
-                        "No ROM loaded or headers not loaded.");
-                }
-                else
-                {
-                    DrawEditorContent();
-                    ImGui.Separator();
-                    ImGui.Spacing();
-                    ImGui.TextColored(_statusColor, _statusMessage);
-                }
-            });
+        // Detached window is managed automatically by DetachedWindowManager.UpdateAll()
+        // No need to draw it here - independent windows render themselves
     }
 
     private void DrawEditorContent()
