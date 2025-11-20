@@ -25,6 +25,7 @@ public class HeaderEditorView : IView
     private ScriptEditorWindow? _scriptEditorWindow;
     private LevelScriptEditorView? _levelScriptEditorView;
     private MatrixEditorView? _matrixEditorView;
+    private WildEditorView? _wildEditorView;
 
     private MapHeader? _currentHeader;
     private string _statusMessage = string.Empty;
@@ -49,12 +50,13 @@ public class HeaderEditorView : IView
     /// <summary>
     /// Set references to other editor windows for navigation
     /// </summary>
-    public void SetEditorReferences(TextEditorWindow textEditor, ScriptEditorWindow scriptEditor, LevelScriptEditorView levelScriptEditor, MatrixEditorView matrixEditor)
+    public void SetEditorReferences(TextEditorWindow textEditor, ScriptEditorWindow scriptEditor, LevelScriptEditorView levelScriptEditor, MatrixEditorView matrixEditor, WildEditorView wildEditor)
     {
         _textEditorWindow = textEditor;
         _scriptEditorWindow = scriptEditor;
         _levelScriptEditorView = levelScriptEditor;
         _matrixEditorView = matrixEditor;
+        _wildEditorView = wildEditor;
     }
 
     /// <summary>
@@ -570,6 +572,15 @@ public class HeaderEditorView : IView
             if (ImGui.InputInt("##wildpokemon", ref wildPokemon, 1, 10))
             {
                 _currentHeader.WildPokemon = (byte)Math.Clamp(wildPokemon, 0, byte.MaxValue);
+            }
+
+            // Button to open Wild Editor (only if not 0xFF = no encounters)
+            if (_wildEditorView != null && _currentHeader.WildPokemon != MapHeader.NO_WILD_ENCOUNTERS)
+            {
+                DrawOpenEditorButton("openWild", "Ouvrir dans l'éditeur de rencontres sauvages", "Wild Encounter Editor", () =>
+                {
+                    _wildEditorView.OpenWithEncounterID(_currentHeader.WildPokemon);
+                });
             }
 
             ImGui.Text("Time ID:");

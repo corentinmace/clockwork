@@ -25,6 +25,7 @@ public class WildEditorView : IView
     // Current state
     private int _currentEncounterID = 0;
     private bool _isDirty = false;
+    private bool _shouldFocus = false;
 
     // Encounter selector
     private string _encounterSearchText = "";
@@ -63,6 +64,13 @@ public class WildEditorView : IView
 
         if (ImGui.Begin($"{FontAwesomeIcons.Paw}  Wild Encounter Editor{(_isDirty ? " *" : "")}", ref isVisible, ImGuiWindowFlags.MenuBar))
         {
+            // Handle focus request (from other editors)
+            if (_shouldFocus)
+            {
+                ImGui.SetWindowFocus();
+                _shouldFocus = false;
+            }
+
             // Menu bar
             if (ImGui.BeginMenuBar())
             {
@@ -509,5 +517,17 @@ public class WildEditorView : IView
         {
             AppLogger.Error($"Failed to save encounter {_currentEncounterID}");
         }
+    }
+
+    /// <summary>
+    /// Opens the Wild Editor and loads a specific encounter file.
+    /// Called from other editors (e.g., Header Editor).
+    /// </summary>
+    public void OpenWithEncounterID(int encounterID)
+    {
+        IsVisible = true;
+        _shouldFocus = true;
+        LoadEncounter(encounterID);
+        AppLogger.Info($"Wild Editor opened with encounter ID {encounterID}");
     }
 }
