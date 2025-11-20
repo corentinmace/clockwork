@@ -240,13 +240,12 @@ public class WildEditorView : IView
         ImGui.TextColored(new Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Pokemon Encounters");
         ImGui.Spacing();
 
-        if (ImGui.BeginTable("WalkingEncounters", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.BeginTable("WalkingEncounters", 4, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
         {
-            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 50);
-            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
-            ImGui.TableSetupColumn("Level", ImGuiTableColumnFlags.WidthFixed, 80);
-            ImGui.TableSetupColumn("Rate", ImGuiTableColumnFlags.WidthFixed, 60);
+            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 40);
+            ImGui.TableSetupColumn("Pokemon", ImGuiTableColumnFlags.WidthStretch, 0.6f);
+            ImGui.TableSetupColumn("Level", ImGuiTableColumnFlags.WidthFixed, 70);
+            ImGui.TableSetupColumn("Rate", ImGuiTableColumnFlags.WidthFixed, 50);
             ImGui.TableHeadersRow();
 
             string[] rateLabels = new[]
@@ -263,27 +262,13 @@ public class WildEditorView : IView
                 ImGui.TableNextColumn();
                 ImGui.Text($"{i + 1}");
 
-                // Pokemon ID
+                // Pokemon dropdown
                 ImGui.TableNextColumn();
-                int pokemonID = (int)encounter.WalkingPokemon[i];
-                ImGui.SetNextItemWidth(-1);
-                if (ImGui.InputInt($"##walkPoke{i}", ref pokemonID))
+                uint pokemonID = encounter.WalkingPokemon[i];
+                if (DrawPokemonCombo($"##walkPoke{i}", ref pokemonID))
                 {
-                    if (pokemonID < 0) pokemonID = 0;
-                    encounter.WalkingPokemon[i] = (uint)pokemonID;
+                    encounter.WalkingPokemon[i] = pokemonID;
                     _isDirty = true;
-                }
-
-                // Pokemon Name
-                ImGui.TableNextColumn();
-                if (_textArchiveService != null && pokemonID > 0)
-                {
-                    string pokemonName = _textArchiveService.GetPokemonName((uint)pokemonID);
-                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), pokemonName);
-                }
-                else
-                {
-                    ImGui.TextDisabled("---");
                 }
 
                 // Level
@@ -393,14 +378,13 @@ public class WildEditorView : IView
         ImGui.TextColored(new Vector4(0.4f, 0.7f, 1.0f, 1.0f), $"{name} Encounters");
         ImGui.Spacing();
 
-        if (ImGui.BeginTable($"{name}Encounters", 6, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.BeginTable($"{name}Encounters", 5, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
         {
-            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 50);
-            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 40);
+            ImGui.TableSetupColumn("Pokemon", ImGuiTableColumnFlags.WidthStretch, 0.5f);
             ImGui.TableSetupColumn("Min Lv", ImGuiTableColumnFlags.WidthFixed, 70);
             ImGui.TableSetupColumn("Max Lv", ImGuiTableColumnFlags.WidthFixed, 70);
-            ImGui.TableSetupColumn("Rate", ImGuiTableColumnFlags.WidthFixed, 60);
+            ImGui.TableSetupColumn("Rate", ImGuiTableColumnFlags.WidthFixed, 50);
             ImGui.TableHeadersRow();
 
             string[] rateLabels = new[] { "60%", "30%", "5%", "4%", "1%" };
@@ -413,27 +397,13 @@ public class WildEditorView : IView
                 ImGui.TableNextColumn();
                 ImGui.Text($"{i + 1}");
 
-                // Pokemon ID
+                // Pokemon dropdown
                 ImGui.TableNextColumn();
-                int pokemonID = pokemon[i];
-                ImGui.SetNextItemWidth(-1);
-                if (ImGui.InputInt($"##water{name}Poke{i}", ref pokemonID))
+                uint pokemonID = pokemon[i];
+                if (DrawPokemonComboUshort($"##water{name}Poke{i}", ref pokemonID))
                 {
-                    if (pokemonID < 0) pokemonID = 0;
                     pokemon[i] = (ushort)pokemonID;
                     _isDirty = true;
-                }
-
-                // Pokemon Name
-                ImGui.TableNextColumn();
-                if (_textArchiveService != null && pokemonID > 0)
-                {
-                    string pokemonName = _textArchiveService.GetPokemonName((uint)pokemonID);
-                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), pokemonName);
-                }
-                else
-                {
-                    ImGui.TextDisabled("---");
                 }
 
                 // Min Level
@@ -549,7 +519,34 @@ public class WildEditorView : IView
             ImGui.TextDisabled("Regional variants for Shellos and Gastrodon (East Sea / West Sea)");
             ImGui.Spacing();
 
-            DrawSpecialEncounterTable("RegionalForms", encounter.RegionalForms, 5);
+            // Create labels for the 5 regional form slots
+            string[] formLabels = new[] { "Shellos Form", "Gastrodon Form", "Form 3", "Form 4", "Form 5" };
+
+            for (int i = 0; i < 5; i++)
+            {
+                ImGui.Text($"{formLabels[i]}:");
+                ImGui.SameLine(150);
+                ImGui.SetNextItemWidth(250);
+
+                uint formValue = encounter.RegionalForms[i];
+                string currentForm = PokemonFormsHelper.GetShellosFormName(formValue);
+
+                if (ImGui.BeginCombo($"##regionalform{i}", currentForm))
+                {
+                    for (uint form = 0; form <= 1; form++)
+                    {
+                        bool isSelected = formValue == form;
+                        if (ImGui.Selectable(PokemonFormsHelper.GetShellosFormName(form), isSelected))
+                        {
+                            encounter.RegionalForms[i] = form;
+                            _isDirty = true;
+                        }
+                        if (isSelected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
+                }
+            }
 
             ImGui.Unindent();
             ImGui.Spacing();
@@ -559,17 +556,30 @@ public class WildEditorView : IView
         if (ImGui.CollapsingHeader("Unown Forms"))
         {
             ImGui.Indent();
-            ImGui.TextDisabled("Unown form table (exact usage unknown)");
+            ImGui.TextDisabled("Controls which Unown letter forms can appear");
             ImGui.Spacing();
 
-            int unknownTableValue = (int)encounter.UnknownTable;
-            ImGui.Text("Unknown Table:");
-            ImGui.SameLine();
-            ImGui.SetNextItemWidth(200);
-            if (ImGui.InputInt("##unknowntable", ref unknownTableValue, 1, 10))
+            ImGui.Text("Unown Table:");
+            ImGui.SameLine(150);
+            ImGui.SetNextItemWidth(250);
+
+            uint tableValue = encounter.UnknownTable;
+            string currentTable = PokemonFormsHelper.GetUnownTableName(tableValue);
+
+            if (ImGui.BeginCombo("##unowntable", currentTable))
             {
-                encounter.UnknownTable = (uint)Math.Clamp(unknownTableValue, 0, uint.MaxValue);
-                _isDirty = true;
+                for (uint table = 0; table <= 2; table++)
+                {
+                    bool isSelected = tableValue == table;
+                    if (ImGui.Selectable(PokemonFormsHelper.GetUnownTableName(table), isSelected))
+                    {
+                        encounter.UnknownTable = table;
+                        _isDirty = true;
+                    }
+                    if (isSelected)
+                        ImGui.SetItemDefaultFocus();
+                }
+                ImGui.EndCombo();
             }
 
             ImGui.Unindent();
@@ -581,12 +591,11 @@ public class WildEditorView : IView
 
     private void DrawSpecialEncounterTable(string category, uint[] pokemonArray, int count)
     {
-        if (ImGui.BeginTable($"Table_{category}", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.BeginTable($"Table_{category}", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
         {
             // Setup columns
-            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 50);
-            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 40);
+            ImGui.TableSetupColumn("Pokemon", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableHeadersRow();
 
             for (int i = 0; i < count; i++)
@@ -595,28 +604,15 @@ public class WildEditorView : IView
 
                 // Slot number
                 ImGui.TableNextColumn();
-                ImGui.Text($"{i}");
+                ImGui.Text($"{i + 1}");
 
-                // Pokemon ID input
+                // Pokemon dropdown
                 ImGui.TableNextColumn();
-                int pokemonID = (int)pokemonArray[i];
-                ImGui.SetNextItemWidth(-1);
-                if (ImGui.InputInt($"##{category}_pokemon_{i}", ref pokemonID, 1, 10))
+                uint pokemonID = pokemonArray[i];
+                if (DrawPokemonCombo($"##{category}_pokemon_{i}", ref pokemonID))
                 {
-                    pokemonArray[i] = (uint)Math.Clamp(pokemonID, 0, 493);
+                    pokemonArray[i] = pokemonID;
                     _isDirty = true;
-                }
-
-                // Pokemon name
-                ImGui.TableNextColumn();
-                if (_textArchiveService != null && pokemonArray[i] > 0)
-                {
-                    string pokemonName = _textArchiveService.GetPokemonName(pokemonArray[i]);
-                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), pokemonName);
-                }
-                else
-                {
-                    ImGui.TextDisabled("(Empty)");
                 }
             }
 
@@ -626,12 +622,11 @@ public class WildEditorView : IView
 
     private void DrawSpecialEncounterTableUshort(string category, ushort[] pokemonArray, int count)
     {
-        if (ImGui.BeginTable($"Table_{category}", 3, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg))
+        if (ImGui.BeginTable($"Table_{category}", 2, ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
         {
             // Setup columns
-            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 50);
-            ImGui.TableSetupColumn("Pokemon ID", ImGuiTableColumnFlags.WidthFixed, 100);
-            ImGui.TableSetupColumn("Name", ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableSetupColumn("Slot", ImGuiTableColumnFlags.WidthFixed, 40);
+            ImGui.TableSetupColumn("Pokemon", ImGuiTableColumnFlags.WidthStretch);
             ImGui.TableHeadersRow();
 
             for (int i = 0; i < count; i++)
@@ -640,28 +635,15 @@ public class WildEditorView : IView
 
                 // Slot number
                 ImGui.TableNextColumn();
-                ImGui.Text($"{i}");
+                ImGui.Text($"{i + 1}");
 
-                // Pokemon ID input
+                // Pokemon dropdown
                 ImGui.TableNextColumn();
-                int pokemonID = (int)pokemonArray[i];
-                ImGui.SetNextItemWidth(-1);
-                if (ImGui.InputInt($"##{category}_pokemon_{i}", ref pokemonID, 1, 10))
+                uint pokemonID = pokemonArray[i];
+                if (DrawPokemonComboUshort($"##{category}_pokemon_{i}", ref pokemonID))
                 {
-                    pokemonArray[i] = (ushort)Math.Clamp(pokemonID, 0, 493);
+                    pokemonArray[i] = (ushort)pokemonID;
                     _isDirty = true;
-                }
-
-                // Pokemon name
-                ImGui.TableNextColumn();
-                if (_textArchiveService != null && pokemonArray[i] > 0)
-                {
-                    string pokemonName = _textArchiveService.GetPokemonName(pokemonArray[i]);
-                    ImGui.TextColored(new Vector4(0.7f, 0.9f, 1.0f, 1.0f), pokemonName);
-                }
-                else
-                {
-                    ImGui.TextDisabled("(Empty)");
                 }
             }
 
@@ -705,6 +687,62 @@ public class WildEditorView : IView
         {
             AppLogger.Error($"Failed to save encounter {_currentEncounterID}");
         }
+    }
+
+    /// <summary>
+    /// Draw a Pokemon selection combo box (dropdown).
+    /// </summary>
+    private bool DrawPokemonCombo(string label, ref uint pokemonID)
+    {
+        bool changed = false;
+        string pokemonName = pokemonID > 0 && _textArchiveService != null
+            ? _textArchiveService.GetPokemonName(pokemonID)
+            : "(None)";
+
+        string displayText = pokemonID > 0 ? $"#{pokemonID:D3} - {pokemonName}" : "(None)";
+
+        ImGui.SetNextItemWidth(-1);
+        if (ImGui.BeginCombo(label, displayText))
+        {
+            // None option
+            if (ImGui.Selectable("(None)", pokemonID == 0))
+            {
+                pokemonID = 0;
+                changed = true;
+            }
+
+            // Pokemon list (1-493 for Gen IV)
+            for (uint i = 1; i <= 493; i++)
+            {
+                string name = _textArchiveService != null
+                    ? _textArchiveService.GetPokemonName(i)
+                    : $"Pokemon {i}";
+
+                string itemText = $"#{i:D3} - {name}";
+                bool isSelected = pokemonID == i;
+
+                if (ImGui.Selectable(itemText, isSelected))
+                {
+                    pokemonID = i;
+                    changed = true;
+                }
+
+                if (isSelected)
+                    ImGui.SetItemDefaultFocus();
+            }
+
+            ImGui.EndCombo();
+        }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// Draw a Pokemon selection combo box (dropdown) for ushort values.
+    /// </summary>
+    private bool DrawPokemonComboUshort(string label, ref uint pokemonID)
+    {
+        return DrawPokemonCombo(label, ref pokemonID);
     }
 
     /// <summary>
