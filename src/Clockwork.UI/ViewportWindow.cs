@@ -3,6 +3,7 @@ using ImGuiNET;
 using System;
 using System.Numerics;
 using Veldrid;
+using Veldrid.OpenGL;
 using Veldrid.Sdl2;
 
 namespace Clockwork.UI;
