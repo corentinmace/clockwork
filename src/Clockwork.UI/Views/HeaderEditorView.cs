@@ -241,7 +241,16 @@ public class HeaderEditorView : IView
             {
                 bool matchesID = header.HeaderID.ToString().Contains(_searchFilter, StringComparison.OrdinalIgnoreCase);
                 bool matchesName = header.InternalName.Contains(_searchFilter, StringComparison.OrdinalIgnoreCase);
-                if (!matchesID && !matchesName)
+
+                // Check if location name matches
+                bool matchesLocation = false;
+                if (_locationNamesLoaded && header.LocationName < _locationNames.Count)
+                {
+                    string locationName = _locationNames[header.LocationName];
+                    matchesLocation = locationName.Contains(_searchFilter, StringComparison.OrdinalIgnoreCase);
+                }
+
+                if (!matchesID && !matchesName && !matchesLocation)
                     continue;
             }
 
