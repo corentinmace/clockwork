@@ -2,6 +2,7 @@ using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
+using Clockwork.UI.Icons;
 using ImGuiNET;
 using System;
 using System.Numerics;
@@ -271,41 +272,49 @@ public class WildEditorView : IView
         {
             if (ImGui.BeginTabItem("Surf"))
             {
+                byte rate = encounter.SurfRate;
                 DrawWaterEncounters("Surf",
-                    ref encounter.SurfRate,
+                    ref rate,
                     encounter.SurfPokemon,
                     encounter.SurfMinLevels,
                     encounter.SurfMaxLevels);
+                encounter.SurfRate = rate;
                 ImGui.EndTabItem();
             }
 
             if (ImGui.BeginTabItem("Old Rod"))
             {
+                byte rate = encounter.OldRodRate;
                 DrawWaterEncounters("Old Rod",
-                    ref encounter.OldRodRate,
+                    ref rate,
                     encounter.OldRodPokemon,
                     encounter.OldRodMinLevels,
                     encounter.OldRodMaxLevels);
+                encounter.OldRodRate = rate;
                 ImGui.EndTabItem();
             }
 
             if (ImGui.BeginTabItem("Good Rod"))
             {
+                byte rate = encounter.GoodRodRate;
                 DrawWaterEncounters("Good Rod",
-                    ref encounter.GoodRodRate,
+                    ref rate,
                     encounter.GoodRodPokemon,
                     encounter.GoodRodMinLevels,
                     encounter.GoodRodMaxLevels);
+                encounter.GoodRodRate = rate;
                 ImGui.EndTabItem();
             }
 
             if (ImGui.BeginTabItem("Super Rod"))
             {
+                byte rate = encounter.SuperRodRate;
                 DrawWaterEncounters("Super Rod",
-                    ref encounter.SuperRodRate,
+                    ref rate,
                     encounter.SuperRodPokemon,
                     encounter.SuperRodMinLevels,
                     encounter.SuperRodMaxLevels);
+                encounter.SuperRodRate = rate;
                 ImGui.EndTabItem();
             }
 

@@ -67,6 +67,10 @@ public static class FontAwesomeIcons
     public const string Calculator = "\uf1ec";        // fa-calculator
     public const string FileLines = "\uf15c";         // fa-file-lines (header editor)
     public const string Grid = "\uf00a";              // fa-th (grid/matrix)
+    public const string Paw = "\uf1b0";               // fa-paw (wild encounters)
+    public const string Seedling = "\uf4d8";          // fa-seedling (grass)
+    public const string Water = "\uf773";             // fa-water (water encounters)
+    public const string Star = "\uf005";              // fa-star (special)
 
     // Status
     public const string CheckCircle = "\uf058";       // fa-check-circle
