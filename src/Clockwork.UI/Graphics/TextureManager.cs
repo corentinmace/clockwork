@@ -34,6 +34,7 @@ public class TextureManager : IDisposable
         // Check cache first
         if (_textureCache.TryGetValue(resourcePath, out IntPtr cachedHandle))
         {
+            AppLogger.Debug($"[TextureManager] Using cached texture: {resourcePath}");
             return cachedHandle;
         }
 
@@ -43,10 +44,21 @@ public class TextureManager : IDisposable
             var assembly = Assembly.GetExecutingAssembly();
             var fullResourceName = $"Clockwork.UI.{resourcePath.Replace("/", ".").Replace("\\", ".")}";
 
+            AppLogger.Debug($"[TextureManager] Attempting to load resource: {fullResourceName}");
+
+            // Debug: List all available resources
+            var allResources = assembly.GetManifestResourceNames();
+            AppLogger.Debug($"[TextureManager] Total embedded resources: {allResources.Length}");
+            foreach (var res in allResources.Where(r => r.Contains("Graphics")))
+            {
+                AppLogger.Debug($"[TextureManager] Available: {res}");
+            }
+
             using var stream = assembly.GetManifestResourceStream(fullResourceName);
             if (stream == null)
             {
-                AppLogger.Warn($"[TextureManager] Resource not found: {fullResourceName}");
+                AppLogger.Error($"[TextureManager] Resource not found: {fullResourceName}");
+                AppLogger.Error($"[TextureManager] Original path: {resourcePath}");
                 return null;
             }
 

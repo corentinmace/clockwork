@@ -320,14 +320,25 @@ public class HeaderEditorView : IView
                     }
 
                     // Show image tooltip on hover
-                    if (ImGui.IsItemHovered() && _textureManager != null)
+                    if (ImGui.IsItemHovered())
                     {
-                        var texture = _textureManager.LoadWeatherImage(kvp.Key);
-                        if (texture != null)
+                        if (_textureManager == null)
                         {
-                            ImGui.BeginTooltip();
-                            ImGui.Image(texture.Value, new System.Numerics.Vector2(256, 192));
-                            ImGui.EndTooltip();
+                            AppLogger.Warn("[HeaderEditor] TextureManager is null!");
+                        }
+                        else
+                        {
+                            var texture = _textureManager.LoadWeatherImage(kvp.Key);
+                            if (texture != null)
+                            {
+                                ImGui.BeginTooltip();
+                                ImGui.Image(texture.Value, new System.Numerics.Vector2(256, 192));
+                                ImGui.EndTooltip();
+                            }
+                            else
+                            {
+                                AppLogger.Warn($"[HeaderEditor] Failed to load weather image for ID {kvp.Key}");
+                            }
                         }
                     }
 
@@ -353,14 +364,25 @@ public class HeaderEditorView : IView
                     }
 
                     // Show image tooltip on hover
-                    if (ImGui.IsItemHovered() && _textureManager != null)
+                    if (ImGui.IsItemHovered())
                     {
-                        var texture = _textureManager.LoadCameraImage(kvp.Key);
-                        if (texture != null)
+                        if (_textureManager == null)
                         {
-                            ImGui.BeginTooltip();
-                            ImGui.Image(texture.Value, new System.Numerics.Vector2(256, 192));
-                            ImGui.EndTooltip();
+                            AppLogger.Warn("[HeaderEditor] TextureManager is null for camera!");
+                        }
+                        else
+                        {
+                            var texture = _textureManager.LoadCameraImage(kvp.Key);
+                            if (texture != null)
+                            {
+                                ImGui.BeginTooltip();
+                                ImGui.Image(texture.Value, new System.Numerics.Vector2(256, 192));
+                                ImGui.EndTooltip();
+                            }
+                            else
+                            {
+                                AppLogger.Warn($"[HeaderEditor] Failed to load camera image for ID {kvp.Key}");
+                            }
                         }
                     }
 
