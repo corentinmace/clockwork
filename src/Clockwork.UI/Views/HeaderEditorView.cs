@@ -32,7 +32,6 @@ public class HeaderEditorView : IView
     private string _searchFilter = string.Empty;
     private string? _lastLoadedRomPath;
     private bool _shouldScrollToSelection = false;
-    private bool _isDetachedWindowOpen = false;
 
     // Location names loaded from text archives
     private List<string> _locationNames = new();
@@ -45,6 +44,9 @@ public class HeaderEditorView : IView
         _appContext = appContext;
         _romService = _appContext.GetService<RomService>();
         _headerService = _appContext.GetService<HeaderService>();
+
+        // Register detached window
+        DetachedWindowManager.RegisterWindow("HeaderEditor", new System.Numerics.Vector2(900, 600));
     }
 
     /// <summary>
@@ -99,39 +101,11 @@ public class HeaderEditorView : IView
                 // Detach button
                 if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
                 {
-                    _isDetachedWindowOpen = !_isDetachedWindowOpen;
+                    DetachedWindowManager.Toggle("HeaderEditor");
                 }
                 ImGui.Spacing();
 
-                // Two-column layout: header list on left, editor on right
-                float availableHeight = ImGui.GetContentRegionAvail().Y;
-
-                if (ImGui.BeginTable("HeaderEditorTable", 2, ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV))
-                {
-                    ImGui.TableSetupColumn("Headers", ImGuiTableColumnFlags.WidthFixed, 300);
-                    ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
-
-                    ImGui.TableNextRow();
-                    ImGui.TableSetColumnIndex(0);
-
-                    // Left column: Header list
-                    DrawHeaderList(availableHeight - 40); // Leave space for status message
-
-                    ImGui.TableSetColumnIndex(1);
-
-                    // Right column: Header editor
-                    if (_currentHeader != null)
-                    {
-                        DrawHeaderEditor();
-                    }
-                    else
-                    {
-                        ImGui.TextColored(new System.Numerics.Vector4(0.7f, 0.7f, 0.7f, 1.0f),
-                            "Select a header from the list to edit.");
-                    }
-
-                    ImGui.EndTable();
-                }
+                DrawEditorContent();
             }
             else
             {
@@ -152,62 +126,60 @@ public class HeaderEditorView : IView
         ImGui.End();
         IsVisible = isVisible;
 
-        // Draw detached window if open
-        if (_isDetachedWindowOpen)
-        {
-            DrawDetachedWindow();
-        }
+        // Draw detached window using manager
+        DetachedWindowManager.DrawWindow("HeaderEditor",
+            $"{FontAwesomeIcons.ExternalLink}  Header Editor (Détaché)",
+            () =>
+            {
+                bool romLoaded = _romService?.CurrentRom != null;
+                bool headersLoaded = _headerService?.IsLoaded ?? false;
+
+                if (!romLoaded || !headersLoaded)
+                {
+                    ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
+                        "No ROM loaded or headers not loaded.");
+                }
+                else
+                {
+                    DrawEditorContent();
+                    ImGui.Separator();
+                    ImGui.Spacing();
+                    ImGui.TextColored(_statusColor, _statusMessage);
+                }
+            });
     }
 
-    private void DrawDetachedWindow()
+    private void DrawEditorContent()
     {
-        bool isOpen = _isDetachedWindowOpen;
-        ImGui.SetNextWindowSize(new System.Numerics.Vector2(900, 600), ImGuiCond.FirstUseEver);
-        if (ImGui.Begin($"{FontAwesomeIcons.ExternalLink}  Header Editor (Détaché)", ref isOpen, ImGuiWindowFlags.None))
-        {
-            bool romLoaded = _romService?.CurrentRom != null;
-            bool headersLoaded = _headerService?.IsLoaded ?? false;
+        // Two-column layout: header list on left, editor on right
+        float availableHeight = ImGui.GetContentRegionAvail().Y;
 
-            if (!romLoaded || !headersLoaded)
+        if (ImGui.BeginTable("HeaderEditorTable", 2, ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV))
+        {
+            ImGui.TableSetupColumn("Headers", ImGuiTableColumnFlags.WidthFixed, 300);
+            ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
+
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(0);
+
+            // Left column: Header list
+            DrawHeaderList(availableHeight - 40); // Leave space for status message
+
+            ImGui.TableSetColumnIndex(1);
+
+            // Right column: Header editor
+            if (_currentHeader != null)
             {
-                ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
-                    "No ROM loaded or headers not loaded.");
+                DrawHeaderEditor();
             }
             else
             {
-                float availableHeight = ImGui.GetContentRegionAvail().Y;
-
-                if (ImGui.BeginTable("HeaderEditorTableDetached", 2, ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV))
-                {
-                    ImGui.TableSetupColumn("Headers", ImGuiTableColumnFlags.WidthFixed, 300);
-                    ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
-
-                    ImGui.TableNextRow();
-                    ImGui.TableSetColumnIndex(0);
-                    DrawHeaderList(availableHeight - 40);
-
-                    ImGui.TableSetColumnIndex(1);
-                    if (_currentHeader != null)
-                    {
-                        DrawHeaderEditor();
-                    }
-                    else
-                    {
-                        ImGui.TextColored(new System.Numerics.Vector4(0.7f, 0.7f, 0.7f, 1.0f),
-                            "Select a header from the list to edit.");
-                    }
-
-                    ImGui.EndTable();
-                }
-
-                ImGui.Separator();
-                ImGui.Spacing();
-                ImGui.TextColored(_statusColor, _statusMessage);
+                ImGui.TextColored(new System.Numerics.Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                    "Select a header from the list to edit.");
             }
 
-            ImGui.End();
+            ImGui.EndTable();
         }
-        _isDetachedWindowOpen = isOpen;
     }
 
     private void LoadHeadersFromRom()
