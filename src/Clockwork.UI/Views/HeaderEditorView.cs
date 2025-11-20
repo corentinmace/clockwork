@@ -348,6 +348,18 @@ public class HeaderEditorView : IView
                 ImGui.EndCombo();
             }
 
+            // Show image tooltip when hovering the closed combo
+            if (ImGui.IsItemHovered() && _textureManager != null)
+            {
+                var texture = _textureManager.LoadWeatherImage(_currentHeader.WeatherID);
+                if (texture != null)
+                {
+                    ImGui.BeginTooltip();
+                    ImGui.Image(texture.Value, new System.Numerics.Vector2(256, 192));
+                    ImGui.EndTooltip();
+                }
+            }
+
             // Camera Angle dropdown with names (using DPPt cameras)
             ImGui.Text("Camera Angle:");
             ImGui.SameLine(150);
@@ -390,6 +402,18 @@ public class HeaderEditorView : IView
                         ImGui.SetItemDefaultFocus();
                 }
                 ImGui.EndCombo();
+            }
+
+            // Show image tooltip when hovering the closed combo
+            if (ImGui.IsItemHovered() && _textureManager != null)
+            {
+                var texture = _textureManager.LoadCameraImage(_currentHeader.CameraAngleID);
+                if (texture != null)
+                {
+                    ImGui.BeginTooltip();
+                    ImGui.Image(texture.Value, new System.Numerics.Vector2(256, 192));
+                    ImGui.EndTooltip();
+                }
             }
         }
 
