@@ -285,6 +285,7 @@ public class ScrcmdTableHelperWindow : IView
         if (uint.TryParse(addr, System.Globalization.NumberStyles.HexNumber, null, out uint address))
         {
             _addressHelperWindow.OpenWithAddress(address);
+            ImGui.SetWindowFocus("Address Helper");
             AppLogger.Info($"[ScrcmdTableHelper] Opening Address Helper with address {addressStr}");
         }
         else
