@@ -62,8 +62,8 @@ public class LevelScriptService : IApplicationService
 
         var scriptFiles = Directory.GetFiles(scriptsPath, "*.bin")
             .Select(Path.GetFileNameWithoutExtension)
-            .Where(name => int.TryParse(name, out _))
-            .Select(int.Parse)
+            .Where(name => !string.IsNullOrEmpty(name) && int.TryParse(name, out _))
+            .Select(name => int.Parse(name!))
             .OrderBy(id => id)
             .ToList();
 
@@ -143,6 +143,14 @@ public class LevelScriptService : IApplicationService
             AppLogger.Error($"[LevelScriptService] Failed to save script {script.ScriptID}: {ex.Message}");
             return false;
         }
+    }
+
+    /// <summary>
+    /// Set the current script
+    /// </summary>
+    public void SetCurrentScript(LevelScriptFile? script)
+    {
+        CurrentScript = script;
     }
 
     /// <summary>

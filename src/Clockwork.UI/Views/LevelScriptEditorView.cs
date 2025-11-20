@@ -406,7 +406,7 @@ public class LevelScriptEditorView : IView
         var script = _levelScriptService!.ImportScript(filePath, _selectedScriptId);
         if (script != null)
         {
-            _levelScriptService.CurrentScript = script;
+            _levelScriptService.SetCurrentScript(script);
             _statusMessage = $"Imported script from {System.IO.Path.GetFileName(filePath)}";
             _statusColor = new Vector4(0.3f, 1, 0.3f, 1);
         }
