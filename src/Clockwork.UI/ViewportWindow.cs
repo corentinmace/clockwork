@@ -134,8 +134,14 @@ public unsafe class ViewportWindow : IDisposable
         // End command recording and submit
         CommandList.End();
         GraphicsDevice.SubmitCommands(CommandList);
+    }
 
-        // Swap buffers
+    public void SwapBuffers()
+    {
+        if (_disposed)
+            return;
+
+        // Swap buffers to present the frame
         GraphicsDevice.SwapBuffers(GraphicsDevice.MainSwapchain);
     }
 

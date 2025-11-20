@@ -227,7 +227,7 @@ public class MainWindow
         if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
         {
             ImGui.UpdatePlatformWindows();
-            _viewportManager?.UpdateAndRender((float)deltaTime);
+            ImGui.RenderPlatformWindowsDefault();
         }
     }
 

@@ -83,7 +83,14 @@ public unsafe class ViewportManager : IDisposable
 
     private void InitializePlatformCallbacks()
     {
+        var io = ImGui.GetIO();
         var platformIO = ImGui.GetPlatformIO();
+
+        // Configure backend flags to indicate we support viewports
+        io.BackendFlags |= ImGuiBackendFlags.PlatformHasViewports;
+        io.BackendFlags |= ImGuiBackendFlags.RendererHasViewports;
+
+        AppLogger.Debug($"ViewportManager: Backend flags configured - PlatformHasViewports: {(io.BackendFlags & ImGuiBackendFlags.PlatformHasViewports) != 0}, RendererHasViewports: {(io.BackendFlags & ImGuiBackendFlags.RendererHasViewports) != 0}");
 
         // Create delegates and store them to prevent GC
         _createWindowDelegate = CreateWindow;
@@ -114,6 +121,17 @@ public unsafe class ViewportManager : IDisposable
         platformIO.Platform_SetWindowTitle = Marshal.GetFunctionPointerForDelegate(_setWindowTitleDelegate);
         platformIO.Platform_RenderWindow = Marshal.GetFunctionPointerForDelegate(_renderWindowDelegate);
         platformIO.Platform_SwapBuffers = Marshal.GetFunctionPointerForDelegate(_swapBuffersDelegate);
+
+        // Configure main viewport platform handle
+        var mainViewport = ImGui.GetMainViewport();
+        unsafe
+        {
+            // Store a reference to indicate this is the main window (ID 0 means no custom window)
+            mainViewport.NativePtr->PlatformHandle = IntPtr.Zero;
+            mainViewport.NativePtr->PlatformHandleRaw = IntPtr.Zero;
+        }
+
+        AppLogger.Info("ViewportManager: All platform callbacks registered successfully");
     }
 
     private void CreateWindow(ImGuiViewport* viewport)
@@ -233,12 +251,20 @@ public unsafe class ViewportManager : IDisposable
 
     private void RenderWindow(ImGuiViewport* viewport, IntPtr renderArg)
     {
-        // Rendering is handled in UpdateAndRender
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
+        {
+            window.Render(0.016f); // ~60 FPS
+        }
     }
 
     private void SwapBuffers(ImGuiViewport* viewport, IntPtr renderArg)
     {
-        // Swapping is handled in UpdateAndRender
+        var viewportPtr = new ImGuiViewportPtr(viewport);
+        if (_viewportWindows.TryGetValue(viewportPtr.ID, out var window))
+        {
+            window.SwapBuffers();
+        }
     }
 
     /// <summary>
@@ -250,10 +276,9 @@ public unsafe class ViewportManager : IDisposable
         if (_disposed)
             return;
 
-        foreach (var window in _viewportWindows.Values)
-        {
-            window.Render(deltaSeconds);
-        }
+        // Note: ImGui will call RenderWindow and SwapBuffers callbacks automatically
+        // when ImGui.RenderPlatformWindowsDefault() is called, so we don't need
+        // to manually render here. This method can be used for additional updates.
     }
 
     public void Dispose()
