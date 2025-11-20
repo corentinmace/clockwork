@@ -41,7 +41,7 @@ public class LevelScriptService : IApplicationService
 
     /// <summary>
     /// Load available level script IDs from ROM
-    /// Scripts are in unpacked/scripts/{id:D4}/ folders
+    /// Scripts are files directly in unpacked/scripts/ named with 4-digit IDs (e.g., 0001, 0042)
     /// </summary>
     public void LoadAvailableScripts()
     {
@@ -61,21 +61,21 @@ public class LevelScriptService : IApplicationService
             return;
         }
 
-        // Scripts are in folders named with 4-digit IDs (e.g., 0001, 0042)
-        var scriptDirs = Directory.GetDirectories(scriptsPath)
+        // Scripts are files named with 4-digit IDs (e.g., 0001, 0042)
+        var scriptFiles = Directory.GetFiles(scriptsPath)
             .Select(Path.GetFileName)
             .Where(name => !string.IsNullOrEmpty(name) && name.Length == 4 && int.TryParse(name, out _))
             .Select(name => int.Parse(name!))
             .OrderBy(id => id)
             .ToList();
 
-        AvailableScriptIds = scriptDirs;
+        AvailableScriptIds = scriptFiles;
         AppLogger.Info($"[LevelScriptService] Loaded {AvailableScriptIds.Count} level scripts from {scriptsPath}");
     }
 
     /// <summary>
     /// Load a level script by ID
-    /// Scripts are in unpacked/scripts/{id:D4}/ folders
+    /// Scripts are files directly in unpacked/scripts/ named {id:D4}
     /// </summary>
     public LevelScriptFile? LoadScript(int scriptId)
     {
@@ -86,26 +86,14 @@ public class LevelScriptService : IApplicationService
         }
 
         // Format ID as 4-digit string (e.g., "0001", "0042")
-        string scriptFolder = scriptId.ToString("D4");
-        string scriptDir = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "scripts", scriptFolder);
+        string scriptFileName = scriptId.ToString("D4");
+        string scriptPath = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "scripts", scriptFileName);
 
-        if (!Directory.Exists(scriptDir))
+        if (!File.Exists(scriptPath))
         {
-            AppLogger.Warn($"[LevelScriptService] Script directory not found: {scriptDir}");
+            AppLogger.Warn($"[LevelScriptService] Script file not found: {scriptPath}");
             return null;
         }
-
-        // The level script file is typically the first/main file in the directory
-        // We look for any file in the directory (they're usually numbered sequentially)
-        var files = Directory.GetFiles(scriptDir);
-        if (files.Length == 0)
-        {
-            AppLogger.Warn($"[LevelScriptService] No files found in script directory: {scriptDir}");
-            return null;
-        }
-
-        // Use the first file (typically the level script)
-        string scriptPath = files[0];
 
         try
         {
@@ -150,24 +138,14 @@ public class LevelScriptService : IApplicationService
         }
 
         // Format ID as 4-digit string (e.g., "0001", "0042")
-        string scriptFolder = script.ScriptID.ToString("D4");
-        string scriptDir = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "scripts", scriptFolder);
+        string scriptFileName = script.ScriptID.ToString("D4");
+        string scriptPath = Path.Combine(_romService.CurrentRom.RomPath, "unpacked", "scripts", scriptFileName);
 
-        if (!Directory.Exists(scriptDir))
+        if (!File.Exists(scriptPath))
         {
-            AppLogger.Warn($"[LevelScriptService] Script directory not found: {scriptDir}");
+            AppLogger.Warn($"[LevelScriptService] Script file not found: {scriptPath}");
             return false;
         }
-
-        // Get the first file in the directory (the level script file)
-        var files = Directory.GetFiles(scriptDir);
-        if (files.Length == 0)
-        {
-            AppLogger.Warn($"[LevelScriptService] No files found in script directory: {scriptDir}");
-            return false;
-        }
-
-        string scriptPath = files[0];
 
         try
         {
