@@ -60,7 +60,8 @@ public class LevelScriptEditorView : IView
 
         ImGui.SetNextWindowSize(new Vector2(900, 700), ImGuiCond.FirstUseEver);
 
-        if (ImGui.Begin($"{FontAwesomeIcons.Terminal}  Level Script Editor", ref IsVisible))
+        bool isVisible = IsVisible;
+        if (ImGui.Begin($"{FontAwesomeIcons.Terminal}  Level Script Editor", ref isVisible))
         {
             // Check services
             if (_levelScriptService == null)
@@ -94,6 +95,7 @@ public class LevelScriptEditorView : IView
             ImGui.TextColored(_statusColor, _statusMessage);
 
             ImGui.End();
+            IsVisible = isVisible;
         }
     }
 
