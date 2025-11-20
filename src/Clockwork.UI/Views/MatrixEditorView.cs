@@ -55,6 +55,7 @@ public class MatrixEditorView : IView
     // Focus management
     private bool _shouldFocus = false;
     private bool _shouldScrollToSelection = false;
+    private bool _isDetachedWindowOpen = false;
 
     public void Initialize(ApplicationContext appContext)
     {
@@ -113,6 +114,41 @@ public class MatrixEditorView : IView
         DrawDeleteConfirmationDialog();
 
         ImGui.End();
+
+        // Draw detached window if open
+        if (_isDetachedWindowOpen)
+        {
+            DrawDetachedWindow();
+        }
+    }
+
+    private void DrawDetachedWindow()
+    {
+        bool isOpen = _isDetachedWindowOpen;
+        ImGui.SetNextWindowSize(new Vector2(900, 700), ImGuiCond.FirstUseEver);
+        if (ImGui.Begin($"{FontAwesomeIcons.ExternalLink}  Matrix Editor (Détaché)", ref isOpen, ImGuiWindowFlags.None))
+        {
+            if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+            {
+                ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Veuillez d'abord charger une ROM.");
+                ImGui.End();
+                _isDetachedWindowOpen = isOpen;
+                return;
+            }
+
+            DrawToolbar();
+            ImGui.Separator();
+
+            DrawMatrixInfo();
+            ImGui.Separator();
+
+            DrawMatrixTabs();
+
+            DrawDeleteConfirmationDialog();
+
+            ImGui.End();
+        }
+        _isDetachedWindowOpen = isOpen;
     }
 
     private void DrawToolbar()
@@ -208,6 +244,15 @@ public class MatrixEditorView : IView
             ImGui.SameLine();
             string filename = Path.GetFileName(_colorTableService.CurrentColorTablePath ?? "");
             ImGui.TextColored(new Vector4(0.4f, 1.0f, 0.4f, 1.0f), $"[{filename}]");
+        }
+
+        // Detach button
+        ImGui.SameLine();
+        ImGui.Separator();
+        ImGui.SameLine();
+        if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
+        {
+            _isDetachedWindowOpen = !_isDetachedWindowOpen;
         }
     }
 

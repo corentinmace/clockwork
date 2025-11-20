@@ -32,6 +32,7 @@ public class HeaderEditorView : IView
     private string _searchFilter = string.Empty;
     private string? _lastLoadedRomPath;
     private bool _shouldScrollToSelection = false;
+    private bool _isDetachedWindowOpen = false;
 
     // Location names loaded from text archives
     private List<string> _locationNames = new();
@@ -95,6 +96,13 @@ public class HeaderEditorView : IView
 
             if (headersLoaded)
             {
+                // Detach button
+                if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
+                {
+                    _isDetachedWindowOpen = !_isDetachedWindowOpen;
+                }
+                ImGui.Spacing();
+
                 // Two-column layout: header list on left, editor on right
                 float availableHeight = ImGui.GetContentRegionAvail().Y;
 
@@ -143,6 +151,63 @@ public class HeaderEditorView : IView
 
         ImGui.End();
         IsVisible = isVisible;
+
+        // Draw detached window if open
+        if (_isDetachedWindowOpen)
+        {
+            DrawDetachedWindow();
+        }
+    }
+
+    private void DrawDetachedWindow()
+    {
+        bool isOpen = _isDetachedWindowOpen;
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(900, 600), ImGuiCond.FirstUseEver);
+        if (ImGui.Begin($"{FontAwesomeIcons.ExternalLink}  Header Editor (Détaché)", ref isOpen, ImGuiWindowFlags.None))
+        {
+            bool romLoaded = _romService?.CurrentRom != null;
+            bool headersLoaded = _headerService?.IsLoaded ?? false;
+
+            if (!romLoaded || !headersLoaded)
+            {
+                ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
+                    "No ROM loaded or headers not loaded.");
+            }
+            else
+            {
+                float availableHeight = ImGui.GetContentRegionAvail().Y;
+
+                if (ImGui.BeginTable("HeaderEditorTableDetached", 2, ImGuiTableFlags.Resizable | ImGuiTableFlags.BordersInnerV))
+                {
+                    ImGui.TableSetupColumn("Headers", ImGuiTableColumnFlags.WidthFixed, 300);
+                    ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
+
+                    ImGui.TableNextRow();
+                    ImGui.TableSetColumnIndex(0);
+                    DrawHeaderList(availableHeight - 40);
+
+                    ImGui.TableSetColumnIndex(1);
+                    if (_currentHeader != null)
+                    {
+                        DrawHeaderEditor();
+                    }
+                    else
+                    {
+                        ImGui.TextColored(new System.Numerics.Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                            "Select a header from the list to edit.");
+                    }
+
+                    ImGui.EndTable();
+                }
+
+                ImGui.Separator();
+                ImGui.Spacing();
+                ImGui.TextColored(_statusColor, _statusMessage);
+            }
+
+            ImGui.End();
+        }
+        _isDetachedWindowOpen = isOpen;
     }
 
     private void LoadHeadersFromRom()

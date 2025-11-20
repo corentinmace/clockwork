@@ -29,6 +29,7 @@ public class LevelScriptEditorView : IView
     private Vector4 _statusColor = new(1, 1, 1, 1);
     private bool _shouldFocus = false;
     private bool _shouldScrollToSelection = false;
+    private bool _isDetachedWindowOpen = false;
 
     // Add trigger UI
     private int _selectedTriggerType = 0; // 0 = Map Load, 1 = Variable Value
@@ -126,6 +127,56 @@ public class LevelScriptEditorView : IView
             ImGui.End();
             IsVisible = isVisible;
         }
+
+        // Draw detached window if open
+        if (_isDetachedWindowOpen)
+        {
+            DrawDetachedWindow();
+        }
+    }
+
+    private void DrawDetachedWindow()
+    {
+        ImGui.SetNextWindowSize(new Vector2(900, 700), ImGuiCond.FirstUseEver);
+
+        bool isOpen = _isDetachedWindowOpen;
+        if (ImGui.Begin($"{FontAwesomeIcons.ExternalLink}  Level Script Editor (Détaché)", ref isOpen, ImGuiWindowFlags.None))
+        {
+            // Check services
+            if (_levelScriptService == null)
+            {
+                ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1), "Level Script Service not available");
+                ImGui.End();
+                _isDetachedWindowOpen = isOpen;
+                return;
+            }
+
+            DrawToolbar();
+            ImGui.Separator();
+
+            // Two column layout
+            if (ImGui.BeginTable("LevelScriptEditorLayoutDetached", 2, ImGuiTableFlags.Resizable))
+            {
+                ImGui.TableSetupColumn("Scripts", ImGuiTableColumnFlags.WidthFixed, 250);
+                ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
+
+                ImGui.TableNextRow();
+                ImGui.TableSetColumnIndex(0);
+                DrawScriptList();
+
+                ImGui.TableSetColumnIndex(1);
+                DrawScriptEditor();
+
+                ImGui.EndTable();
+            }
+
+            // Status bar
+            ImGui.Separator();
+            ImGui.TextColored(_statusColor, _statusMessage);
+
+            ImGui.End();
+        }
+        _isDetachedWindowOpen = isOpen;
     }
 
     private void DrawToolbar()
@@ -167,6 +218,15 @@ public class LevelScriptEditorView : IView
         ImGui.SetNextItemWidth(100);
         string[] formats = { "Auto", "Hex", "Decimal" };
         ImGui.Combo("##format", ref _displayFormat, formats, formats.Length);
+
+        ImGui.SameLine();
+        ImGui.Dummy(new Vector2(20, 0));
+        ImGui.SameLine();
+
+        if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
+        {
+            _isDetachedWindowOpen = !_isDetachedWindowOpen;
+        }
     }
 
     private void DrawScriptList()
