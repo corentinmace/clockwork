@@ -50,8 +50,7 @@ public class ScrcmdTableHelperWindow : IView
         if (!IsVisible) return;
 
         ImGui.SetNextWindowSize(new Vector2(800, 600), ImGuiCond.FirstUseEver);
-        bool isVisible = IsVisible;
-        if (!ImGui.Begin($"{FontAwesomeIcons.Terminal} Script Command Table Helper", ref isVisible))
+        if (!ImGui.Begin($"{FontAwesomeIcons.Terminal} Script Command Table Helper", ref IsVisible))
         {
             ImGui.End();
             return;
@@ -167,7 +166,6 @@ public class ScrcmdTableHelperWindow : IView
         }
 
         ImGui.End();
-        IsVisible = isVisible;
     }
 
     private void LoadScriptCommandTable()
