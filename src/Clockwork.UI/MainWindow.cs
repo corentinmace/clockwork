@@ -31,6 +31,7 @@ public class MainWindow
     private readonly MapEditorView _mapEditorView;
     private readonly TextEditorWindow _textEditorWindow;
     private readonly ScriptEditorWindow _scriptEditorWindow;
+    private readonly LevelScriptEditorView _levelScriptEditorView;
     private readonly LogViewerWindow _logViewerWindow;
     private readonly SettingsWindow _settingsWindow;
     private readonly ThemeEditorView _themeEditorView;
@@ -62,6 +63,7 @@ public class MainWindow
         _mapEditorView = new MapEditorView(_appContext);
         _textEditorWindow = new TextEditorWindow(_appContext);
         _scriptEditorWindow = new ScriptEditorWindow(_appContext);
+        _levelScriptEditorView = new LevelScriptEditorView(_appContext);
         _logViewerWindow = new LogViewerWindow(_appContext);
         _settingsWindow = new SettingsWindow(_appContext);
         _themeEditorView = new ThemeEditorView();
@@ -147,6 +149,9 @@ public class MainWindow
 
         // Initialize matrix editor view
         _matrixEditorView.Initialize(_appContext);
+
+        // Initialize level script editor view
+        _levelScriptEditorView.Initialize(_appContext);
 
         // Apply theme from settings
         string themeName = SettingsManager.Settings.CurrentThemeName;
@@ -410,6 +415,7 @@ public class MainWindow
         _matrixEditorView.Draw();
         _textEditorWindow.Draw();
         _scriptEditorWindow.Draw();
+        _levelScriptEditorView.Draw();
         _logViewerWindow.Draw();
         _settingsWindow.Draw();
         _themeEditorView.Draw();
@@ -461,6 +467,7 @@ public class MainWindow
             _matrixEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
             _textEditorWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
             _scriptEditorWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Code, "Script Editor", _scriptEditorWindow.IsVisible);
+            _levelScriptEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Database, "Level Script Editor", _levelScriptEditorView.IsVisible);
 
             ImGui.Spacing();
             ImGui.Separator();
@@ -485,6 +492,7 @@ public class MainWindow
                 _matrixEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
                 _textEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
                 _scriptEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Code, "Script Editor", _scriptEditorWindow.IsVisible);
+                _levelScriptEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Database, "Level Script Editor", _levelScriptEditorView.IsVisible);
             }
 
             ImGui.Spacing();

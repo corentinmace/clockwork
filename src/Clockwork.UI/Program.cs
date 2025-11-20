@@ -33,6 +33,7 @@ internal class Program
             var headerService = new HeaderService();
             var mapService = new MapService();
             var colorTableService = new ColorTableService();
+            var levelScriptService = new LevelScriptService(appContext);
 
             appContext.AddService(romService);
             appContext.AddService(new NdsToolService());
@@ -40,6 +41,7 @@ internal class Program
             appContext.AddService(headerService);
             appContext.AddService(mapService);
             appContext.AddService(colorTableService);
+            appContext.AddService(levelScriptService);
 
             // Initialize context
             AppLogger.Debug("Initializing application context");
