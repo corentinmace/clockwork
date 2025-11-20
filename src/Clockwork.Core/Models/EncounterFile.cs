@@ -5,7 +5,7 @@ namespace Clockwork.Core.Models;
 
 /// <summary>
 /// Represents a wild Pokemon encounter file for Diamond/Pearl/Platinum.
-/// File size: 0x18A (394) bytes.
+/// File size: 0x1A8 (424) bytes.
 /// Contains encounter rates and Pokemon data for various encounter methods.
 /// </summary>
 public class EncounterFile
@@ -302,7 +302,7 @@ public class EncounterFile
 
             // Ensure file is exactly the expected size (padding at end if needed)
             long currentSize = ms.Position;
-            const long expectedSize = 0x18A; // 394 bytes
+            const long expectedSize = 0x1A8; // 424 bytes
             if (currentSize < expectedSize)
             {
                 // Write padding zeros to reach expected size
