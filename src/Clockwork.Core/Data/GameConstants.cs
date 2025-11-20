@@ -8,42 +8,6 @@ namespace Clockwork.Core.Data;
 public static class GameConstants
 {
     /// <summary>
-    /// Weather type names for Diamond/Pearl (29 entries)
-    /// </summary>
-    public static readonly Dictionary<byte, string> DPWeatherNames = new()
-    {
-        { 0, "Normal" },
-        { 1, "Normal, somewhat dark" },
-        { 2, "Rain" },
-        { 3, "Heavy rain" },
-        { 4, "Thunderstorm" },
-        { 5, "Snowfall, slow" },
-        { 6, "Diamond dust" },
-        { 7, "Blizzard" },
-        { 8, "Normal [08]" },
-        { 9, "Volcanic ash fall, slow" },
-        { 10, "Sand storm" },
-        { 11, "Hail" },
-        { 12, "Rocks ascending (?)" },
-        { 13, "Normal [13]" },
-        { 14, "Fog" },
-        { 15, "Deep fog" },
-        { 16, "Dark, Flash usable" },
-        { 17, "Lightning, no rain" },
-        { 18, "Normal [18]" },
-        { 19, "Normal [19]" },
-        { 20, "Normal [20]" },
-        { 21, "Diamond dust [21]" },
-        { 22, "Volcanic ash storm" },
-        { 23, "Normal [23]" },
-        { 24, "Thunderstorm [24]" },
-        { 25, "Normal [25]" },
-        { 26, "Diamond dust [26]" },
-        { 27, "Diamond dust [27]" },
-        { 28, "Snowfall, slow [28]" }
-    };
-
-    /// <summary>
     /// Weather type names for Platinum (37 entries)
     /// </summary>
     public static readonly Dictionary<byte, string> PtWeatherNames = new()
@@ -88,27 +52,6 @@ public static class GameConstants
     };
 
     /// <summary>
-    /// Weather type names for HeartGold/SoulSilver (14 entries)
-    /// </summary>
-    public static readonly Dictionary<byte, string> HGSSWeatherNames = new()
-    {
-        { 0, "Normal" },
-        { 1, "Rain" },
-        { 2, "Rain [2]" },
-        { 3, "Rain [3]" },
-        { 4, "Rain [4]" },
-        { 5, "Snow [5]" },
-        { 6, "Snow [6]" },
-        { 7, "Sandstorm (in battle only)" },
-        { 8, "Diamond Dust" },
-        { 9, "Fog" },
-        { 10, "Fog [10]" },
-        { 11, "Darkness" },
-        { 12, "Darkness after flash" },
-        { 13, "Low Light (Battle Arcade)" }
-    };
-
-    /// <summary>
     /// Camera angle names for Diamond/Pearl/Platinum (16 entries)
     /// </summary>
     public static readonly Dictionary<byte, string> DPPtCameraAngles = new()
@@ -129,30 +72,6 @@ public static class GameConstants
         { 13, "Front 3D" },
         { 14, "3D Top - Wide FOV" },
         { 15, "3D Front Low" }
-    };
-
-    /// <summary>
-    /// Camera angle names for HeartGold/SoulSilver (17 entries)
-    /// </summary>
-    public static readonly Dictionary<byte, string> HGSSCameraAngles = new()
-    {
-        { 0, "3D Top View [00]" },
-        { 1, "3D Front High" },
-        { 2, "3D Lower" },
-        { 3, "3D Front" },
-        { 4, "2D Top View" },
-        { 5, "Normal 3D" },
-        { 6, "Normal 3D [06]" },
-        { 7, "High 3D" },
-        { 8, "3D Top View [08]" },
-        { 9, "3D Top View [09]" },
-        { 10, "3D High Wide" },
-        { 11, "3D Front Wide" },
-        { 12, "3D Lower Close" },
-        { 13, "3D Full Front" },
-        { 14, "3D Top View [14]" },
-        { 15, "2D Higher" },
-        { 16, "3D Top View [16]" }
     };
 
     /// <summary>
@@ -180,8 +99,17 @@ public static class GameConstants
     /// </summary>
     public static class LocationNamesTextArchive
     {
-        public const int DiamondPearl = 382;
         public const int Platinum = 433;
-        public const int HeartGoldSoulSilver = 279; // 272 for Japanese
     }
+
+    /// <summary>
+    /// ARM9 binary load address in DS memory.
+    /// </summary>
+    public const uint ARM9_LOAD_ADDRESS = 0x02000000;
+
+    /// <summary>
+    /// SynthOverlay base address in DS memory.
+    /// All addresses >= this value belong to the SynthOverlay (file 0065).
+    /// </summary>
+    public const uint SYNTH_OVERLAY_BASE_ADDRESS = 0x023C8000;
 }

@@ -1,4 +1,5 @@
 using Clockwork.Core;
+using Clockwork.Core.Data;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
@@ -158,7 +159,7 @@ public class AddressHelperWindow : IView
         }
 
         // Check if address is in Synth Overlay range (>= 0x023C8000)
-        if (address >= DsConstants.SYNTH_OVERLAY_BASE_ADDRESS)
+        if (address >= GameConstants.SYNTH_OVERLAY_BASE_ADDRESS)
         {
             CheckSynthOverlay(address);
         }
@@ -196,11 +197,11 @@ public class AddressHelperWindow : IView
         {
             var arm9Info = new FileInfo(arm9Path);
             uint arm9Size = (uint)arm9Info.Length;
-            uint arm9End = DsConstants.ARM9_LOAD_ADDRESS + arm9Size;
+            uint arm9End = GameConstants.ARM9_LOAD_ADDRESS + arm9Size;
 
-            if (address >= DsConstants.ARM9_LOAD_ADDRESS && address < arm9End)
+            if (address >= GameConstants.ARM9_LOAD_ADDRESS && address < arm9End)
             {
-                uint offset = address - DsConstants.ARM9_LOAD_ADDRESS;
+                uint offset = address - GameConstants.ARM9_LOAD_ADDRESS;
                 _results.Add(new AddressResult
                 {
                     LocationName = "ARM9",
@@ -284,7 +285,7 @@ public class AddressHelperWindow : IView
         try
         {
             // Calculate offset from synth overlay base address
-            uint offset = address - DsConstants.SYNTH_OVERLAY_BASE_ADDRESS;
+            uint offset = address - GameConstants.SYNTH_OVERLAY_BASE_ADDRESS;
 
             var fileInfo = new FileInfo(synthOverlayPath);
             uint fileSize = (uint)fileInfo.Length;
