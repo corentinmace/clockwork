@@ -519,10 +519,10 @@ public class WildEditorView : IView
             ImGui.TextDisabled("Regional variants for Shellos and Gastrodon (East Sea / West Sea)");
             ImGui.Spacing();
 
-            // Create labels for the 5 regional form slots
-            string[] formLabels = new[] { "Shellos Form", "Gastrodon Form", "Form 3", "Form 4", "Form 5" };
+            // Only 2 regional forms: Shellos and Gastrodon
+            string[] formLabels = new[] { "Shellos Form", "Gastrodon Form" };
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 2; i++)
             {
                 ImGui.Text($"{formLabels[i]}:");
                 ImGui.SameLine(150);

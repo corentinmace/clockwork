@@ -21,8 +21,8 @@ public class EncounterFile
     public uint[] NightPokemon { get; set; } = new uint[2];
     public uint[] RadarPokemon { get; set; } = new uint[4];
 
-    // Regional forms (Shellos/Gastrodon)
-    public uint[] RegionalForms { get; set; } = new uint[5];
+    // Regional forms (Shellos/Gastrodon) - only 2 forms
+    public uint[] RegionalForms { get; set; } = new uint[2];
     public uint UnknownTable { get; set; }
 
     // Dual slot encounters (GBA game inserted)
@@ -96,10 +96,13 @@ public class EncounterFile
                 encounter.RadarPokemon[i] = reader.ReadUInt32();
             }
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 2; i++)
             {
                 encounter.RegionalForms[i] = reader.ReadUInt32();
             }
+
+            // Skip 3 unused regional form slots (3 * 4 = 12 bytes)
+            reader.BaseStream.Position += 12;
 
             encounter.UnknownTable = reader.ReadUInt32();
 
@@ -141,6 +144,9 @@ public class EncounterFile
                 encounter.SurfPokemon[i] = (ushort)reader.ReadUInt32();
             }
 
+            // Skip 44 bytes padding between Surf and Old Rod
+            reader.BaseStream.Position += 44;
+
             // Old Rod encounters
             // Position should be at 0x124
             encounter.OldRodRate = (byte)reader.ReadUInt32();
@@ -153,6 +159,9 @@ public class EncounterFile
                 encounter.OldRodPokemon[i] = (ushort)reader.ReadUInt32();
             }
 
+            // Skip 44 bytes padding between Old Rod and Good Rod
+            reader.BaseStream.Position += 44;
+
             // Good Rod encounters
             encounter.GoodRodRate = (byte)reader.ReadUInt32();
 
@@ -163,6 +172,9 @@ public class EncounterFile
                 reader.BaseStream.Position += 0x2; // Skip 2 bytes padding
                 encounter.GoodRodPokemon[i] = (ushort)reader.ReadUInt32();
             }
+
+            // Skip 44 bytes padding between Good Rod and Super Rod
+            reader.BaseStream.Position += 44;
 
             // Super Rod encounters
             encounter.SuperRodRate = (byte)reader.ReadUInt32();
@@ -223,9 +235,15 @@ public class EncounterFile
                 writer.Write(RadarPokemon[i]);
             }
 
-            for (int i = 0; i < 5; i++)
+            for (int i = 0; i < 2; i++)
             {
                 writer.Write(RegionalForms[i]);
+            }
+
+            // Write 3 unused regional form slots (3 * 4 = 12 bytes of zeros)
+            for (int i = 0; i < 3; i++)
+            {
+                writer.Write((uint)0);
             }
 
             writer.Write(UnknownTable);
@@ -267,6 +285,12 @@ public class EncounterFile
                 writer.Write((uint)SurfPokemon[i]);
             }
 
+            // Write 44 bytes padding between Surf and Old Rod
+            for (int i = 0; i < 44; i++)
+            {
+                writer.Write((byte)0);
+            }
+
             // Old Rod encounters
             writer.Write((uint)OldRodRate);
 
@@ -278,6 +302,12 @@ public class EncounterFile
                 writer.Write((uint)OldRodPokemon[i]);
             }
 
+            // Write 44 bytes padding between Old Rod and Good Rod
+            for (int i = 0; i < 44; i++)
+            {
+                writer.Write((byte)0);
+            }
+
             // Good Rod encounters
             writer.Write((uint)GoodRodRate);
 
@@ -287,6 +317,12 @@ public class EncounterFile
                 writer.Write(GoodRodMinLevels[i]);
                 writer.Write((ushort)0); // Write 2 bytes padding
                 writer.Write((uint)GoodRodPokemon[i]);
+            }
+
+            // Write 44 bytes padding between Good Rod and Super Rod
+            for (int i = 0; i < 44; i++)
+            {
+                writer.Write((byte)0);
             }
 
             // Super Rod encounters
