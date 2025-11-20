@@ -45,7 +45,6 @@ public class MainWindow
     // Sidebar state and metrics
     private bool _isSidebarCollapsed = false;
     private bool _showMetricsWindow = false;
-    private bool _showViewportTestWindow = false;
 
     // ROM Save state
     private bool _isShowingSaveRomDialog = false;
@@ -141,13 +140,6 @@ public class MainWindow
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
-        // NOTE: Multi-viewport is complex with Veldrid but we'll try
-        // io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable;
-
-        // Initialize viewport manager for multi-window support
-        // Disabled for now - too complex with Veldrid's ImGuiRenderer
-        // _viewportManager = new ViewportManager(_graphicsDevice);
-        AppLogger.Info("Multi-viewport disabled - Veldrid doesn't support multiple ImGuiRenderer instances easily");
 
         // Initialize theme manager
         ThemeManager.Initialize();
@@ -223,23 +215,11 @@ public class MainWindow
 
         // Swap buffers
         _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
-
-        // Update and render platform windows (for viewports)
-        var io = ImGui.GetIO();
-        if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
-        {
-            ImGui.UpdatePlatformWindows();
-            ImGui.RenderPlatformWindowsDefault();
-        }
     }
 
     private void OnClosing()
     {
         AppLogger.Info("MainWindow OnClosing: Cleaning up resources");
-
-        // Close all detached windows first
-        DetachedWindowManager.CloseAll();
-        AppLogger.Debug("All detached windows closed");
 
         // Save window state to settings
         SettingsManager.Settings.WindowWidth = (int)_window.Width;
@@ -420,10 +400,6 @@ public class MainWindow
                 {
                     _showMetricsWindow = !_showMetricsWindow;
                 }
-                if (ImGui.MenuItem("Test Viewport (Multi-window)"))
-                {
-                    _showViewportTestWindow = !_showViewportTestWindow;
-                }
                 ImGui.EndMenu();
             }
 
@@ -448,9 +424,6 @@ public class MainWindow
         _settingsWindow.Draw();
         _themeEditorView.Draw();
 
-        // Draw detached floating windows
-        DetachedWindowManager.DrawAll();
-
         // Draw tools
         _addressHelperWindow.Draw();
         _scrcmdTableHelperWindow.Draw();
@@ -461,55 +434,6 @@ public class MainWindow
         if (_showMetricsWindow)
         {
             ImGui.ShowMetricsWindow(ref _showMetricsWindow);
-        }
-
-        // Viewport test window
-        DrawViewportTestWindow();
-    }
-
-    private void DrawViewportTestWindow()
-    {
-        if (!_showViewportTestWindow)
-            return;
-
-        // Create a non-dockable window that should be in its own viewport
-        ImGuiWindowFlags flags = ImGuiWindowFlags.NoDocking;
-
-        if (ImGui.Begin("Viewport Test Window", ref _showViewportTestWindow, flags))
-        {
-            var currentViewport = ImGui.GetWindowViewport();
-            var mainViewport = ImGui.GetMainViewport();
-
-            ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "Multi-Viewport Test");
-            ImGui.Separator();
-            ImGui.Spacing();
-
-            ImGui.Text($"Main Viewport ID: {mainViewport.ID}");
-            ImGui.Text($"Current Viewport ID: {currentViewport.ID}");
-            ImGui.Text($"Is in main viewport: {currentViewport.ID == mainViewport.ID}");
-            ImGui.Spacing();
-
-            if (currentViewport.ID == mainViewport.ID)
-            {
-                ImGui.TextColored(new System.Numerics.Vector4(1.0f, 1.0f, 0.0f, 1.0f),
-                    "Window is in main viewport");
-                ImGui.Text("Try dragging this window outside the main window.");
-            }
-            else
-            {
-                ImGui.TextColored(new System.Numerics.Vector4(0.0f, 1.0f, 0.0f, 1.0f),
-                    "SUCCESS! Window is in a separate OS window!");
-                ImGui.Text("Multi-viewport is working correctly.");
-            }
-
-            ImGui.Spacing();
-            ImGui.Separator();
-            ImGui.Spacing();
-
-            ImGui.TextWrapped("Si vous voyez cette fenêtre dans une fenêtre OS séparée, " +
-                "le multi-viewport fonctionne correctement.");
-
-            ImGui.End();
         }
     }
 

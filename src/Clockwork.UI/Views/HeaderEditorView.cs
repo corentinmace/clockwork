@@ -44,9 +44,6 @@ public class HeaderEditorView : IView
         _appContext = appContext;
         _romService = _appContext.GetService<RomService>();
         _headerService = _appContext.GetService<HeaderService>();
-
-        // Register detached window
-        DetachedWindowManager.RegisterWindow("HeaderEditor", new System.Numerics.Vector2(900, 600));
     }
 
     /// <summary>
@@ -98,29 +95,6 @@ public class HeaderEditorView : IView
 
             if (headersLoaded)
             {
-                // Detach button
-                if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
-                {
-                    DetachedWindowManager.Toggle("HeaderEditor",
-                        $"{FontAwesomeIcons.FileLines}  Header Editor (Détaché)",
-                        () =>
-                        {
-                            bool romLoaded = _romService?.CurrentRom != null;
-                            bool headersLoaded = _headerService?.IsLoaded ?? false;
-
-                            if (!romLoaded || !headersLoaded)
-                            {
-                                ImGui.TextColored(new System.Numerics.Vector4(1.0f, 0.7f, 0.4f, 1.0f),
-                                    "No ROM loaded or headers not loaded.");
-                            }
-                            else
-                            {
-                                DrawEditorContent();
-                            }
-                        });
-                }
-                ImGui.Spacing();
-
                 DrawEditorContent();
             }
             else
