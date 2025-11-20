@@ -76,9 +76,6 @@ public class MainWindow
         // Connect editors to header editor for navigation
         _headerEditorView.SetEditorReferences(_textEditorWindow, _scriptEditorWindow, _matrixEditorView);
 
-        // Set texture manager for header editor tooltips
-        _headerEditorView.SetTextureManager(_textureManager);
-
         // Connect tools (ScrcmdTableHelper -> AddressHelper integration)
         _scrcmdTableHelperWindow.SetAddressHelperWindow(_addressHelperWindow);
 
@@ -130,6 +127,10 @@ public class MainWindow
         // Initialize texture manager
         _textureManager = new TextureManager(_graphicsDevice, _imguiRenderer);
         AppLogger.Debug("TextureManager created");
+
+        // Set texture manager for header editor tooltips
+        _headerEditorView.SetTextureManager(_textureManager);
+        AppLogger.Debug("TextureManager set for HeaderEditorView");
 
         // Configure ImGui
         var io = ImGui.GetIO();
