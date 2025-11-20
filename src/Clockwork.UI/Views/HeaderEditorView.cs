@@ -296,6 +296,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Area Data ID:");
             ImGui.SameLine(150);
             int areaDataID = _currentHeader.AreaDataID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##areadataid", ref areaDataID, 1, 10))
             {
                 _currentHeader.AreaDataID = (byte)Math.Clamp(areaDataID, 0, byte.MaxValue);
@@ -310,6 +311,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Music Day ID:");
             ImGui.SameLine(150);
             int musicDayID = _currentHeader.MusicDayID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##musicdayid", ref musicDayID, 1, 10))
             {
                 _currentHeader.MusicDayID = (ushort)Math.Clamp(musicDayID, 0, ushort.MaxValue);
@@ -318,6 +320,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Music Night ID:");
             ImGui.SameLine(150);
             int musicNightID = _currentHeader.MusicNightID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##musicnightid", ref musicNightID, 1, 10))
             {
                 _currentHeader.MusicNightID = (ushort)Math.Clamp(musicNightID, 0, ushort.MaxValue);
@@ -554,6 +557,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Area Icon:");
             ImGui.SameLine(150);
             int areaIcon = _currentHeader.AreaIcon;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##areaicon", ref areaIcon, 1, 10))
             {
                 _currentHeader.AreaIcon = (byte)Math.Clamp(areaIcon, 0, byte.MaxValue);
@@ -562,6 +566,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Wild Pokémon:");
             ImGui.SameLine(150);
             int wildPokemon = _currentHeader.WildPokemon;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##wildpokemon", ref wildPokemon, 1, 10))
             {
                 _currentHeader.WildPokemon = (byte)Math.Clamp(wildPokemon, 0, byte.MaxValue);
@@ -570,6 +575,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Time ID:");
             ImGui.SameLine(150);
             int timeID = _currentHeader.TimeID;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##timeid", ref timeID, 1, 10))
             {
                 _currentHeader.TimeID = (byte)Math.Clamp(timeID, 0, byte.MaxValue);
@@ -606,6 +612,7 @@ public class HeaderEditorView : IView
             ImGui.Text("Battle Background:");
             ImGui.SameLine(150);
             int battleBg = _currentHeader.BattleBackground;
+            ImGui.SetNextItemWidth(200);
             if (ImGui.InputInt("##battlebg", ref battleBg, 1, 1))
             {
                 battleBg = Math.Clamp(battleBg, 0, 31);
