@@ -25,6 +25,7 @@ public class AddressHelperWindow : IView
 
     // DS Constants
     private const uint ARM9_LOAD_ADDRESS = 0x02000000;
+    private const uint SYNTH_OVERLAY_BASE_ADDRESS = 0x023DC800;
 
     public AddressHelperWindow(ApplicationContext appContext)
     {
@@ -151,7 +152,7 @@ public class AddressHelperWindow : IView
         _searchAddress = address;
         AppLogger.Info($"[AddressHelper] Searching address: 0x{address:X8}");
 
-        // Get ROM path
+        // Get ROM paths
         if (!_romService.CurrentRom.GameDirectories.TryGetValue("root", out var romPath))
         {
             _statusMessage = "ROM path not found";
@@ -159,11 +160,19 @@ public class AddressHelperWindow : IView
             return;
         }
 
-        // Check ARM9
-        CheckARM9(romPath, address);
+        // Check if address is in Synth Overlay range (>= 0x023DC800)
+        if (address >= SYNTH_OVERLAY_BASE_ADDRESS)
+        {
+            CheckSynthOverlay(address);
+        }
+        else
+        {
+            // Check ARM9
+            CheckARM9(romPath, address);
 
-        // Check overlays
-        CheckOverlays(romPath, address);
+            // Check overlays
+            CheckOverlays(romPath, address);
+        }
 
         // Results
         if (_results.Count == 0)
@@ -255,6 +264,75 @@ public class AddressHelperWindow : IView
         catch (Exception ex)
         {
             AppLogger.Error($"[AddressHelper] Error checking overlays: {ex.Message}");
+        }
+    }
+
+    private void CheckSynthOverlay(uint address)
+    {
+        if (!_romService.CurrentRom.GameDirectories.TryGetValue("unpacked", out var unpackedPath))
+        {
+            AppLogger.Warn("[AddressHelper] Unpacked directory not found");
+            return;
+        }
+
+        string synthOverlayDir = Path.Combine(unpackedPath, "synthOverlay");
+        if (!Directory.Exists(synthOverlayDir))
+        {
+            AppLogger.Warn($"[AddressHelper] SynthOverlay directory not found at {synthOverlayDir}");
+            return;
+        }
+
+        try
+        {
+            // Calculate offset from synth overlay base
+            uint baseOffset = address - SYNTH_OVERLAY_BASE_ADDRESS;
+
+            // Get all files in synthOverlay directory, sorted by name
+            var files = Directory.GetFiles(synthOverlayDir)
+                .OrderBy(f => f)
+                .ToList();
+
+            uint currentOffset = 0;
+            foreach (var file in files)
+            {
+                var fileInfo = new FileInfo(file);
+                uint fileSize = (uint)fileInfo.Length;
+                uint fileEnd = currentOffset + fileSize;
+
+                // Check if address falls in this file's range
+                if (baseOffset >= currentOffset && baseOffset < fileEnd)
+                {
+                    uint localOffset = baseOffset - currentOffset;
+                    string fileName = Path.GetFileName(file);
+
+                    _results.Add(new AddressResult
+                    {
+                        LocationName = "SynthOverlay",
+                        Offset = $"0x{localOffset:X}",
+                        FileName = fileName
+                    });
+
+                    AppLogger.Debug($"[AddressHelper] Found in SynthOverlay file {fileName} at offset 0x{localOffset:X}");
+                }
+
+                currentOffset = fileEnd;
+            }
+
+            // If no specific file found, just show the overall offset
+            if (_results.Count == 0)
+            {
+                _results.Add(new AddressResult
+                {
+                    LocationName = "SynthOverlay",
+                    Offset = $"0x{baseOffset:X}",
+                    FileName = "synthOverlay (offset from base)"
+                });
+                AppLogger.Debug($"[AddressHelper] Address in SynthOverlay range, offset 0x{baseOffset:X} from base");
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"[AddressHelper] Error checking SynthOverlay: {ex.Message}");
         }
     }
 
