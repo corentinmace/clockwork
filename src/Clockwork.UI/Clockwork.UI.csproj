@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="ImGui.NET" Version="1.90.1.1" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.5" />
     <PackageReference Include="Veldrid" Version="4.9.0" />
     <PackageReference Include="Veldrid.SDL2" Version="4.9.0" />
     <PackageReference Include="Veldrid.StartupUtilities" Version="4.9.0" />
@@ -28,6 +29,13 @@
   <!-- Embed Font Awesome icon font -->
   <ItemGroup>
     <EmbeddedResource Include="Assets\Fonts\*.otf" />
+  </ItemGroup>
+
+  <!-- Embed graphics (camera and weather images) -->
+  <ItemGroup>
+    <EmbeddedResource Include="Assets\Graphics\Camera\*.png" />
+    <EmbeddedResource Include="Assets\Graphics\Weather\*.png" />
+    <EmbeddedResource Include="Assets\Graphics\Weather\*.gif" />
   </ItemGroup>
 
   <!-- Copy Tools folder to output directory -->

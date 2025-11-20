@@ -2,6 +2,7 @@ using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.Core.Settings;
+using Clockwork.UI.Graphics;
 using Clockwork.UI.Themes;
 using Clockwork.UI.Views;
 using ImGuiNET;
@@ -18,6 +19,7 @@ public class MainWindow
     private readonly Sdl2Window _window;
     private readonly GraphicsDevice _graphicsDevice;
     private ImGuiRenderer? _imguiRenderer;
+    private TextureManager? _textureManager;
     private ApplicationContext _appContext;
     private CommandList? _commandList;
 
@@ -74,6 +76,9 @@ public class MainWindow
         // Connect editors to header editor for navigation
         _headerEditorView.SetEditorReferences(_textEditorWindow, _scriptEditorWindow, _matrixEditorView);
 
+        // Set texture manager for header editor tooltips
+        _headerEditorView.SetTextureManager(_textureManager);
+
         // Connect tools (ScrcmdTableHelper -> AddressHelper integration)
         _scrcmdTableHelperWindow.SetAddressHelperWindow(_addressHelperWindow);
 
@@ -121,6 +126,10 @@ public class MainWindow
             (int)_window.Width,
             (int)_window.Height);
         AppLogger.Debug("ImGuiRenderer created");
+
+        // Initialize texture manager
+        _textureManager = new TextureManager(_graphicsDevice, _imguiRenderer);
+        AppLogger.Debug("TextureManager created");
 
         // Configure ImGui
         var io = ImGui.GetIO();
@@ -208,6 +217,9 @@ public class MainWindow
         SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
         SettingsManager.Save();
         AppLogger.Debug($"Window state saved: {_window.Width}x{_window.Height}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
+
+        _textureManager?.Dispose();
+        AppLogger.Debug("TextureManager disposed");
 
         _imguiRenderer?.Dispose();
         AppLogger.Debug("ImGuiRenderer disposed");

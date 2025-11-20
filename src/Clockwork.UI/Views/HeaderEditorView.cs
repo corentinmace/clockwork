@@ -4,6 +4,7 @@ using Clockwork.Core.Formats.NDS.MessageEnc;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
+using Clockwork.UI.Graphics;
 using Clockwork.UI.Icons;
 using ImGuiNET;
 
@@ -17,6 +18,7 @@ public class HeaderEditorView : IView
     private readonly ApplicationContext _appContext;
     private RomService? _romService;
     private HeaderService? _headerService;
+    private TextureManager? _textureManager;
 
     // References to other editors for navigation
     private TextEditorWindow? _textEditorWindow;
@@ -50,6 +52,14 @@ public class HeaderEditorView : IView
         _textEditorWindow = textEditor;
         _scriptEditorWindow = scriptEditor;
         _matrixEditorView = matrixEditor;
+    }
+
+    /// <summary>
+    /// Set texture manager for loading preview images
+    /// </summary>
+    public void SetTextureManager(TextureManager textureManager)
+    {
+        _textureManager = textureManager;
     }
 
     public void Draw()
@@ -308,6 +318,19 @@ public class HeaderEditorView : IView
                     {
                         _currentHeader.WeatherID = kvp.Key;
                     }
+
+                    // Show image tooltip on hover
+                    if (ImGui.IsItemHovered() && _textureManager != null)
+                    {
+                        var texture = _textureManager.LoadWeatherImage(kvp.Key);
+                        if (texture != null)
+                        {
+                            ImGui.BeginTooltip();
+                            ImGui.Image(texture.Value, new System.Numerics.Vector2(256, 192));
+                            ImGui.EndTooltip();
+                        }
+                    }
+
                     if (isSelected)
                         ImGui.SetItemDefaultFocus();
                 }
@@ -328,6 +351,19 @@ public class HeaderEditorView : IView
                     {
                         _currentHeader.CameraAngleID = kvp.Key;
                     }
+
+                    // Show image tooltip on hover
+                    if (ImGui.IsItemHovered() && _textureManager != null)
+                    {
+                        var texture = _textureManager.LoadCameraImage(kvp.Key);
+                        if (texture != null)
+                        {
+                            ImGui.BeginTooltip();
+                            ImGui.Image(texture.Value, new System.Numerics.Vector2(256, 192));
+                            ImGui.EndTooltip();
+                        }
+                    }
+
                     if (isSelected)
                         ImGui.SetItemDefaultFocus();
                 }
