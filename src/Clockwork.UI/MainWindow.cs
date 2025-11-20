@@ -3,6 +3,7 @@ using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.Core.Settings;
 using Clockwork.UI.Graphics;
+using Clockwork.UI.Icons;
 using Clockwork.UI.Themes;
 using Clockwork.UI.Views;
 using ImGuiNET;
@@ -443,13 +444,34 @@ public class MainWindow
         ImGui.Begin("Navigation", sidebarFlags);
 
         // Toggle collapse button
-        if (ImGui.Button(_isSidebarCollapsed ? "»" : "«", new System.Numerics.Vector2(-1, 30)))
+        if (ImGui.Button(_isSidebarCollapsed ? FontAwesomeIcons.ArrowRight : FontAwesomeIcons.ArrowLeft, new System.Numerics.Vector2(-1, 40)))
         {
             _isSidebarCollapsed = !_isSidebarCollapsed;
         }
 
-        if (!_isSidebarCollapsed)
+        if (_isSidebarCollapsed)
         {
+            // Collapsed mode: Show only icons as buttons
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            DrawSidebarIconButton(FontAwesomeIcons.FileLines, "Header Editor", ref _headerEditorView.IsVisible);
+            DrawSidebarIconButton(FontAwesomeIcons.Map, "Map Editor", ref _mapEditorView.IsVisible);
+            DrawSidebarIconButton(FontAwesomeIcons.Grid, "Matrix Editor", ref _matrixEditorView.IsVisible);
+            DrawSidebarIconButton(FontAwesomeIcons.Font, "Text Editor", ref _textEditorWindow.IsVisible);
+            DrawSidebarIconButton(FontAwesomeIcons.Code, "Script Editor", ref _scriptEditorWindow.IsVisible);
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            DrawSidebarIconButton(FontAwesomeIcons.Calculator, "Address Helper", ref _addressHelperWindow.IsVisible);
+            DrawSidebarIconButton(FontAwesomeIcons.Terminal, "Script Cmd Helper", ref _scrcmdTableHelperWindow.IsVisible);
+        }
+        else
+        {
+            // Expanded mode: Show icons with labels
             ImGui.Spacing();
             ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "NAVIGATION");
             ImGui.Separator();
@@ -458,26 +480,11 @@ public class MainWindow
             // Editors section
             if (ImGui.CollapsingHeader("Editors", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                if (ImGui.Selectable("  [H] Header Editor", _headerEditorView.IsVisible))
-                {
-                    _headerEditorView.IsVisible = !_headerEditorView.IsVisible;
-                }
-                if (ImGui.Selectable("  [M] Map Editor", _mapEditorView.IsVisible))
-                {
-                    _mapEditorView.IsVisible = !_mapEditorView.IsVisible;
-                }
-                if (ImGui.Selectable("  [G] Matrix Editor", _matrixEditorView.IsVisible))
-                {
-                    _matrixEditorView.IsVisible = !_matrixEditorView.IsVisible;
-                }
-                if (ImGui.Selectable("  [T] Text Editor", _textEditorWindow.IsVisible))
-                {
-                    _textEditorWindow.IsVisible = !_textEditorWindow.IsVisible;
-                }
-                if (ImGui.Selectable("  [S] Script Editor", _scriptEditorWindow.IsVisible))
-                {
-                    _scriptEditorWindow.IsVisible = !_scriptEditorWindow.IsVisible;
-                }
+                DrawSidebarItem(FontAwesomeIcons.FileLines, "Header Editor", "[H]", ref _headerEditorView.IsVisible);
+                DrawSidebarItem(FontAwesomeIcons.Map, "Map Editor", "[M]", ref _mapEditorView.IsVisible);
+                DrawSidebarItem(FontAwesomeIcons.Grid, "Matrix Editor", "[G]", ref _matrixEditorView.IsVisible);
+                DrawSidebarItem(FontAwesomeIcons.Font, "Text Editor", "[T]", ref _textEditorWindow.IsVisible);
+                DrawSidebarItem(FontAwesomeIcons.Code, "Script Editor", "[S]", ref _scriptEditorWindow.IsVisible);
             }
 
             ImGui.Spacing();
@@ -485,18 +492,56 @@ public class MainWindow
             // Tools section
             if (ImGui.CollapsingHeader("Tools"))
             {
-                if (ImGui.Selectable("  Address Helper", _addressHelperWindow.IsVisible))
-                {
-                    _addressHelperWindow.IsVisible = !_addressHelperWindow.IsVisible;
-                }
-                if (ImGui.Selectable("  Script Cmd Helper", _scrcmdTableHelperWindow.IsVisible))
-                {
-                    _scrcmdTableHelperWindow.IsVisible = !_scrcmdTableHelperWindow.IsVisible;
-                }
+                DrawSidebarItem(FontAwesomeIcons.Calculator, "Address Helper", "", ref _addressHelperWindow.IsVisible);
+                DrawSidebarItem(FontAwesomeIcons.Terminal, "Script Cmd Helper", "", ref _scrcmdTableHelperWindow.IsVisible);
             }
         }
 
         ImGui.End();
+    }
+
+    /// <summary>
+    /// Draw a sidebar item with icon and label (expanded mode)
+    /// </summary>
+    private void DrawSidebarItem(string icon, string label, string shortcut, ref bool isVisible)
+    {
+        string displayText = $"{icon}  {label}";
+        if (!string.IsNullOrEmpty(shortcut))
+        {
+            displayText = $"{icon}  {shortcut} {label}";
+        }
+
+        if (ImGui.Selectable(displayText, isVisible))
+        {
+            isVisible = !isVisible;
+        }
+    }
+
+    /// <summary>
+    /// Draw a sidebar icon button with tooltip (collapsed mode)
+    /// </summary>
+    private void DrawSidebarIconButton(string icon, string tooltip, ref bool isVisible)
+    {
+        var buttonColor = isVisible
+            ? new System.Numerics.Vector4(0.3f, 0.6f, 0.9f, 1.0f)
+            : new System.Numerics.Vector4(0.2f, 0.2f, 0.2f, 0.5f);
+
+        ImGui.PushStyleColor(ImGuiCol.Button, buttonColor);
+
+        if (ImGui.Button(icon, new System.Numerics.Vector2(-1, 40)))
+        {
+            isVisible = !isVisible;
+        }
+
+        ImGui.PopStyleColor();
+
+        // Show tooltip on hover
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.BeginTooltip();
+            ImGui.Text(tooltip);
+            ImGui.EndTooltip();
+        }
     }
 
     private void SaveRomDialog()

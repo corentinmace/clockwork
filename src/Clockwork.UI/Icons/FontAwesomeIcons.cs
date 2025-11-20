@@ -64,6 +64,9 @@ public static class FontAwesomeIcons
     public const string Database = "\uf1c0";          // fa-database
     public const string Cube = "\uf1b2";              // fa-cube (3D model)
     public const string Image = "\uf03e";             // fa-image
+    public const string Calculator = "\uf1ec";        // fa-calculator
+    public const string FileLines = "\uf15c";         // fa-file-lines (header editor)
+    public const string Grid = "\uf00a";              // fa-th (grid/matrix)
 
     // Status
     public const string CheckCircle = "\uf058";       // fa-check-circle
