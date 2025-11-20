@@ -6,6 +6,11 @@ namespace Clockwork.Core.Models;
 /// </summary>
 public class MapHeader
 {
+    /// <summary>
+    /// Value used to indicate "no wild encounters" in the WildPokemon field.
+    /// </summary>
+    public const byte NO_WILD_ENCOUNTERS = 0xFF;
+
     // Header ID (not stored in file, set when loading)
     public int HeaderID { get; set; }
     public string InternalName { get; set; } = string.Empty;

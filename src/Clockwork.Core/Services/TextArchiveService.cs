@@ -183,11 +183,11 @@ public class TextArchiveService : IApplicationService
         var locationNames = GetLocationNames();
 
         // Iterate through all headers and map encounter IDs to locations
-        foreach (var (headerID, header) in _headerService.GetAllHeaders())
+        foreach (var header in _headerService.Headers)
         {
             int encounterID = header.WildPokemon;
 
-            if (encounterID == MapHeader.DPPT_NULL_ENCOUNTER_FILE_ID)
+            if (encounterID == MapHeader.NO_WILD_ENCOUNTERS)
                 continue;
 
             if (!_encounterFileToLocations.ContainsKey(encounterID))
