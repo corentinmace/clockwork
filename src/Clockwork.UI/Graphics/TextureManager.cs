@@ -127,11 +127,8 @@ public class TextureManager : IDisposable
                 if (duration == 0) duration = 100; // Default if not specified
             }
 
-            // Create a copy of the frame as a separate image
-            using var frameImage = frame.Clone(ctx => { });
-
-            // Convert to Veldrid texture
-            var texture = CreateTextureFromImage(frameImage, $"{resourcePath}_frame{i}");
+            // Convert frame to Veldrid texture
+            var texture = CreateTextureFromFrame(frame, $"{resourcePath}_frame{i}");
             animTexture.AddFrame(texture, duration);
         }
 
@@ -189,6 +186,41 @@ public class TextureManager : IDisposable
         // Extract pixel data
         var pixels = new Rgba32[width * height];
         image.CopyPixelDataTo(pixels);
+
+        // Convert to byte array
+        var pixelBytes = new byte[width * height * 4];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixelBytes[i * 4 + 0] = pixels[i].R;
+            pixelBytes[i * 4 + 1] = pixels[i].G;
+            pixelBytes[i * 4 + 2] = pixels[i].B;
+            pixelBytes[i * 4 + 3] = pixels[i].A;
+        }
+
+        // Create texture
+        var texture = _graphicsDevice.ResourceFactory.CreateTexture(new TextureDescription(
+            width, height,
+            1, 1, 1,
+            PixelFormat.R8_G8_B8_A8_UNorm,
+            TextureUsage.Sampled,
+            TextureType.Texture2D
+        ));
+        texture.Name = name;
+
+        // Upload pixel data
+        _graphicsDevice.UpdateTexture(texture, pixelBytes, 0, 0, 0, width, height, 1, 0, 0);
+
+        return texture;
+    }
+
+    private Texture CreateTextureFromFrame(ImageFrame<Rgba32> frame, string name)
+    {
+        var width = (uint)frame.Width;
+        var height = (uint)frame.Height;
+
+        // Extract pixel data from frame
+        var pixels = new Rgba32[width * height];
+        frame.CopyPixelDataTo(pixels);
 
         // Convert to byte array
         var pixelBytes = new byte[width * height * 4];
