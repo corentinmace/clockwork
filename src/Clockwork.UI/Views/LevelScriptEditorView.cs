@@ -27,6 +27,8 @@ public class LevelScriptEditorView : IView
     private int _selectedTriggerIndex = -1;
     private string _statusMessage = "";
     private Vector4 _statusColor = new(1, 1, 1, 1);
+    private bool _shouldFocus = false;
+    private bool _shouldScrollToSelection = false;
 
     // Add trigger UI
     private int _selectedTriggerType = 0; // 0 = Map Load, 1 = Variable Value
@@ -42,6 +44,9 @@ public class LevelScriptEditorView : IView
     public LevelScriptEditorView(ApplicationContext appContext)
     {
         _appContext = appContext;
+
+        // Register detached window
+        DetachedWindowManager.RegisterWindow("LevelScriptEditor", new Vector2(900, 700));
     }
 
     public void Initialize(ApplicationContext appContext)
@@ -63,11 +68,15 @@ public class LevelScriptEditorView : IView
     {
         AppLogger.Info($"[LevelScriptEditor] OpenWithScriptID called with ID: {scriptId}");
 
-        // Always open the window
+        // Always open the window and request focus
         IsVisible = true;
+        _shouldFocus = true;
 
         // Load the script
         LoadScript(scriptId);
+
+        // Scroll to the loaded script in the list
+        _shouldScrollToSelection = true;
     }
 
     public void Draw()
@@ -79,6 +88,13 @@ public class LevelScriptEditorView : IView
         bool isVisible = IsVisible;
         if (ImGui.Begin($"{FontAwesomeIcons.Terminal}  Level Script Editor", ref isVisible))
         {
+            // Handle window focus request
+            if (_shouldFocus)
+            {
+                ImGui.SetWindowFocus();
+                _shouldFocus = false;
+            }
+
             // Check services
             if (_levelScriptService == null)
             {
@@ -87,32 +103,50 @@ public class LevelScriptEditorView : IView
                 return;
             }
 
-            DrawToolbar();
-            ImGui.Separator();
-
-            // Two column layout
-            if (ImGui.BeginTable("LevelScriptEditorLayout", 2, ImGuiTableFlags.Resizable))
-            {
-                ImGui.TableSetupColumn("Scripts", ImGuiTableColumnFlags.WidthFixed, 250);
-                ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
-
-                ImGui.TableNextRow();
-                ImGui.TableSetColumnIndex(0);
-                DrawScriptList();
-
-                ImGui.TableSetColumnIndex(1);
-                DrawScriptEditor();
-
-                ImGui.EndTable();
-            }
-
-            // Status bar
-            ImGui.Separator();
-            ImGui.TextColored(_statusColor, _statusMessage);
+            DrawEditorContent();
 
             ImGui.End();
             IsVisible = isVisible;
         }
+
+        // Draw detached window using manager
+        DetachedWindowManager.DrawWindow("LevelScriptEditor",
+            $"{FontAwesomeIcons.ExternalLink}  Level Script Editor (Détaché)",
+            () =>
+            {
+                if (_levelScriptService == null)
+                {
+                    ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1), "Level Script Service not available");
+                    return;
+                }
+                DrawEditorContent();
+            });
+    }
+
+    private void DrawEditorContent()
+    {
+        DrawToolbar();
+        ImGui.Separator();
+
+        // Two column layout
+        if (ImGui.BeginTable("LevelScriptEditorLayout", 2, ImGuiTableFlags.Resizable))
+        {
+            ImGui.TableSetupColumn("Scripts", ImGuiTableColumnFlags.WidthFixed, 250);
+            ImGui.TableSetupColumn("Editor", ImGuiTableColumnFlags.WidthStretch);
+
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(0);
+            DrawScriptList();
+
+            ImGui.TableSetColumnIndex(1);
+            DrawScriptEditor();
+
+            ImGui.EndTable();
+        }
+
+        // Status bar
+        ImGui.Separator();
+        ImGui.TextColored(_statusColor, _statusMessage);
     }
 
     private void DrawToolbar()
@@ -154,6 +188,15 @@ public class LevelScriptEditorView : IView
         ImGui.SetNextItemWidth(100);
         string[] formats = { "Auto", "Hex", "Decimal" };
         ImGui.Combo("##format", ref _displayFormat, formats, formats.Length);
+
+        ImGui.SameLine();
+        ImGui.Dummy(new Vector2(20, 0));
+        ImGui.SameLine();
+
+        if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
+        {
+            DetachedWindowManager.Toggle("LevelScriptEditor");
+        }
     }
 
     private void DrawScriptList()
@@ -180,6 +223,13 @@ public class LevelScriptEditorView : IView
                 if (ImGui.Selectable(label, isSelected))
                 {
                     LoadScript(scriptId);
+                }
+
+                // Scroll to selected item
+                if (isSelected && _shouldScrollToSelection)
+                {
+                    ImGui.SetScrollHereY(0.5f); // Center the item
+                    _shouldScrollToSelection = false;
                 }
             }
         }

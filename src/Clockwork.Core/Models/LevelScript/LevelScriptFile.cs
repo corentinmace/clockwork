@@ -37,25 +37,54 @@ public class LevelScriptFile
             // This is a regular script file, not a level script
             return file;
         }
+
+        // Check if first value is 0 (valid level script)
+        ms.Position = 0;
+        uint firstValue = reader.ReadUInt32();
+        if (firstValue == 0)
+        {
+            // Valid level script with no triggers
+            return file;
+        }
+
         ms.Position = 0; // Rewind
 
-        // Phase 1: Read MapScreenLoadTrigger entries
-        // Format: 1 byte triggerType + 4 bytes scriptID
+        bool hasConditionalStructure = false;
+        int conditionalStructureOffset = -1;
+
+        // Phase 1: Read all triggers
         while (ms.Position < ms.Length)
         {
-            if (ms.Position + 1 >= ms.Length)
+            if (ms.Position + 1 > ms.Length)
                 break;
 
             byte triggerType = reader.ReadByte();
 
-            // Check if this is a valid trigger type
-            if (!MapLoadTrigger.IsValidTriggerType(triggerType))
+            // Check if this is a valid trigger type (1, 2, 3, 4)
+            if (triggerType != VariableValueTrigger.VARIABLEVALUE &&
+                !MapLoadTrigger.IsValidTriggerType(triggerType))
             {
-                // Not a map load trigger, rewind and move to next phase
-                ms.Position -= 1;
+                // Not a valid trigger type, end of trigger section
+                // Don't rewind - LiTRE doesn't rewind here
                 break;
             }
 
+            // Subtract trigger type byte from offset AFTER validating it
+            if (hasConditionalStructure)
+                conditionalStructureOffset -= sizeof(byte);
+
+            // If trigger type is VARIABLEVALUE (1), read offset and continue
+            if (triggerType == VariableValueTrigger.VARIABLEVALUE)
+            {
+                if (ms.Position + 4 > ms.Length)
+                    break;
+
+                hasConditionalStructure = true;
+                conditionalStructureOffset = (int)reader.ReadUInt32();
+                continue; // Don't create a trigger here, just note we have variable triggers
+            }
+
+            // Otherwise, it's a MapLoadTrigger (2, 3, 4)
             if (ms.Position + 4 > ms.Length)
                 break;
 
@@ -66,41 +95,69 @@ public class LevelScriptFile
                 TriggerType = triggerType,
                 ScriptToTrigger = scriptToTrigger
             });
+
+            // Subtract script ID from offset after reading it
+            if (hasConditionalStructure)
+                conditionalStructureOffset -= sizeof(uint);
         }
 
-        // Phase 2: Read VariableValueTrigger entries if present
-        if (ms.Position < ms.Length)
+        // Check for minimum valid file size
+        const int SMALLEST_TRIGGER_SIZE = 5;
+
+        // If we only read 1 byte and it was invalid, check if it's an empty file
+        if (ms.Position == 1 && !hasConditionalStructure)
         {
-            // Read the variable value header
-            if (ms.Position + 6 <= ms.Length)
+            // Check if it's truly empty (next 2 bytes are 0 and file is small)
+            if (ms.Position + 2 <= ms.Length)
             {
-                byte varMarker = reader.ReadByte();
-
-                if (varMarker == VariableValueTrigger.VARIABLEVALUE_MARKER)
+                long savedPos = ms.Position;
+                ms.Position -= 1;
+                ushort check = reader.ReadUInt16();
+                if (check == 0 && data.Length < SMALLEST_TRIGGER_SIZE)
                 {
-                    uint conditionalOffset = reader.ReadUInt32();
-                    byte padding = reader.ReadByte(); // padding
-
-                    // Read variable value conditions
-                    while (ms.Position + 6 <= ms.Length)
-                    {
-                        ushort variableID = reader.ReadUInt16();
-
-                        // Terminator check
-                        if (variableID == 0)
-                            break;
-
-                        ushort expectedValue = reader.ReadUInt16();
-                        ushort scriptID = reader.ReadUInt16();
-
-                        file.VariableValueTriggers.Add(new VariableValueTrigger
-                        {
-                            VariableID = variableID,
-                            ExpectedValue = expectedValue,
-                            ScriptToTrigger = scriptID
-                        });
-                    }
+                    // Empty level script
+                    return file;
                 }
+                // Not empty, restore position
+                ms.Position = savedPos;
+            }
+        }
+
+        // Validate file structure
+        if (ms.Position < SMALLEST_TRIGGER_SIZE && file.MapLoadTriggers.Count == 0 && !hasConditionalStructure)
+        {
+            // Invalid file - no triggers at all
+            return file;
+        }
+
+        // Phase 2: Read VariableValueTriggers if they exist
+        if (hasConditionalStructure)
+        {
+            // Validate conditional structure offset
+            if (conditionalStructureOffset != 1)
+            {
+                // File is corrupted
+                return file;
+            }
+
+            // Read variable value triggers
+            while (ms.Position + 6 <= ms.Length)
+            {
+                ushort variableID = reader.ReadUInt16();
+
+                // Variables below 1 are invalid, end of triggers
+                if (variableID <= 0)
+                    break;
+
+                ushort expectedValue = reader.ReadUInt16();
+                ushort scriptID = reader.ReadUInt16();
+
+                file.VariableValueTriggers.Add(new VariableValueTrigger
+                {
+                    VariableID = variableID,
+                    ExpectedValue = expectedValue,
+                    ScriptToTrigger = scriptID
+                });
             }
         }
 
@@ -115,7 +172,7 @@ public class LevelScriptFile
         using var ms = new MemoryStream();
         using var writer = new BinaryWriter(ms);
 
-        // Write MapLoadTriggers
+        // Write all MapLoadTriggers first
         foreach (var trigger in MapLoadTriggers)
         {
             writer.Write(trigger.TriggerType);
@@ -125,25 +182,26 @@ public class LevelScriptFile
         // Write VariableValueTriggers if any
         if (VariableValueTriggers.Count > 0)
         {
-            // Write header
-            writer.Write(VariableValueTrigger.VARIABLEVALUE_MARKER);
+            // Write VARIABLEVALUE marker
+            writer.Write(VariableValueTrigger.VARIABLEVALUE);
 
-            // Calculate offset (header is 6 bytes: 1 marker + 4 offset + 1 padding)
-            uint offset = (uint)(6 + VariableValueTriggers.Count * 6);
-            writer.Write(offset);
-            writer.Write((byte)0); // padding
+            // Write offset (always 1 since no MapLoad triggers follow)
+            writer.Write((uint)1);
 
-            // Write conditions
+            // Write padding byte
+            writer.Write((byte)0);
+
+            // Write all variable value triggers
             foreach (var trigger in VariableValueTriggers)
             {
                 writer.Write(trigger.VariableID);
                 writer.Write(trigger.ExpectedValue);
                 writer.Write(trigger.ScriptToTrigger);
             }
-
-            // Write terminator
-            writer.Write((ushort)0);
         }
+
+        // Write terminator
+        writer.Write((ushort)0);
 
         return ms.ToArray();
     }

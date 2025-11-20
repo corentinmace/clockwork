@@ -3,6 +3,7 @@ using Clockwork.Core;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
 using Clockwork.Core.Logging;
+using Clockwork.UI.Icons;
 using System.Numerics;
 
 namespace Clockwork.UI.Views;
@@ -54,6 +55,7 @@ public class MatrixEditorView : IView
 
     // Focus management
     private bool _shouldFocus = false;
+    private bool _shouldScrollToSelection = false;
 
     public void Initialize(ApplicationContext appContext)
     {
@@ -61,6 +63,9 @@ public class MatrixEditorView : IView
         _romService = appContext.GetService<RomService>();
         _dialogService = appContext.GetService<DialogService>();
         _colorTableService = appContext.GetService<ColorTableService>();
+
+        // Register detached window
+        DetachedWindowManager.RegisterWindow("MatrixEditor", new Vector2(900, 700));
 
         // Try to load last color table from settings
         var settings = Clockwork.Core.Settings.SettingsManager.Settings;
@@ -100,6 +105,32 @@ public class MatrixEditorView : IView
             return;
         }
 
+        DrawEditorContent();
+
+        // Delete confirmation dialog
+        DrawDeleteConfirmationDialog();
+
+        ImGui.End();
+
+        // Draw detached window using manager
+        DetachedWindowManager.DrawWindow("MatrixEditor",
+            $"{FontAwesomeIcons.ExternalLink}  Matrix Editor (Détaché)",
+            () =>
+            {
+                if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+                {
+                    ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Veuillez d'abord charger une ROM.");
+                }
+                else
+                {
+                    DrawEditorContent();
+                    DrawDeleteConfirmationDialog();
+                }
+            });
+    }
+
+    private void DrawEditorContent()
+    {
         DrawToolbar();
         ImGui.Separator();
 
@@ -107,11 +138,6 @@ public class MatrixEditorView : IView
         ImGui.Separator();
 
         DrawMatrixTabs();
-
-        // Delete confirmation dialog
-        DrawDeleteConfirmationDialog();
-
-        ImGui.End();
     }
 
     private void DrawToolbar()
@@ -207,6 +233,15 @@ public class MatrixEditorView : IView
             ImGui.SameLine();
             string filename = Path.GetFileName(_colorTableService.CurrentColorTablePath ?? "");
             ImGui.TextColored(new Vector4(0.4f, 1.0f, 0.4f, 1.0f), $"[{filename}]");
+        }
+
+        // Detach button
+        ImGui.SameLine();
+        ImGui.Separator();
+        ImGui.SameLine();
+        if (ImGui.Button($"{FontAwesomeIcons.ExternalLink}  Détacher"))
+        {
+            DetachedWindowManager.Toggle("MatrixEditor");
         }
     }
 
@@ -551,6 +586,9 @@ public class MatrixEditorView : IView
 
         // Load the matrix
         LoadMatrix(matrixID);
+
+        // Scroll to the loaded matrix in the list
+        _shouldScrollToSelection = true;
     }
 
     private void LoadMatrix(int matrixIndex)

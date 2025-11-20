@@ -21,6 +21,7 @@ public class MainWindow
     private readonly GraphicsDevice _graphicsDevice;
     private ImGuiRenderer? _imguiRenderer;
     private TextureManager? _textureManager;
+    private ViewportManager? _viewportManager;
     private ApplicationContext _appContext;
     private CommandList? _commandList;
 
@@ -139,6 +140,11 @@ public class MainWindow
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
+        io.ConfigFlags |= ImGuiConfigFlags.ViewportsEnable; // Enable multi-viewport with custom Veldrid backend
+
+        // Initialize viewport manager for multi-window support
+        _viewportManager = new ViewportManager(_graphicsDevice);
+        AppLogger.Debug("ViewportManager initialized");
 
         // Initialize theme manager
         ThemeManager.Initialize();
@@ -214,6 +220,14 @@ public class MainWindow
 
         // Swap buffers
         _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
+
+        // Update and render platform windows (for viewports)
+        var io = ImGui.GetIO();
+        if ((io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable) != 0)
+        {
+            ImGui.UpdatePlatformWindows();
+            _viewportManager?.UpdateAndRender((float)deltaTime);
+        }
     }
 
     private void OnClosing()
@@ -227,6 +241,9 @@ public class MainWindow
         SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
         SettingsManager.Save();
         AppLogger.Debug($"Window state saved: {_window.Width}x{_window.Height}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
+
+        _viewportManager?.Dispose();
+        AppLogger.Debug("ViewportManager disposed");
 
         _textureManager?.Dispose();
         AppLogger.Debug("TextureManager disposed");
