@@ -230,13 +230,17 @@ public class NsbtxFile
 
         AppLogger.Debug($"[NSBTX] Unknown block: headerSize={headerSize}, blockSectionSize={blockSectionSize}, constant=0x{constant:X8}");
 
-        // Skip the rest of the unknown block header
-        if (headerSize > 8)
-        {
-            reader.ReadBytes(headerSize - 8);
-        }
+        // Skip unknown block data (2 shorts per texture = 4 bytes each)
+        int unknownDataSize = numObjs * 4;
+        reader.ReadBytes(unknownDataSize);
+        AppLogger.Debug($"[NSBTX] Skipped {unknownDataSize} bytes of unknown block data");
 
-        // Skip texture info entries (8 bytes each)
+        // Read and skip info block header (header_size + data_size = 4 bytes)
+        ushort infoHeaderSize = reader.ReadUInt16();
+        ushort infoDataSize = reader.ReadUInt16();
+        AppLogger.Debug($"[NSBTX] Info block: headerSize={infoHeaderSize}, dataSize={infoDataSize}");
+
+        // Skip texture info entries (8 bytes each: offset, params, width, unk1, height, unk2)
         int textureInfoSize = numObjs * 8;
         reader.ReadBytes(textureInfoSize);
 
@@ -316,13 +320,17 @@ public class NsbtxFile
 
         AppLogger.Debug($"[NSBTX] Unknown block: headerSize={headerSize}, blockSectionSize={blockSectionSize}, constant=0x{constant:X8}");
 
-        // Skip the rest of the unknown block header
-        if (headerSize > 8)
-        {
-            reader.ReadBytes(headerSize - 8);
-        }
+        // Skip unknown block data (2 shorts per palette = 4 bytes each)
+        int unknownDataSize = numObjs * 4;
+        reader.ReadBytes(unknownDataSize);
+        AppLogger.Debug($"[NSBTX] Skipped {unknownDataSize} bytes of unknown block data");
 
-        // Skip palette info entries (4 bytes each - different from textures!)
+        // Read and skip info block header (header_size + data_size = 4 bytes)
+        ushort infoHeaderSize = reader.ReadUInt16();
+        ushort infoDataSize = reader.ReadUInt16();
+        AppLogger.Debug($"[NSBTX] Info block: headerSize={infoHeaderSize}, dataSize={infoDataSize}");
+
+        // Skip palette info entries (4 bytes each: offset + color0)
         int paletteInfoSize = numObjs * 4;
         reader.ReadBytes(paletteInfoSize);
 
