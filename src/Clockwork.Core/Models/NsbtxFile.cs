@@ -1,4 +1,5 @@
 using System.Text;
+using Clockwork.Core.Logging;
 
 namespace Clockwork.Core.Models;
 
@@ -80,20 +81,27 @@ public class NsbtxFile
         ushort headerSize = reader.ReadUInt16();
         file.BlockCount = reader.ReadUInt16();
 
+        AppLogger.Debug($"[NSBTX] BTX0 header: version={file.Version}, fileSize={file.FileSize}, headerSize={headerSize}, blockCount={file.BlockCount}");
+
         // Read block offsets
         if (file.BlockCount > 0 && ms.Position + 4 <= ms.Length)
         {
             uint tex0Offset = reader.ReadUInt32();
+            AppLogger.Debug($"[NSBTX] TEX0 offset from header: {tex0Offset}");
 
             // Parse TEX0 block to extract texture and palette names
             try
             {
                 ParseTex0Block(data, (int)tex0Offset, file);
             }
-            catch
+            catch (Exception ex)
             {
-                // If parsing fails, just leave the lists empty
+                AppLogger.Error($"[NSBTX] Failed to parse TEX0 block: {ex.Message}");
             }
+        }
+        else
+        {
+            AppLogger.Warn($"[NSBTX] No blocks in file or cannot read block offset");
         }
 
         return file;
@@ -104,18 +112,28 @@ public class NsbtxFile
     /// </summary>
     private static void ParseTex0Block(byte[] data, int tex0Offset, NsbtxFile file)
     {
+        AppLogger.Debug($"[NSBTX] ParseTex0Block: offset={tex0Offset}, dataLength={data.Length}");
+
         if (tex0Offset + 16 > data.Length)
+        {
+            AppLogger.Warn($"[NSBTX] TEX0 offset out of bounds");
             return;
+        }
 
         using var ms = new MemoryStream(data, tex0Offset, data.Length - tex0Offset);
         using var reader = new BinaryReader(ms);
 
         // Read TEX0 header
         string stamp = Encoding.ASCII.GetString(reader.ReadBytes(4));
-        if (stamp != "TEX0")
-            return;
+        AppLogger.Debug($"[NSBTX] TEX0 stamp: '{stamp}'");
 
-        reader.ReadUInt32(); // section_size
+        if (stamp != "TEX0")
+        {
+            AppLogger.Warn($"[NSBTX] Invalid TEX0 stamp: '{stamp}'");
+            return;
+        }
+
+        uint sectionSize = reader.ReadUInt32();
         reader.ReadUInt32(); // unknown
 
         reader.ReadUInt16(); // texture_data_size_shr_3
@@ -136,16 +154,30 @@ public class NsbtxFile
         reader.ReadUInt32(); // palette_info_off
         uint palettesOff = reader.ReadUInt32(); // offset to PaletteList (relative to TEX0)
 
+        AppLogger.Debug($"[NSBTX] TEX0 header: sectionSize={sectionSize}, texturesOff={texturesOff}, palettesOff={palettesOff}");
+
         // Parse texture names
         if (texturesOff > 0 && texturesOff < data.Length - tex0Offset)
         {
+            AppLogger.Debug($"[NSBTX] Parsing textures at offset {tex0Offset + texturesOff}");
             file.TextureNames = ParseNameList(data, tex0Offset + texturesOff);
+            AppLogger.Info($"[NSBTX] Found {file.TextureNames.Count} textures");
+        }
+        else
+        {
+            AppLogger.Warn($"[NSBTX] Invalid textures offset: {texturesOff}");
         }
 
         // Parse palette names
         if (palettesOff > 0 && palettesOff < data.Length - tex0Offset)
         {
+            AppLogger.Debug($"[NSBTX] Parsing palettes at offset {tex0Offset + (int)palettesOff}");
             file.PaletteNames = ParseNameList(data, tex0Offset + (int)palettesOff);
+            AppLogger.Info($"[NSBTX] Found {file.PaletteNames.Count} palettes");
+        }
+        else
+        {
+            AppLogger.Warn($"[NSBTX] Invalid palettes offset: {palettesOff}");
         }
     }
 
@@ -163,8 +195,13 @@ public class NsbtxFile
     {
         var names = new List<string>();
 
+        AppLogger.Debug($"[NSBTX] ParseNameList: offset={offset}, dataLength={data.Length}");
+
         if (offset + 4 > data.Length)
+        {
+            AppLogger.Warn($"[NSBTX] NameList offset out of bounds");
             return names;
+        }
 
         using var ms = new MemoryStream(data, offset, data.Length - offset);
         using var reader = new BinaryReader(ms);
@@ -173,8 +210,13 @@ public class NsbtxFile
         byte count = reader.ReadByte();
         ushort size = reader.ReadUInt16();
 
+        AppLogger.Debug($"[NSBTX] NameList header: dummy={dummy}, count={count}, size={size}");
+
         if (count == 0)
+        {
+            AppLogger.Debug($"[NSBTX] NameList count is 0");
             return names;
+        }
 
         // The names are located at a specific offset in the NameList
         // Skip to the names section
@@ -185,6 +227,8 @@ public class NsbtxFile
         ushort elementSize = reader.ReadUInt16();
         ushort dataSectionSize = reader.ReadUInt16();
 
+        AppLogger.Debug($"[NSBTX] NameList sizes: unknownHeaderSize={unknownHeaderSize}, elementSize={elementSize}, dataSectionSize={dataSectionSize}");
+
         // Skip the unknown header section
         if (unknownHeaderSize > 6)
         {
@@ -194,12 +238,17 @@ public class NsbtxFile
         // Skip the data section
         reader.ReadBytes(dataSectionSize);
 
+        AppLogger.Debug($"[NSBTX] At position {ms.Position}, reading {count} names");
+
         // Now we're at the names section
         // Read 'count' names, each 16 bytes
         for (int i = 0; i < count; i++)
         {
             if (ms.Position + 16 > ms.Length)
+            {
+                AppLogger.Warn($"[NSBTX] Cannot read name {i}, out of bounds (pos={ms.Position}, length={ms.Length})");
                 break;
+            }
 
             byte[] nameBytes = reader.ReadBytes(16);
 
@@ -212,10 +261,13 @@ public class NsbtxFile
                 string name = Encoding.ASCII.GetString(nameBytes, 0, length).Trim();
                 if (!string.IsNullOrWhiteSpace(name))
                 {
+                    AppLogger.Debug($"[NSBTX] Name {i}: '{name}'");
                     names.Add(name);
                 }
             }
         }
+
+        AppLogger.Debug($"[NSBTX] ParseNameList completed: {names.Count} names found");
 
         return names;
     }
