@@ -27,7 +27,7 @@ public class AreaData
     /// <summary>
     /// Reads area data from bytes (DP/Pt format)
     /// </summary>
-    public static AreaData ReadFromBytes(byte[] data, GameVersion gameVersion)
+    public static AreaData ReadFromBytes(byte[] data)
     {
         var area = new AreaData();
 
@@ -69,7 +69,7 @@ public class AreaData
     /// <summary>
     /// Converts area data to bytes for saving (DP/Pt format)
     /// </summary>
-    public byte[] ToBytes(GameVersion gameVersion)
+    public byte[] ToBytes()
     {
         using var ms = new MemoryStream();
         using var writer = new BinaryWriter(ms);

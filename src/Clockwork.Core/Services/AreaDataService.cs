@@ -17,7 +17,7 @@ public class AreaDataService : IApplicationService
     public int CurrentAreaDataId { get; private set; } = -1;
 
     // Area data directory path (relative to ROM root)
-    private const string AREA_DATA_DIR = "unpacked/fielddata/areadata/area_map_tex";
+    private const string AREA_DATA_DIR = "unpacked/areaData";
 
     public AreaDataService(ApplicationContext appContext)
     {
@@ -61,7 +61,7 @@ public class AreaDataService : IApplicationService
         }
 
         // Find all .bin files in directory
-        var files = Directory.GetFiles(areaDataDir, "*.bin")
+        var files = Directory.GetFiles(areaDataDir)
             .Select(f => Path.GetFileNameWithoutExtension(f))
             .Where(name => int.TryParse(name, out _))
             .Select(int.Parse)
@@ -93,8 +93,7 @@ public class AreaDataService : IApplicationService
         try
         {
             byte[] data = File.ReadAllBytes(filePath);
-            var gameVersion = _romService.CurrentRom.GameVersion;
-            CurrentAreaData = AreaData.ReadFromBytes(data, gameVersion);
+            CurrentAreaData = AreaData.ReadFromBytes(data);
             CurrentAreaDataId = areaDataId;
 
             AppLogger.Info($"[AreaDataService] Loaded area data {areaDataId}");
@@ -136,8 +135,7 @@ public class AreaDataService : IApplicationService
 
         try
         {
-            var gameVersion = _romService.CurrentRom.GameVersion;
-            byte[] data = areaData.ToBytes(gameVersion);
+            byte[] data = areaData.ToBytes();
             File.WriteAllBytes(filePath, data);
 
             AppLogger.Info($"[AreaDataService] Saved area data {areaDataId} to {filePath}");
@@ -205,7 +203,7 @@ public class AreaDataService : IApplicationService
         if (_romService?.CurrentRom == null)
             return string.Empty;
 
-        var romPath = _romService.CurrentRom.RootPath;
+        string romPath = _romService!.CurrentRom!.RomPath;
         return Path.Combine(romPath, AREA_DATA_DIR);
     }
 
@@ -215,6 +213,6 @@ public class AreaDataService : IApplicationService
     private string GetAreaDataPath(int areaDataId)
     {
         var directory = GetAreaDataDirectory();
-        return Path.Combine(directory, $"{areaDataId}.bin");
+        return Path.Combine(directory, $"{areaDataId:X4}");
     }
 }
