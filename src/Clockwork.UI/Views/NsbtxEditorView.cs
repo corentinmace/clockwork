@@ -36,6 +36,7 @@ public class NsbtxEditorView : IView
     private int _currentTextureWidth = 0;
     private int _currentTextureHeight = 0;
     private int _currentPaletteIndex = 0;
+    private int _zoomLevel = 4; // Default 4x zoom
 
     // Add/Remove dialogs
     private bool _showAddDialog = false;
@@ -372,19 +373,81 @@ public class NsbtxEditorView : IView
                 // Display texture if loaded
                 if (_currentTextureHandle != IntPtr.Zero)
                 {
-                    // Calculate display size with integer scaling for pixel-perfect rendering
-                    float maxSize = 512f;
-                    float scaleX = maxSize / _currentTextureWidth;
-                    float scaleY = maxSize / _currentTextureHeight;
-                    float scale = Math.Min(scaleX, scaleY);
+                    // Zoom controls
+                    ImGui.Text("Zoom:");
+                    ImGui.SameLine();
+                    if (ImGui.Button("1x")) _zoomLevel = 1;
+                    ImGui.SameLine();
+                    if (ImGui.Button("2x")) _zoomLevel = 2;
+                    ImGui.SameLine();
+                    if (ImGui.Button("4x")) _zoomLevel = 4;
+                    ImGui.SameLine();
+                    if (ImGui.Button("8x")) _zoomLevel = 8;
+                    ImGui.SameLine();
+                    if (ImGui.Button("16x")) _zoomLevel = 16;
 
-                    // Round down to nearest integer scale for pixel-perfect display
-                    int integerScale = Math.Max(1, (int)Math.Floor(scale));
-                    int displayWidth = _currentTextureWidth * integerScale;
-                    int displayHeight = _currentTextureHeight * integerScale;
+                    int displayWidth = _currentTextureWidth * _zoomLevel;
+                    int displayHeight = _currentTextureHeight * _zoomLevel;
 
-                    ImGui.Text($"Zoom: {integerScale}x");
+                    ImGui.Text($"Display size: {displayWidth}x{displayHeight} (texture: {_currentTextureWidth}x{_currentTextureHeight})");
+                    ImGui.Spacing();
+
+                    // Draw texture with checkerboard background for transparency
+                    var drawList = ImGui.GetWindowDrawList();
+                    var cursorPos = ImGui.GetCursorScreenPos();
+
+                    // Draw checkerboard pattern
+                    int checkSize = 8;
+                    for (int y = 0; y < displayHeight; y += checkSize)
+                    {
+                        for (int x = 0; x < displayWidth; x += checkSize)
+                        {
+                            bool isDark = ((x / checkSize) + (y / checkSize)) % 2 == 0;
+                            uint color = isDark ? 0xFF808080 : 0xFFC0C0C0;
+                            drawList.AddRectFilled(
+                                new Vector2(cursorPos.X + x, cursorPos.Y + y),
+                                new Vector2(cursorPos.X + x + checkSize, cursorPos.Y + y + checkSize),
+                                color
+                            );
+                        }
+                    }
+
+                    // Draw texture on top
                     ImGui.Image(_currentTextureHandle, new Vector2(displayWidth, displayHeight));
+
+                    // Debug info
+                    ImGui.Spacing();
+                    if (ImGui.CollapsingHeader("Debug Info"))
+                    {
+                        if (_selectedTextureIndex >= 0 && _selectedTextureIndex < currentNsbtx.Textures.Count)
+                        {
+                            var texInfo = currentNsbtx.Textures[_selectedTextureIndex];
+                            var rawData = currentNsbtx.GetTextureData(_selectedTextureIndex);
+                            if (rawData != null)
+                            {
+                                ImGui.Text($"Raw texture data size: {rawData.Length} bytes");
+
+                                // Show first 64 bytes as hex
+                                int bytesToShow = Math.Min(64, rawData.Length);
+                                ImGui.Text("First bytes (hex):");
+                                string hexStr = BitConverter.ToString(rawData, 0, bytesToShow).Replace("-", " ");
+                                ImGui.TextWrapped(hexStr);
+
+                                // Decode and show first 4 pixels
+                                var decoded = currentNsbtx.DecodeTextureToRGBA(_selectedTextureIndex, _currentPaletteIndex);
+                                if (decoded != null && decoded.Length >= 16)
+                                {
+                                    ImGui.Spacing();
+                                    ImGui.Text("First 4 pixels (RGBA):");
+                                    for (int i = 0; i < 4 && i * 4 < decoded.Length; i++)
+                                    {
+                                        int idx = i * 4;
+                                        ImGui.Text($"Pixel {i}: R={decoded[idx]:X2} G={decoded[idx+1]:X2} B={decoded[idx+2]:X2} A={decoded[idx+3]:X2}");
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 else
                 {

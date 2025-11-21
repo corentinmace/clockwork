@@ -516,6 +516,47 @@ public class NsbtxFile
     }
 
     /// <summary>
+    /// Converts tiled texture data (8x8 tiles) to linear format
+    /// Nintendo DS textures are stored as 8x8 pixel tiles
+    /// </summary>
+    private byte[] UntileTiledData(byte[] tiledData, int width, int height, int bytesPerPixel)
+    {
+        byte[] linear = new byte[tiledData.Length];
+        int tileWidth = width / 8;
+        int tileHeight = height / 8;
+
+        for (int ty = 0; ty < tileHeight; ty++)
+        {
+            for (int tx = 0; tx < tileWidth; tx++)
+            {
+                int tileIndex = ty * tileWidth + tx;
+                int tileOffset = tileIndex * 64 * bytesPerPixel; // 8x8 = 64 pixels per tile
+
+                for (int py = 0; py < 8; py++)
+                {
+                    for (int px = 0; px < 8; px++)
+                    {
+                        int srcIdx = tileOffset + (py * 8 + px) * bytesPerPixel;
+                        int dstX = tx * 8 + px;
+                        int dstY = ty * 8 + py;
+                        int dstIdx = (dstY * width + dstX) * bytesPerPixel;
+
+                        if (srcIdx + bytesPerPixel <= tiledData.Length && dstIdx + bytesPerPixel <= linear.Length)
+                        {
+                            for (int b = 0; b < bytesPerPixel; b++)
+                            {
+                                linear[dstIdx + b] = tiledData[srcIdx + b];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return linear;
+    }
+
+    /// <summary>
     /// Decodes a texture to RGBA8888 format (ready for OpenGL)
     /// Returns null if texture cannot be decoded
     /// </summary>
@@ -531,26 +572,33 @@ public class NsbtxFile
 
         int width = texInfo.ActualWidth;
         int height = texInfo.ActualHeight;
-        byte[] rgba = new byte[width * height * 4];
 
+        // Nintendo DS textures are stored in 8x8 tiled format
+        // We need to untile them first for certain formats
         switch (texInfo.Format)
         {
-            case 1: // A3I5 (Translucent)
+            case 1: // A3I5 (Translucent) - 1 byte per pixel
+                textureData = UntileTiledData(textureData, width, height, 1);
                 return DecodeA3I5(textureData, width, height);
 
-            case 2: // 4-Color Palette
+            case 2: // 4-Color Palette - 2 bits per pixel (4 pixels per byte)
+                // For 4-color, we need to untile at the 4-pixel group level
                 return Decode4ColorPalette(textureData, width, height, paletteIndex);
 
-            case 3: // 16-Color Palette
+            case 3: // 16-Color Palette - 4 bits per pixel (2 pixels per byte)
+                // For 16-color, we need to untile at the 2-pixel pair level
                 return Decode16ColorPalette(textureData, width, height, paletteIndex);
 
-            case 4: // 256-Color Palette
+            case 4: // 256-Color Palette - 1 byte per pixel
+                textureData = UntileTiledData(textureData, width, height, 1);
                 return Decode256ColorPalette(textureData, width, height, paletteIndex);
 
-            case 6: // A5I3 (Translucent)
+            case 6: // A5I3 (Translucent) - 1 byte per pixel
+                textureData = UntileTiledData(textureData, width, height, 1);
                 return DecodeA5I3(textureData, width, height);
 
-            case 7: // Direct Color (RGB555)
+            case 7: // Direct Color (RGB555) - 2 bytes per pixel
+                textureData = UntileTiledData(textureData, width, height, 2);
                 return DecodeDirectColor(textureData, width, height);
 
             default:
@@ -600,30 +648,44 @@ public class NsbtxFile
             return null;
 
         byte[] rgba = new byte[width * height * 4];
-        int pixelIdx = 0;
 
-        // 2 pixels per byte (4 bits each)
-        for (int i = 0; i < textureData.Length; i++)
+        // Untile the 4-bit data (2 pixels per byte, so 0.5 bytes per pixel)
+        int tileWidth = width / 8;
+        int tileHeight = height / 8;
+
+        for (int ty = 0; ty < tileHeight; ty++)
         {
-            byte packed = textureData[i];
+            for (int tx = 0; tx < tileWidth; tx++)
+            {
+                int tileIndex = ty * tileWidth + tx;
+                int tileOffset = tileIndex * 32; // 8x8 = 64 pixels, 4 bits each = 32 bytes per tile
 
-            // First pixel (lower 4 bits)
-            byte paletteIdx1 = (byte)(packed & 0x0F);
-            ushort color1 = palette[paletteIdx1];
-            rgba[pixelIdx * 4 + 0] = (byte)(((color1 >> 0) & 0x1F) * 255 / 31);
-            rgba[pixelIdx * 4 + 1] = (byte)(((color1 >> 5) & 0x1F) * 255 / 31);
-            rgba[pixelIdx * 4 + 2] = (byte)(((color1 >> 10) & 0x1F) * 255 / 31);
-            rgba[pixelIdx * 4 + 3] = 255;
-            pixelIdx++;
+                for (int py = 0; py < 8; py++)
+                {
+                    for (int px = 0; px < 8; px++)
+                    {
+                        int pixelInTile = py * 8 + px;
+                        int byteInTile = pixelInTile / 2;
+                        int srcIdx = tileOffset + byteInTile;
 
-            // Second pixel (upper 4 bits)
-            byte paletteIdx2 = (byte)((packed >> 4) & 0x0F);
-            ushort color2 = palette[paletteIdx2];
-            rgba[pixelIdx * 4 + 0] = (byte)(((color2 >> 0) & 0x1F) * 255 / 31);
-            rgba[pixelIdx * 4 + 1] = (byte)(((color2 >> 5) & 0x1F) * 255 / 31);
-            rgba[pixelIdx * 4 + 2] = (byte)(((color2 >> 10) & 0x1F) * 255 / 31);
-            rgba[pixelIdx * 4 + 3] = 255;
-            pixelIdx++;
+                        if (srcIdx < textureData.Length)
+                        {
+                            byte packed = textureData[srcIdx];
+                            byte palIdx = (px % 2 == 0) ? (byte)(packed & 0x0F) : (byte)((packed >> 4) & 0x0F);
+
+                            ushort color = palette[palIdx];
+                            int dstX = tx * 8 + px;
+                            int dstY = ty * 8 + py;
+                            int dstIdx = (dstY * width + dstX) * 4;
+
+                            rgba[dstIdx + 0] = (byte)(((color >> 0) & 0x1F) * 255 / 31);
+                            rgba[dstIdx + 1] = (byte)(((color >> 5) & 0x1F) * 255 / 31);
+                            rgba[dstIdx + 2] = (byte)(((color >> 10) & 0x1F) * 255 / 31);
+                            rgba[dstIdx + 3] = 255;
+                        }
+                    }
+                }
+            }
         }
 
         return rgba;
@@ -639,26 +701,44 @@ public class NsbtxFile
             return null;
 
         byte[] rgba = new byte[width * height * 4];
-        int pixelIdx = 0;
 
-        // 4 pixels per byte (2 bits each)
-        for (int i = 0; i < textureData.Length; i++)
+        // Untile the 2-bit data (4 pixels per byte, so 0.25 bytes per pixel)
+        int tileWidth = width / 8;
+        int tileHeight = height / 8;
+
+        for (int ty = 0; ty < tileHeight; ty++)
         {
-            byte packed = textureData[i];
-
-            for (int bit = 0; bit < 8; bit += 2)
+            for (int tx = 0; tx < tileWidth; tx++)
             {
-                byte paletteIdx = (byte)((packed >> bit) & 0x03);
-                ushort color = palette[paletteIdx];
+                int tileIndex = ty * tileWidth + tx;
+                int tileOffset = tileIndex * 16; // 8x8 = 64 pixels, 2 bits each = 16 bytes per tile
 
-                rgba[pixelIdx * 4 + 0] = (byte)(((color >> 0) & 0x1F) * 255 / 31);
-                rgba[pixelIdx * 4 + 1] = (byte)(((color >> 5) & 0x1F) * 255 / 31);
-                rgba[pixelIdx * 4 + 2] = (byte)(((color >> 10) & 0x1F) * 255 / 31);
-                rgba[pixelIdx * 4 + 3] = 255;
-                pixelIdx++;
+                for (int py = 0; py < 8; py++)
+                {
+                    for (int px = 0; px < 8; px++)
+                    {
+                        int pixelInTile = py * 8 + px;
+                        int byteInTile = pixelInTile / 4;
+                        int bitInByte = (pixelInTile % 4) * 2;
+                        int srcIdx = tileOffset + byteInTile;
 
-                if (pixelIdx >= width * height)
-                    break;
+                        if (srcIdx < textureData.Length)
+                        {
+                            byte packed = textureData[srcIdx];
+                            byte palIdx = (byte)((packed >> bitInByte) & 0x03);
+
+                            ushort color = palette[palIdx];
+                            int dstX = tx * 8 + px;
+                            int dstY = ty * 8 + py;
+                            int dstIdx = (dstY * width + dstX) * 4;
+
+                            rgba[dstIdx + 0] = (byte)(((color >> 0) & 0x1F) * 255 / 31);
+                            rgba[dstIdx + 1] = (byte)(((color >> 5) & 0x1F) * 255 / 31);
+                            rgba[dstIdx + 2] = (byte)(((color >> 10) & 0x1F) * 255 / 31);
+                            rgba[dstIdx + 3] = 255;
+                        }
+                    }
+                }
             }
         }
 
