@@ -38,6 +38,7 @@ internal class Program
             var textArchiveService = new TextArchiveService(appContext);
             var scriptCommandConfigService = new ScriptCommandConfigService();
             var nsbtxService = new NsbtxService(appContext);
+            var areaDataService = new AreaDataService(appContext);
             var romPackingService = new RomPackingService(appContext);
 
             appContext.AddService(romService);
@@ -51,6 +52,7 @@ internal class Program
             appContext.AddService(textArchiveService);
             appContext.AddService(scriptCommandConfigService);
             appContext.AddService(nsbtxService);
+            appContext.AddService(areaDataService);
             appContext.AddService(romPackingService);
 
             // Initialize context

@@ -16,6 +16,7 @@ public class NsbtxEditorView : IView
 {
     private readonly ApplicationContext _appContext;
     private NsbtxService? _nsbtxService;
+    private AreaDataService? _areaDataService;
     private DialogService? _dialogService;
     private RomService? _romService;
     private TextureManager? _textureManager;
@@ -46,6 +47,15 @@ public class NsbtxEditorView : IView
     private bool _showRemoveConfirm = false;
     private int _nsbtxToRemove = 0;
 
+    // Area Data state
+    private int _selectedAreaDataId = -1;
+    private string _areaDataSearchFilter = string.Empty;
+    private bool _showAreaDataAddDialog = false;
+    private int _newAreaDataId = 0;
+    private int _sourceAreaDataId = 0;
+    private bool _showAreaDataRemoveConfirm = false;
+    private int _areaDataToRemove = 0;
+
     public NsbtxEditorView(ApplicationContext appContext)
     {
         _appContext = appContext;
@@ -54,13 +64,18 @@ public class NsbtxEditorView : IView
     public void Initialize()
     {
         _nsbtxService = _appContext.GetService<NsbtxService>();
+        _areaDataService = _appContext.GetService<AreaDataService>();
         _dialogService = _appContext.GetService<DialogService>();
         _romService = _appContext.GetService<RomService>();
 
-        // Load available NSBTX files when ROM is loaded
-        if (_romService?.CurrentRom != null && _nsbtxService != null)
+        // Load available NSBTX files and area data when ROM is loaded
+        if (_romService?.CurrentRom != null)
         {
-            _nsbtxService.LoadAvailableNsbtx();
+            if (_nsbtxService != null)
+                _nsbtxService.LoadAvailableNsbtx();
+
+            if (_areaDataService != null)
+                _areaDataService.LoadAvailableAreaData();
         }
     }
 
