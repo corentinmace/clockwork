@@ -260,7 +260,14 @@ public class NsbtxEditorView : IView
                         {
                             _selectedTextureIndex = i;
                             _selectedPaletteIndex = -1; // Deselect palette when selecting texture
-                            _currentPaletteIndex = 0; // Reset to first palette
+
+                            // Use matching palette index if available (texture[i] -> palette[i])
+                            // Otherwise fall back to palette 0
+                            if (currentNsbtx.Palettes.Count > i)
+                                _currentPaletteIndex = i;
+                            else
+                                _currentPaletteIndex = 0;
+
                             LoadTexturePreview(i, _currentPaletteIndex);
                         }
                     }
