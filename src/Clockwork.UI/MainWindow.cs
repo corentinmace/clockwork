@@ -41,6 +41,7 @@ public class MainWindow
     // Tools
     private readonly AddressHelperWindow _addressHelperWindow;
     private readonly ScrcmdTableHelperWindow _scrcmdTableHelperWindow;
+    private readonly ScriptCommandDatabaseView _scriptCommandDatabaseView;
 
     // Sidebar state and metrics
     private bool _isSidebarCollapsed = false;
@@ -77,6 +78,8 @@ public class MainWindow
         // Initialize tools
         _addressHelperWindow = new AddressHelperWindow(_appContext);
         _scrcmdTableHelperWindow = new ScrcmdTableHelperWindow(_appContext);
+        _scriptCommandDatabaseView = new ScriptCommandDatabaseView();
+        _scriptCommandDatabaseView.Initialize(_appContext);
 
         // Connect theme editor to settings window
         _settingsWindow.SetThemeEditorView(_themeEditorView);
@@ -369,6 +372,10 @@ public class MainWindow
                 {
                     _scrcmdTableHelperWindow.IsVisible = true;
                 }
+                if (ImGui.MenuItem("Script Command Database"))
+                {
+                    _scriptCommandDatabaseView.IsVisible = true;
+                }
                 ImGui.EndMenu();
             }
 
@@ -435,6 +442,7 @@ public class MainWindow
         // Draw tools
         _addressHelperWindow.Draw();
         _scrcmdTableHelperWindow.Draw();
+        _scriptCommandDatabaseView.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();
