@@ -10,12 +10,15 @@ public class TextureInfo
 {
     public int TextureOffset { get; set; }
     public ushort Parameters { get; set; }
-    public byte Width { get; set; }
-    public byte Height { get; set; }
+    public byte Width { get; set; }  // Actually not used for dimensions - kept for compatibility
+    public byte Height { get; set; } // Actually not used for dimensions - kept for compatibility
     public int Format { get; set; }
     public bool Color0Transparent { get; set; }
-    public int ActualWidth => 8 << (Width & 0x07);
-    public int ActualHeight => 8 << (Height & 0x07);
+
+    // Extract dimensions from Parameters (bits 4-6 for width, 7-9 for height)
+    // Formula: 8 << shift_value
+    public int ActualWidth => 8 << ((Parameters >> 4) & 0x07);
+    public int ActualHeight => 8 << ((Parameters >> 7) & 0x07);
 }
 
 /// <summary>
