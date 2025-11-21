@@ -277,10 +277,11 @@ public class ScriptCommandConfigService : IApplicationService
     /// </summary>
     private Formats.NDS.Scripts.ScriptParameterType MapParameterType(int sizeInBytes, string typeStr)
     {
-        // Handle Variable type
+        // Handle Variable type - in LiTRE, "Variable" means a variable ID (like 0x800C)
+        // which is a 2-byte word, NOT a variable-length sequence
         if (typeStr.Equals("Variable", StringComparison.OrdinalIgnoreCase))
         {
-            return Formats.NDS.Scripts.ScriptParameterType.Variable;
+            return Formats.NDS.Scripts.ScriptParameterType.Word;
         }
 
         // Handle Offset type (usually 4 bytes)
