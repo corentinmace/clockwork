@@ -36,6 +36,7 @@ public class MainWindow
     private readonly ThemeEditorView _themeEditorView;
     private readonly MatrixEditorView _matrixEditorView;
     private readonly WildEditorView _wildEditorView;
+    private readonly NsbtxEditorView _nsbtxEditorView;
 
     // Tools
     private readonly AddressHelperWindow _addressHelperWindow;
@@ -72,6 +73,8 @@ public class MainWindow
         _themeEditorView = new ThemeEditorView();
         _matrixEditorView = new MatrixEditorView();
         _wildEditorView = new WildEditorView(_appContext);
+        _nsbtxEditorView = new NsbtxEditorView(_appContext);
+        _nsbtxEditorView.Initialize();
 
         // Initialize tools
         _addressHelperWindow = new AddressHelperWindow(_appContext);
@@ -353,6 +356,10 @@ public class MainWindow
                 {
                     _textEditorWindow.IsVisible = true;
                 }
+                if (ImGui.MenuItem("NSBTX Editor"))
+                {
+                    _nsbtxEditorView.IsVisible = true;
+                }
                 ImGui.EndMenu();
             }
 
@@ -428,6 +435,7 @@ public class MainWindow
         _wildEditorView.Draw();
         _textEditorWindow.Draw();
         _levelScriptEditorView.Draw();
+        _nsbtxEditorView.Draw();
         _logViewerWindow.Draw();
         _settingsWindow.Draw();
         _themeEditorView.Draw();
@@ -481,6 +489,7 @@ public class MainWindow
             _wildEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Paw, "Wild Editor", _wildEditorView.IsVisible);
             _textEditorWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
             _levelScriptEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Database, "Level Script Editor", _levelScriptEditorView.IsVisible);
+            _nsbtxEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Image, "NSBTX Editor", _nsbtxEditorView.IsVisible);
 
             ImGui.Spacing();
             ImGui.Separator();
@@ -506,6 +515,7 @@ public class MainWindow
                 _wildEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Paw, "Wild Editor", _wildEditorView.IsVisible);
                 _textEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
                 _levelScriptEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Database, "Level Script Editor", _levelScriptEditorView.IsVisible);
+                _nsbtxEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Image, "NSBTX Editor", _nsbtxEditorView.IsVisible);
             }
 
             ImGui.Spacing();
