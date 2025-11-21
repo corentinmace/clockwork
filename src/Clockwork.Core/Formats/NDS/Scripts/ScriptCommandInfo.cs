@@ -74,6 +74,7 @@ public class ScriptCommandInfo
 
     /// <summary>
     /// Gets a human-readable signature for this command
+    /// Format: "CommandName param1:type param2:type ..."
     /// </summary>
     public string GetSignature()
     {
@@ -83,11 +84,13 @@ public class ScriptCommandInfo
         var paramList = new List<string>();
         for (int i = 0; i < Parameters.Count; i++)
         {
-            string paramName = i < ParameterNames.Count ? ParameterNames[i] : $"p{i}";
+            string paramName = i < ParameterNames.Count && !string.IsNullOrEmpty(ParameterNames[i])
+                ? ParameterNames[i]
+                : $"param{i + 1}";
             string paramType = Parameters[i].ToString().ToLower();
-            paramList.Add($"{paramType} {paramName}");
+            paramList.Add($"{paramName}:{paramType}");
         }
 
-        return $"{Name}({string.Join(", ", paramList)})";
+        return $"{Name} {string.Join(" ", paramList)}";
     }
 }

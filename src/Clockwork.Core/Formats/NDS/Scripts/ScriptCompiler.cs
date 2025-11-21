@@ -9,15 +9,10 @@ namespace Clockwork.Core.Formats.NDS.Scripts;
 /// </summary>
 public static class ScriptCompiler
 {
-    // Regex to match command lines: "    CommandName(param1, param2, ...)"
+    // Regex to match command lines: "    CommandName param1 param2 param3"
+    // Commands are words starting with a letter, followed by optional space-separated parameters
     private static readonly Regex CommandRegex = new Regex(
-        @"^\s*(\w+)\s*\((.*?)\)\s*$",
-        RegexOptions.Compiled
-    );
-
-    // Regex to detect lines that look like commands but have invalid syntax
-    private static readonly Regex PotentialCommandRegex = new Regex(
-        @"^\s*([a-zA-Z_]\w*)",
+        @"^\s*([a-zA-Z_]\w*)(?:\s+(.+?))?\s*$",
         RegexOptions.Compiled
     );
 
@@ -45,23 +40,12 @@ public static class ScriptCompiler
             if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("//"))
                 continue;
 
-            var match = CommandRegex.Match(line);
+            var match = CommandRegex.Match(trimmed);
             if (!match.Success)
-            {
-                // Check if this looks like a command but has invalid syntax
-                var potentialMatch = PotentialCommandRegex.Match(trimmed);
-                if (potentialMatch.Success)
-                {
-                    string potentialCommand = potentialMatch.Groups[1].Value;
-                    throw new ScriptCompilationException(
-                        $"Line {lineNumber}: Invalid command syntax '{trimmed}'. " +
-                        $"Did you mean '{potentialCommand}()'? Commands must use the format: CommandName(param1, param2, ...)");
-                }
                 continue;
-            }
 
             string commandName = match.Groups[1].Value;
-            string paramsStr = match.Groups[2].Value;
+            string paramsStr = match.Groups[2].Success ? match.Groups[2].Value : "";
 
             // Look up command in database
             var commandInfo = ScriptDatabase.GetCommandInfo(commandName);
@@ -154,43 +138,18 @@ public static class ScriptCompiler
     }
 
     /// <summary>
-    /// Splits parameter string by commas, handling nested parentheses
+    /// Splits parameter string by spaces (e.g., "1500" or "0x800C 0" or "EQUAL Function#1")
     /// </summary>
     private static List<string> SplitParameters(string paramsStr)
     {
-        var result = new List<string>();
-        var current = new StringBuilder();
-        int depth = 0;
+        if (string.IsNullOrWhiteSpace(paramsStr))
+            return new List<string>();
 
-        foreach (char c in paramsStr)
-        {
-            if (c == '(' || c == '[' || c == '{')
-            {
-                depth++;
-                current.Append(c);
-            }
-            else if (c == ')' || c == ']' || c == '}')
-            {
-                depth--;
-                current.Append(c);
-            }
-            else if (c == ',' && depth == 0)
-            {
-                result.Add(current.ToString());
-                current.Clear();
-            }
-            else
-            {
-                current.Append(c);
-            }
-        }
-
-        if (current.Length > 0)
-        {
-            result.Add(current.ToString());
-        }
-
-        return result;
+        // Split by whitespace (space, tab, etc.)
+        return paramsStr.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(p => p.Trim())
+            .Where(p => !string.IsNullOrEmpty(p))
+            .ToList();
     }
 
     /// <summary>
@@ -212,50 +171,56 @@ public static class ScriptCompiler
             {
                 case ScriptParameterType.Byte:
                     {
-                        byte byteValue = ParseNumericWithValidation<byte>(value, commandName, paramIndex, "Byte", 0, 255);
+                        byte byteValue = ParseNumericOrConstant<byte>(value, commandName, paramIndex, "Byte", 0, 255);
                         return new[] { byteValue };
                     }
 
                 case ScriptParameterType.Word:
                     {
-                        ushort wordValue = ParseNumericWithValidation<ushort>(value, commandName, paramIndex, "Word", 0, 65535);
+                        ushort wordValue = ParseNumericOrConstant<ushort>(value, commandName, paramIndex, "Word", 0, 65535);
                         return BitConverter.GetBytes(wordValue);
                     }
 
                 case ScriptParameterType.DWord:
                     {
-                        uint dwordValue = ParseNumericWithValidation<uint>(value, commandName, paramIndex, "DWord", 0, uint.MaxValue);
+                        uint dwordValue = ParseNumericOrConstant<uint>(value, commandName, paramIndex, "DWord", 0, uint.MaxValue);
                         return BitConverter.GetBytes(dwordValue);
                     }
 
                 case ScriptParameterType.Offset:
                     {
+                        // Handle special references like "Function#1", "Script#2", etc.
+                        if (TryParseReference(value, out uint refValue))
+                        {
+                            return BitConverter.GetBytes(refValue);
+                        }
+
                         // Remove @ prefix if present
                         if (value.StartsWith("@"))
                             value = value.Substring(1);
 
-                        uint offsetValue = ParseNumericWithValidation<uint>(value, commandName, paramIndex, "Offset", 0, uint.MaxValue);
+                        uint offsetValue = ParseNumericOrConstant<uint>(value, commandName, paramIndex, "Offset", 0, uint.MaxValue);
                         return BitConverter.GetBytes(offsetValue);
                     }
 
                 case ScriptParameterType.Variable:
                     {
-                        // For variable parameters, try to parse as hex bytes
-                        // Format: "0x01 0x02 0x03" or "01 02 03"
-                        var hexValues = value.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        // For variable parameters, try to parse as single value first
+                        // Then fall back to multiple values
+                        var parts = value.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                         var bytes = new List<byte>();
 
-                        foreach (var hex in hexValues)
+                        foreach (var part in parts)
                         {
                             try
                             {
-                                bytes.Add(ParseNumeric<byte>(hex));
+                                bytes.Add(ParseNumeric<byte>(part));
                             }
                             catch
                             {
                                 throw new ScriptCompilationException(
                                     $"Invalid variable parameter #{paramIndex + 1} for command '{commandName}': " +
-                                    $"Cannot parse '{hex}' as byte value. Expected format: '0x01 0x02' or '1 2'");
+                                    $"Cannot parse '{part}' as byte value. Expected format: '0x01 0x02' or '1 2'");
                             }
                         }
 
@@ -279,41 +244,118 @@ public static class ScriptCompiler
     }
 
     /// <summary>
-    /// Parses numeric value with validation
+    /// Tries to parse references like "Function#1", "Script#2", etc.
+    /// Returns the numeric ID with a special offset marker
     /// </summary>
-    private static T ParseNumericWithValidation<T>(string value, string commandName, int paramIndex, string typeName, long min, long max) where T : struct
+    private static bool TryParseReference(string value, out uint result)
     {
-        try
-        {
-            T result = ParseNumeric<T>(value);
+        result = 0;
 
+        // Match patterns like "Function#1", "Script#2", "Action#3"
+        var match = System.Text.RegularExpressions.Regex.Match(value, @"^(Function|Script|Action)#(\d+)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        if (match.Success)
+        {
+            string type = match.Groups[1].Value;
+            uint id = uint.Parse(match.Groups[2].Value);
+
+            // Encode as special marker (we'll use high bits to indicate type)
+            // For now, just use the ID directly - the compiler will fix offsets later
+            result = id;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Parses numeric value or named constant with validation
+    /// </summary>
+    private static T ParseNumericOrConstant<T>(string value, string commandName, int paramIndex, string typeName, long min, long max) where T : struct
+    {
+        // First try to parse as numeric
+        if (TryParseNumeric<T>(value, out T numericResult))
+        {
             // Validate range
-            long numValue = Convert.ToInt64(result);
-            if (numValue < min || numValue > max)
+            long numValue = Convert.ToInt64(numericResult);
+            if (numValue >= min && numValue <= max)
             {
-                throw new ScriptCompilationException(
-                    $"Parameter #{paramIndex + 1} for command '{commandName}' is out of range. " +
-                    $"Value '{value}' ({numValue}) must be between {min} and {max} for type {typeName}");
+                return numericResult;
             }
 
-            return result;
-        }
-        catch (ScriptCompilationException)
-        {
-            throw; // Re-throw our custom exceptions
-        }
-        catch (FormatException)
-        {
             throw new ScriptCompilationException(
-                $"Invalid {typeName} parameter #{paramIndex + 1} for command '{commandName}': " +
-                $"Cannot parse '{value}' as a number. Expected format: decimal (e.g., '10') or hex (e.g., '0x0A')");
+                $"Parameter #{paramIndex + 1} for command '{commandName}' is out of range. " +
+                $"Value '{value}' ({numValue}) must be between {min} and {max} for type {typeName}");
         }
-        catch (OverflowException)
+
+        // Try to parse as constant
+        if (TryParseConstant(value, out long constValue))
         {
+            if (constValue >= min && constValue <= max)
+            {
+                return (T)Convert.ChangeType(constValue, typeof(T));
+            }
+
             throw new ScriptCompilationException(
-                $"Parameter #{paramIndex + 1} for command '{commandName}' is too large for type {typeName}. " +
-                $"Value '{value}' must be between {min} and {max}");
+                $"Constant '{value}' (value: {constValue}) is out of range for type {typeName} (range: {min}-{max})");
         }
+
+        throw new ScriptCompilationException(
+            $"Invalid {typeName} parameter #{paramIndex + 1} for command '{commandName}': " +
+            $"Cannot parse '{value}' as a number or known constant. Expected format: decimal (e.g., '10') or hex (e.g., '0x0A')");
+    }
+
+    /// <summary>
+    /// Tries to parse a value as numeric (decimal or hex)
+    /// </summary>
+    private static bool TryParseNumeric<T>(string value, out T result) where T : struct
+    {
+        result = default;
+        value = value.Trim();
+
+        try
+        {
+            result = ParseNumeric<T>(value);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Tries to parse a named constant (like "EQUAL", "TRUE", etc.)
+    /// </summary>
+    private static bool TryParseConstant(string value, out long result)
+    {
+        result = 0;
+
+        // Define common constants used in scripts
+        var constants = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase)
+        {
+            // Comparison operators
+            { "EQUAL", 0 },
+            { "NOTEQUAL", 1 },
+            { "LESS", 2 },
+            { "LESSOREQUAL", 3 },
+            { "GREATER", 4 },
+            { "GREATEROREQUAL", 5 },
+
+            // Boolean values
+            { "FALSE", 0 },
+            { "TRUE", 1 },
+
+            // Common values
+            { "NULL", 0 },
+            { "NONE", 0 }
+        };
+
+        if (constants.TryGetValue(value, out result))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>
