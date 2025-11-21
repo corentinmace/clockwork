@@ -986,31 +986,63 @@ public class NsbtxEditorView : IView
                 ImGui.Separator();
                 ImGui.Spacing();
 
-                ImGui.TextColored(new Vector4(0.7f, 1.0f, 0.7f, 1.0f), "Seasonal Map Tilesets");
+                // Format toggle
+                bool useTwoByteFormat = currentArea.UsesTwoByteSpringFormat;
+                if (ImGui.Checkbox("Use 2-byte Spring Tileset format", ref useTwoByteFormat))
+                {
+                    currentArea.UsesTwoByteSpringFormat = useTwoByteFormat;
+                    // When switching to 2-byte format, preserve spring value
+                    // When switching back, keep the low byte
+                }
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("Enable to use a 2-byte spring tileset ID instead of 4 seasonal bytes");
+
                 ImGui.Spacing();
 
-                int spring = currentArea.MapTilesetSpring;
-                if (ImGui.InputInt("Spring Tileset ID", ref spring))
+                // Display format info
+                if (currentArea.UsesTwoByteSpringFormat)
                 {
-                    currentArea.MapTilesetSpring = (byte)Math.Clamp(spring, 0, 255);
-                }
+                    ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.4f, 1.0f), "Map Tileset (2-byte format)");
+                    ImGui.Spacing();
 
-                int summer = currentArea.MapTilesetSummer;
-                if (ImGui.InputInt("Summer Tileset ID", ref summer))
-                {
-                    currentArea.MapTilesetSummer = (byte)Math.Clamp(summer, 0, 255);
+                    int springTileset = currentArea.SpringTileset;
+                    if (ImGui.InputInt("Spring Tileset ID (2 bytes)", ref springTileset))
+                    {
+                        currentArea.SpringTileset = (ushort)Math.Clamp(springTileset, 0, ushort.MaxValue);
+                    }
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip("This area uses a 2-byte spring tileset ID (winter marker = 255)");
                 }
-
-                int fall = currentArea.MapTilesetFall;
-                if (ImGui.InputInt("Fall Tileset ID", ref fall))
+                else
                 {
-                    currentArea.MapTilesetFall = (byte)Math.Clamp(fall, 0, 255);
-                }
+                    ImGui.TextColored(new Vector4(0.7f, 1.0f, 0.7f, 1.0f), "Seasonal Map Tilesets");
+                    ImGui.Spacing();
 
-                int winter = currentArea.MapTilesetWinter;
-                if (ImGui.InputInt("Winter Tileset ID", ref winter))
-                {
-                    currentArea.MapTilesetWinter = (byte)Math.Clamp(winter, 0, 255);
+                    int spring = currentArea.MapTilesetSpring;
+                    if (ImGui.InputInt("Spring Tileset ID", ref spring))
+                    {
+                        currentArea.SpringTileset = (byte)Math.Clamp(spring, 0, 255);
+                    }
+
+                    int summer = currentArea.MapTilesetSummer;
+                    if (ImGui.InputInt("Summer Tileset ID", ref summer))
+                    {
+                        currentArea.MapTilesetSummer = (byte)Math.Clamp(summer, 0, 255);
+                    }
+
+                    int fall = currentArea.MapTilesetFall;
+                    if (ImGui.InputInt("Fall Tileset ID", ref fall))
+                    {
+                        currentArea.MapTilesetFall = (byte)Math.Clamp(fall, 0, 255);
+                    }
+
+                    int winter = currentArea.MapTilesetWinter;
+                    if (ImGui.InputInt("Winter Tileset ID", ref winter))
+                    {
+                        currentArea.MapTilesetWinter = (byte)Math.Clamp(winter, 0, 254);
+                    }
+                    if (ImGui.IsItemHovered())
+                        ImGui.SetTooltip("Max 254 (255 is reserved for 2-byte format marker)");
                 }
 
                 ImGui.Spacing();

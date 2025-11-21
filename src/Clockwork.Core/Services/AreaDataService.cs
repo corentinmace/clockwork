@@ -99,7 +99,11 @@ public class AreaDataService : IApplicationService
             CurrentAreaData = AreaData.ReadFromBytes(data);
             CurrentAreaDataId = areaDataId;
 
-            AppLogger.Info($"[AreaDataService] Loaded area data {areaDataId} (Buildings: {CurrentAreaData.BuildingsTileset}, Seasonal: {CurrentAreaData.MapTilesetSpring}/{CurrentAreaData.MapTilesetSummer}/{CurrentAreaData.MapTilesetFall}/{CurrentAreaData.MapTilesetWinter}, Light: {CurrentAreaData.LightType})");
+            string seasonalInfo = CurrentAreaData.UsesTwoByteSpringFormat
+                ? $"Spring(2-byte): {CurrentAreaData.SpringTileset}"
+                : $"Seasonal: {CurrentAreaData.MapTilesetSpring}/{CurrentAreaData.MapTilesetSummer}/{CurrentAreaData.MapTilesetFall}/{CurrentAreaData.MapTilesetWinter}";
+
+            AppLogger.Info($"[AreaDataService] Loaded area data {areaDataId} (Buildings: {CurrentAreaData.BuildingsTileset}, {seasonalInfo}, Light: {CurrentAreaData.LightType})");
             return CurrentAreaData;
         }
         catch (Exception ex)
