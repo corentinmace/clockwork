@@ -439,6 +439,40 @@ public class NsbtxFile
     }
 
     /// <summary>
+    /// Gets the raw texture data for a specific texture index
+    /// </summary>
+    public byte[]? GetTextureData(int textureIndex)
+    {
+        if (textureIndex < 0 || textureIndex >= Textures.Count)
+            return null;
+
+        var texInfo = Textures[textureIndex];
+        int absoluteOffset = Tex0Offset + (int)TextureDataOffset + texInfo.TextureOffset;
+
+        // Calculate texture data size based on format and dimensions
+        int width = texInfo.ActualWidth;
+        int height = texInfo.ActualHeight;
+        int dataSize = texInfo.Format switch
+        {
+            1 => width * height, // A3I5 - 1 byte per pixel
+            2 => (width * height) / 4, // 4-color - 2 bits per pixel
+            3 => (width * height) / 2, // 16-color - 4 bits per pixel
+            4 => width * height, // 256-color - 1 byte per pixel
+            5 => (width * height) / 2, // 4x4 compressed - 4 bits per texel
+            6 => width * height, // A5I3 - 1 byte per pixel
+            7 => width * height * 2, // Direct color - 2 bytes per pixel
+            _ => 0
+        };
+
+        if (dataSize == 0 || absoluteOffset + dataSize > RawData.Length)
+            return null;
+
+        byte[] textureData = new byte[dataSize];
+        Array.Copy(RawData, absoluteOffset, textureData, 0, dataSize);
+        return textureData;
+    }
+
+    /// <summary>
     /// Saves the NSBTX file to disk
     /// </summary>
     public void SaveToFile(string path)
