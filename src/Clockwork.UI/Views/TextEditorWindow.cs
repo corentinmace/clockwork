@@ -7,6 +7,8 @@ using ImGuiNET;
 using Clockwork.Core;
 using Clockwork.Core.Services;
 using Clockwork.Core.Formats.NDS.MessageEnc;
+using Clockwork.Core.Logging;
+using Clockwork.UI.Icons;
 
 namespace Clockwork.UI.Views
 {
@@ -36,6 +38,9 @@ namespace Clockwork.UI.Views
         private string searchQuery = "";
         private List<int> searchResults = new List<int>();
         private int currentSearchIndex = -1;
+
+        // Focus management
+        private bool _shouldFocus = false;
 
         public bool IsVisible { get; set; } = false;
 
@@ -84,6 +89,65 @@ namespace Clockwork.UI.Views
             catch (Exception ex)
             {
                 SetStatusMessage($"Error listing text archives: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Open the text editor and load a specific text archive by its ID
+        /// </summary>
+        /// <param name="archiveID">The text archive ID to load (e.g., 433 for location names)</param>
+        public void OpenWithArchiveID(int archiveID)
+        {
+            AppLogger.Info($"[TextEditor] OpenWithArchiveID called with ID: {archiveID}");
+
+            // Always open the window and request focus
+            IsVisible = true;
+            _shouldFocus = true;
+
+            // Refresh archive list if not already loaded
+            if (availableTextArchives.Count == 0)
+            {
+                AppLogger.Debug("[TextEditor] Refreshing text archives list...");
+                RefreshTextArchivesList();
+            }
+
+            // Check if ROM is loaded
+            if (_romService?.CurrentRom?.GameDirectories == null)
+            {
+                AppLogger.Warn("[TextEditor] No ROM loaded or GameDirectories is null");
+                SetStatusMessage("No ROM loaded. Please load a ROM first.");
+                return;
+            }
+
+            if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out string? textArchivesPath))
+            {
+                AppLogger.Warn("[TextEditor] expandedTextArchives directory not found in GameDirectories");
+                SetStatusMessage("Text archives directory not found in ROM.");
+                return;
+            }
+
+            // Build the file path for this archive ID (format: 0000.txt, 0001.txt, etc.)
+            string fileName = $"{archiveID:D4}.txt";
+            string filePath = Path.Combine(textArchivesPath, fileName);
+
+            AppLogger.Debug($"[TextEditor] Looking for file: {filePath}");
+            AppLogger.Debug($"[TextEditor] File exists: {File.Exists(filePath)}");
+
+            if (File.Exists(filePath))
+            {
+                // Find the index in the available archives list
+                selectedArchiveIndex = availableTextArchives.FindIndex(f =>
+                    Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
+
+                AppLogger.Debug($"[TextEditor] Selected archive index: {selectedArchiveIndex}");
+
+                // Load the file
+                LoadFile(filePath);
+            }
+            else
+            {
+                AppLogger.Error($"[TextEditor] Text archive {archiveID} not found at: {filePath}");
+                SetStatusMessage($"Text archive {archiveID} not found at: {filePath}");
             }
         }
 
@@ -204,8 +268,15 @@ namespace Clockwork.UI.Views
             }
 
             bool isVisible = IsVisible;
-            if (ImGui.Begin("Text Editor", ref isVisible))
+            if (ImGui.Begin($"{FontAwesomeIcons.Font} Text Editor", ref isVisible))
             {
+                // Apply focus if requested
+                if (_shouldFocus)
+                {
+                    ImGui.SetWindowFocus();
+                    _shouldFocus = false;
+                }
+
                 DrawToolbar();
                 ImGui.Separator();
 
@@ -254,7 +325,7 @@ namespace Clockwork.UI.Views
             {
                 ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.0f, 1.0f), "No text archives found");
                 ImGui.SameLine();
-                if (ImGui.Button("Refresh"))
+                if (ImGui.Button($"{FontAwesomeIcons.Refresh}  Refresh"))
                 {
                     RefreshTextArchivesList();
                 }
@@ -267,13 +338,13 @@ namespace Clockwork.UI.Views
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Save") && !string.IsNullOrEmpty(currentFilePath))
+            if (ImGui.Button($"{FontAwesomeIcons.Save}  Save") && !string.IsNullOrEmpty(currentFilePath))
             {
                 SaveFile();
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Add Message"))
+            if (ImGui.Button($"{FontAwesomeIcons.Plus}  Add Message"))
             {
                 messages.Add("");
                 selectedMessageIndex = messages.Count - 1;
@@ -290,7 +361,7 @@ namespace Clockwork.UI.Views
             }
 
             ImGui.SameLine();
-            if (ImGui.Button("Search"))
+            if (ImGui.Button($"{FontAwesomeIcons.Search}  Search"))
             {
                 PerformSearch();
             }
@@ -423,7 +494,7 @@ namespace Clockwork.UI.Views
                     }
 
                     ImGui.Separator();
-                    ImGui.TextWrapped("Special characters: \\n (newline), \\r (return), \\f (form feed), [PK] (Pokémon), [MN] (Move name)");
+                    ImGui.TextWrapped("Special characters: \\n (newline), \\r (return), \\f (form feed)");
 
                     if (ImGui.Button("Apply Changes"))
                     {

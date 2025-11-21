@@ -2,8 +2,9 @@ using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.Core.Settings;
-using Silk.NET.Maths;
-using Silk.NET.Windowing;
+using Veldrid;
+using Veldrid.Sdl2;
+using Veldrid.StartupUtilities;
 
 namespace Clockwork.UI;
 
@@ -32,6 +33,10 @@ internal class Program
             var headerService = new HeaderService();
             var mapService = new MapService();
             var colorTableService = new ColorTableService();
+            var levelScriptService = new LevelScriptService(appContext);
+            var wildEncounterService = new WildEncounterService(appContext);
+            var textArchiveService = new TextArchiveService(appContext);
+            var romPackingService = new RomPackingService(appContext);
 
             appContext.AddService(romService);
             appContext.AddService(new NdsToolService());
@@ -39,6 +44,10 @@ internal class Program
             appContext.AddService(headerService);
             appContext.AddService(mapService);
             appContext.AddService(colorTableService);
+            appContext.AddService(levelScriptService);
+            appContext.AddService(wildEncounterService);
+            appContext.AddService(textArchiveService);
+            appContext.AddService(romPackingService);
 
             // Initialize context
             AppLogger.Debug("Initializing application context");
@@ -49,26 +58,42 @@ internal class Program
             headerService.SetRomService(romService);
             mapService.SetRomService(romService);
 
-            // Silk.NET window configuration
-            AppLogger.Debug("Configuring Silk.NET window");
+            // Veldrid window configuration
+            AppLogger.Debug("Configuring Veldrid window");
             var settings = SettingsManager.Settings;
 
-            var options = WindowOptions.Default;
-            options.Size = new Vector2D<int>(settings.WindowWidth, settings.WindowHeight);
-            options.Title = "Clockwork - Pokémon ROM Editor";
-            options.VSync = true;
-            options.ShouldSwapAutomatically = true;
-            options.WindowState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal;
-            options.API = new GraphicsAPI(
-                ContextAPI.OpenGL,
-                new APIVersion(3, 3));
+            var windowCreateInfo = new WindowCreateInfo
+            {
+                X = 100,
+                Y = 100,
+                WindowWidth = settings.WindowWidth,
+                WindowHeight = settings.WindowHeight,
+                WindowTitle = "Clockwork - Pokémon: Lost in Time Editor",
+                WindowInitialState = settings.WindowMaximized ? WindowState.Maximized : WindowState.Normal
+            };
 
-            // Create and run window (Frontend)
-            AppLogger.Info("Creating main window");
-            var window = Window.Create(options);
+            // Create Veldrid window and graphics device
+            AppLogger.Info("Creating Veldrid window and graphics device");
+            VeldridStartup.CreateWindowAndGraphicsDevice(
+                windowCreateInfo,
+                new GraphicsDeviceOptions
+                {
+                    PreferStandardClipSpaceYDirection = true,
+                    PreferDepthRangeZeroToOne = true,
+                    SyncToVerticalBlank = true
+                },
+                GraphicsBackend.OpenGL,
+                out Sdl2Window window,
+                out GraphicsDevice graphicsDevice);
 
-            var mainWindow = new MainWindow(appContext, window);
+            // Create and run main window
+            var mainWindow = new MainWindow(appContext, window, graphicsDevice);
             mainWindow.Run();
+
+            // Cleanup
+            graphicsDevice.WaitForIdle();
+            graphicsDevice.Dispose();
+            window.Close();
 
             // Save settings on exit
             SettingsManager.Save();

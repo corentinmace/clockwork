@@ -231,6 +231,13 @@ public static class ThemeManager
             style.FramePadding = theme.FramePadding;
             style.ItemSpacing = theme.ItemSpacing;
 
+            // Note: Font changes require application restart to take effect
+            // Font loading must be done during ImGui initialization
+            if (_currentTheme == null || _currentTheme.FontName != theme.FontName || _currentTheme.FontSize != theme.FontSize)
+            {
+                AppLogger.Info($"Font settings changed to {theme.FontName} ({theme.FontSize}px). Restart application to apply font changes.");
+            }
+
             // Apply all colors
             var colors = style.Colors;
             colors[(int)ImGuiCol.WindowBg] = theme.WindowBg;

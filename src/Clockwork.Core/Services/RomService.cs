@@ -12,7 +12,6 @@ public class RomService : IApplicationService
     private RomInfo? _currentRom;
     private readonly Dictionary<string, GameVersion> _gameCodeMapping = new()
     {
-        // Platinum Italian
         { "PLIT", GameVersion.Platinum }
     };
 
@@ -178,7 +177,7 @@ public class RomService : IApplicationService
     {
         return version switch
         {
-            GameVersion.Platinum => "Pokémon Platinum",
+            GameVersion.Platinum => "Pokémon Lost in Time",
             _ => "Unknown"
         };
     }

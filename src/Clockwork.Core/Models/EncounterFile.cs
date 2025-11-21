@@ -1,0 +1,343 @@
+using System;
+using System.IO;
+
+namespace Clockwork.Core.Models;
+
+/// <summary>
+/// Represents a wild Pokemon encounter file for Diamond/Pearl/Platinum.
+/// File size: 0x1A8 (424) bytes.
+/// Contains encounter rates and Pokemon data for various encounter methods.
+/// </summary>
+public class EncounterFile
+{
+    // Walking encounters (grass/cave)
+    public byte WalkingRate { get; set; }
+    public byte[] WalkingLevels { get; set; } = new byte[12];
+    public uint[] WalkingPokemon { get; set; } = new uint[12];
+
+    // Special time/method encounters
+    public ushort[] SwarmPokemon { get; set; } = new ushort[2];
+    public uint[] DayPokemon { get; set; } = new uint[2];
+    public uint[] NightPokemon { get; set; } = new uint[2];
+    public uint[] RadarPokemon { get; set; } = new uint[4];
+
+    // Regional forms (Shellos/Gastrodon) - only 2 forms
+    public uint[] RegionalForms { get; set; } = new uint[2];
+    public uint UnknownTable { get; set; }
+
+    // Dual slot encounters (GBA game inserted)
+    public uint[] RubyPokemon { get; set; } = new uint[2];
+    public uint[] SapphirePokemon { get; set; } = new uint[2];
+    public uint[] EmeraldPokemon { get; set; } = new uint[2];
+    public uint[] FireRedPokemon { get; set; } = new uint[2];
+    public uint[] LeafGreenPokemon { get; set; } = new uint[2];
+
+    // Water encounters
+    public byte SurfRate { get; set; }
+    public byte[] SurfMaxLevels { get; set; } = new byte[5];
+    public byte[] SurfMinLevels { get; set; } = new byte[5];
+    public ushort[] SurfPokemon { get; set; } = new ushort[5];
+
+    // Fishing encounters
+    public byte OldRodRate { get; set; }
+    public byte[] OldRodMaxLevels { get; set; } = new byte[5];
+    public byte[] OldRodMinLevels { get; set; } = new byte[5];
+    public ushort[] OldRodPokemon { get; set; } = new ushort[5];
+
+    public byte GoodRodRate { get; set; }
+    public byte[] GoodRodMaxLevels { get; set; } = new byte[5];
+    public byte[] GoodRodMinLevels { get; set; } = new byte[5];
+    public ushort[] GoodRodPokemon { get; set; } = new ushort[5];
+
+    public byte SuperRodRate { get; set; }
+    public byte[] SuperRodMaxLevels { get; set; } = new byte[5];
+    public byte[] SuperRodMinLevels { get; set; } = new byte[5];
+    public ushort[] SuperRodPokemon { get; set; } = new ushort[5];
+
+    /// <summary>
+    /// Read encounter file from bytes.
+    /// </summary>
+    public static EncounterFile ReadFromBytes(byte[] data)
+    {
+        var encounter = new EncounterFile();
+
+        using var ms = new MemoryStream(data);
+        using var reader = new BinaryReader(ms);
+
+        try
+        {
+            // Walking encounters
+            encounter.WalkingRate = (byte)reader.ReadUInt32();
+
+            for (int i = 0; i < 12; i++)
+            {
+                encounter.WalkingLevels[i] = (byte)reader.ReadUInt32();
+                encounter.WalkingPokemon[i] = reader.ReadUInt32();
+            }
+
+            // Special encounters
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.SwarmPokemon[i] = (ushort)reader.ReadUInt32();
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.DayPokemon[i] = reader.ReadUInt32();
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.NightPokemon[i] = reader.ReadUInt32();
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                encounter.RadarPokemon[i] = reader.ReadUInt32();
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.RegionalForms[i] = reader.ReadUInt32();
+            }
+
+            // Skip 3 unused regional form slots (3 * 4 = 12 bytes)
+            reader.BaseStream.Position += 12;
+
+            // Read UnknownTable with -1 offset (file stores 1-based values, we use 0-based)
+            uint fileValue = reader.ReadUInt32();
+            encounter.UnknownTable = fileValue > 0 ? fileValue - 1 : 0;
+
+            // Dual slot encounters
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.RubyPokemon[i] = reader.ReadUInt32();
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.SapphirePokemon[i] = reader.ReadUInt32();
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.EmeraldPokemon[i] = reader.ReadUInt32();
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.FireRedPokemon[i] = reader.ReadUInt32();
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                encounter.LeafGreenPokemon[i] = reader.ReadUInt32();
+            }
+
+            // Water encounters (Surf)
+            // Position should be at 0xCC
+            encounter.SurfRate = (byte)reader.ReadUInt32();
+
+            for (int i = 0; i < 5; i++)
+            {
+                encounter.SurfMaxLevels[i] = reader.ReadByte();
+                encounter.SurfMinLevels[i] = reader.ReadByte();
+                reader.BaseStream.Position += 0x2; // Skip 2 bytes padding
+                encounter.SurfPokemon[i] = (ushort)reader.ReadUInt32();
+            }
+
+            // Skip 44 bytes padding between Surf and Old Rod
+            reader.BaseStream.Position += 44;
+
+            // Old Rod encounters
+            // Position should be at 0x124
+            encounter.OldRodRate = (byte)reader.ReadUInt32();
+
+            for (int i = 0; i < 5; i++)
+            {
+                encounter.OldRodMaxLevels[i] = reader.ReadByte();
+                encounter.OldRodMinLevels[i] = reader.ReadByte();
+                reader.BaseStream.Position += 0x2; // Skip 2 bytes padding
+                encounter.OldRodPokemon[i] = (ushort)reader.ReadUInt32();
+            }
+
+            // Good Rod encounters (directly after Old Rod, no padding)
+            encounter.GoodRodRate = (byte)reader.ReadUInt32();
+
+            for (int i = 0; i < 5; i++)
+            {
+                encounter.GoodRodMaxLevels[i] = reader.ReadByte();
+                encounter.GoodRodMinLevels[i] = reader.ReadByte();
+                reader.BaseStream.Position += 0x2; // Skip 2 bytes padding
+                encounter.GoodRodPokemon[i] = (ushort)reader.ReadUInt32();
+            }
+
+            // Super Rod encounters (directly after Good Rod, no padding)
+            encounter.SuperRodRate = (byte)reader.ReadUInt32();
+
+            for (int i = 0; i < 5; i++)
+            {
+                encounter.SuperRodMaxLevels[i] = reader.ReadByte();
+                encounter.SuperRodMinLevels[i] = reader.ReadByte();
+                reader.BaseStream.Position += 0x2; // Skip 2 bytes padding
+                encounter.SuperRodPokemon[i] = (ushort)reader.ReadUInt32();
+            }
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidDataException($"Failed to read encounter file: {ex.Message}", ex);
+        }
+
+        return encounter;
+    }
+
+    /// <summary>
+    /// Convert encounter file to bytes for saving.
+    /// </summary>
+    public byte[] ToBytes()
+    {
+        using var ms = new MemoryStream();
+        using var writer = new BinaryWriter(ms);
+
+        try
+        {
+            // Walking encounters
+            writer.Write((uint)WalkingRate);
+
+            for (int i = 0; i < 12; i++)
+            {
+                writer.Write((uint)WalkingLevels[i]);
+                writer.Write(WalkingPokemon[i]);
+            }
+
+            // Special encounters
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write((uint)SwarmPokemon[i]);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write(DayPokemon[i]);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write(NightPokemon[i]);
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                writer.Write(RadarPokemon[i]);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write(RegionalForms[i]);
+            }
+
+            // Write 3 unused regional form slots (3 * 4 = 12 bytes of zeros)
+            for (int i = 0; i < 3; i++)
+            {
+                writer.Write((uint)0);
+            }
+
+            // Write UnknownTable with +1 offset (we use 0-based, file stores 1-based)
+            writer.Write(UnknownTable + 1);
+
+            // Dual slot encounters
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write(RubyPokemon[i]);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write(SapphirePokemon[i]);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write(EmeraldPokemon[i]);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write(FireRedPokemon[i]);
+            }
+
+            for (int i = 0; i < 2; i++)
+            {
+                writer.Write(LeafGreenPokemon[i]);
+            }
+
+            // Water encounters (Surf)
+            writer.Write((uint)SurfRate);
+
+            for (int i = 0; i < 5; i++)
+            {
+                writer.Write(SurfMaxLevels[i]);
+                writer.Write(SurfMinLevels[i]);
+                writer.Write((ushort)0); // Write 2 bytes padding
+                writer.Write((uint)SurfPokemon[i]);
+            }
+
+            // Write 44 bytes padding between Surf and Old Rod
+            for (int i = 0; i < 44; i++)
+            {
+                writer.Write((byte)0);
+            }
+
+            // Old Rod encounters
+            writer.Write((uint)OldRodRate);
+
+            for (int i = 0; i < 5; i++)
+            {
+                writer.Write(OldRodMaxLevels[i]);
+                writer.Write(OldRodMinLevels[i]);
+                writer.Write((ushort)0); // Write 2 bytes padding
+                writer.Write((uint)OldRodPokemon[i]);
+            }
+
+            // Good Rod encounters (directly after Old Rod, no padding)
+            writer.Write((uint)GoodRodRate);
+
+            for (int i = 0; i < 5; i++)
+            {
+                writer.Write(GoodRodMaxLevels[i]);
+                writer.Write(GoodRodMinLevels[i]);
+                writer.Write((ushort)0); // Write 2 bytes padding
+                writer.Write((uint)GoodRodPokemon[i]);
+            }
+
+            // Super Rod encounters (directly after Good Rod, no padding)
+            writer.Write((uint)SuperRodRate);
+
+            for (int i = 0; i < 5; i++)
+            {
+                writer.Write(SuperRodMaxLevels[i]);
+                writer.Write(SuperRodMinLevels[i]);
+                writer.Write((ushort)0); // Write 2 bytes padding
+                writer.Write((uint)SuperRodPokemon[i]);
+            }
+
+            // Ensure file is exactly the expected size (padding at end if needed)
+            long currentSize = ms.Position;
+            const long expectedSize = 0x1A8; // 424 bytes
+            if (currentSize < expectedSize)
+            {
+                // Write padding zeros to reach expected size
+                for (long i = currentSize; i < expectedSize; i++)
+                {
+                    writer.Write((byte)0);
+                }
+            }
+
+            return ms.ToArray();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidDataException($"Failed to write encounter file: {ex.Message}", ex);
+        }
+    }
+}

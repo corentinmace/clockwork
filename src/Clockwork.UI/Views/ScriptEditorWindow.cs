@@ -4,6 +4,8 @@ using Clockwork.Core.Services;
 using ImGuiNET;
 using System.Numerics;
 using System.IO;
+using Clockwork.Core.Logging;
+using Clockwork.UI.Icons;
 
 namespace Clockwork.UI.Views;
 
@@ -48,6 +50,9 @@ public class ScriptEditorWindow : IView
     private Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
     private float _statusTimer = 0f;
 
+    // Focus management
+    private bool _shouldFocus = false;
+
     // Autocomplete colors
     private static readonly Vector4 CommandColor = new(0.4f, 0.8f, 1.0f, 1.0f);      // Light blue for commands
 
@@ -76,8 +81,15 @@ public class ScriptEditorWindow : IView
 
         bool isVisible = IsVisible;
         ImGui.SetNextWindowSize(new Vector2(1200, 800), ImGuiCond.FirstUseEver);
-        if (ImGui.Begin("Script Editor", ref isVisible, ImGuiWindowFlags.MenuBar))
+        if (ImGui.Begin($"{FontAwesomeIcons.Code} Script Editor", ref isVisible, ImGuiWindowFlags.MenuBar))
         {
+            // Apply focus if requested
+            if (_shouldFocus)
+            {
+                ImGui.SetWindowFocus();
+                _shouldFocus = false;
+            }
+
             DrawMenuBar();
             DrawToolbar();
 
@@ -300,6 +312,51 @@ public class ScriptEditorWindow : IView
         {
             SetStatus($"Error listing script files: {ex.Message}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
         }
+    }
+
+    /// <summary>
+    /// Open the script editor and load a specific script file by its ID
+    /// </summary>
+    /// <param name="scriptID">The script file ID to load</param>
+    public void OpenWithScriptID(int scriptID)
+    {
+        AppLogger.Info($"[ScriptEditor] OpenWithScriptID called with ID: {scriptID}");
+
+        // Always open the window and request focus
+        IsVisible = true;
+        _shouldFocus = true;
+
+        // Check if ROM is loaded
+        if (_romService?.CurrentRom?.IsLoaded != true)
+        {
+            AppLogger.Warn("[ScriptEditor] No ROM loaded");
+            SetStatus("No ROM loaded. Please load a ROM first.", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+            return;
+        }
+
+        // Refresh script files list if not already loaded
+        if (_scriptCount == 0)
+        {
+            AppLogger.Debug("[ScriptEditor] Refreshing script files list...");
+            RefreshScriptFilesList();
+        }
+
+        AppLogger.Debug($"[ScriptEditor] Script count: {_scriptCount}");
+
+        // Update the selected index to match the script ID (if valid)
+        if (scriptID >= 0 && scriptID < _scriptCount)
+        {
+            _selectedFileIndex = scriptID;
+            AppLogger.Debug($"[ScriptEditor] Selected file index set to: {_selectedFileIndex}");
+        }
+        else
+        {
+            AppLogger.Warn($"[ScriptEditor] Script ID {scriptID} is out of range (0-{_scriptCount - 1})");
+        }
+
+        // Load the script file
+        AppLogger.Debug($"[ScriptEditor] Loading script file {scriptID}...");
+        LoadScriptFile(scriptID);
     }
 
     private void LoadScriptFile(int fileID)

@@ -3,6 +3,7 @@ using Clockwork.Core;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
 using Clockwork.Core.Logging;
+using Clockwork.UI.Icons;
 using System.Numerics;
 
 namespace Clockwork.UI.Views;
@@ -48,6 +49,14 @@ public class MatrixEditorView : IView
     // Cache for matrix names to avoid reading all files multiple times
     private Dictionary<int, string> _matrixNamesCache = new();
 
+    // Confirmation dialog state
+    private bool _showDeleteConfirmation = false;
+    private int _matrixToDelete = -1;
+
+    // Focus management
+    private bool _shouldFocus = false;
+    private bool _shouldScrollToSelection = false;
+
     public void Initialize(ApplicationContext appContext)
     {
         _appContext = appContext;
@@ -70,7 +79,7 @@ public class MatrixEditorView : IView
         ImGui.SetNextWindowSize(new Vector2(900, 700), ImGuiCond.FirstUseEver);
 
         bool isVisible = IsVisible;
-        if (!ImGui.Begin("Matrix Editor", ref isVisible))
+        if (!ImGui.Begin($"{FontAwesomeIcons.Grid} Matrix Editor", ref isVisible))
         {
             IsVisible = isVisible;
             ImGui.End();
@@ -78,14 +87,31 @@ public class MatrixEditorView : IView
         }
         IsVisible = isVisible;
 
+        // Apply focus if requested
+        if (_shouldFocus)
+        {
+            ImGui.SetWindowFocus();
+            _shouldFocus = false;
+        }
+
         // Check if ROM is loaded
         if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
         {
-            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Veuillez d'abord charger une ROM.");
+            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "You need to load a rom first.");
             ImGui.End();
             return;
         }
 
+        DrawEditorContent();
+
+        // Delete confirmation dialog
+        DrawDeleteConfirmationDialog();
+
+        ImGui.End();
+    }
+
+    private void DrawEditorContent()
+    {
         DrawToolbar();
         ImGui.Separator();
 
@@ -93,14 +119,12 @@ public class MatrixEditorView : IView
         ImGui.Separator();
 
         DrawMatrixTabs();
-
-        ImGui.End();
     }
 
     private void DrawToolbar()
     {
         // Matrix selection
-        ImGui.Text("Matrice:");
+        ImGui.Text("Matrix:");
         ImGui.SameLine();
         ImGui.SetNextItemWidth(300);
 
@@ -129,29 +153,41 @@ public class MatrixEditorView : IView
         }
         else
         {
-            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "Aucune matrice disponible");
+            ImGui.TextColored(new Vector4(1, 0.5f, 0, 1), "No matrix found");
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Charger"))
+        if (ImGui.Button($"{FontAwesomeIcons.Refresh}  Load"))
         {
             LoadMatrix(_selectedMatrixIndex);
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Sauvegarder"))
+        if (ImGui.Button($"{FontAwesomeIcons.Save}  Save"))
         {
             SaveMatrix();
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Importer..."))
+        if (ImGui.Button($"{FontAwesomeIcons.Plus}  Add"))
+        {
+            AddNewMatrix();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button($"{FontAwesomeIcons.Minus}  Delete"))
+        {
+            RequestDeleteMatrix(_selectedMatrixIndex);
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button($"{FontAwesomeIcons.Upload}  Import..."))
         {
             ImportMatrix();
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Exporter..."))
+        if (ImGui.Button($"{FontAwesomeIcons.Upload}  Export..."))
         {
             ExportMatrix();
         }
@@ -161,13 +197,13 @@ public class MatrixEditorView : IView
         ImGui.Separator();
         ImGui.SameLine();
 
-        if (ImGui.Button("Charger ColorTable..."))
+        if (ImGui.Button($"{FontAwesomeIcons.Palette}  Load ColorTable..."))
         {
             LoadColorTable();
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Réinitialiser Couleurs"))
+        if (ImGui.Button($"{FontAwesomeIcons.Eraser}  Reset Colors"))
         {
             ResetColorTable();
         }
@@ -189,12 +225,12 @@ public class MatrixEditorView : IView
             if (matrixCount > 0)
             {
                 ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1),
-                    $"Aucune matrice chargée ({matrixCount} matrice(s) disponible(s) - cliquez sur 'Charger')");
+                    $"No matrix loaded. ({matrixCount} matrices available - Click on Load");
             }
             else
             {
                 ImGui.TextColored(new Vector4(1, 0.5f, 0, 1),
-                    "Aucune matrice trouvée dans le dossier unpacked/matrices/");
+                    "No matrix found in unpacked/matrices/");
             }
             return;
         }
@@ -204,11 +240,11 @@ public class MatrixEditorView : IView
         if (string.IsNullOrEmpty(displayName))
             displayName = $"Matrix {_selectedMatrixIndex}";
 
-        ImGui.Text($"Nom: {displayName}");
+        ImGui.Text($"Name: {displayName}");
         ImGui.SameLine(300);
 
         // Width control
-        ImGui.Text("Largeur:");
+        ImGui.Text("Width:");
         ImGui.SameLine();
         ImGui.SetNextItemWidth(100);
         if (ImGui.InputInt("##width", ref _matrixWidth, 1, 10))
@@ -219,7 +255,7 @@ public class MatrixEditorView : IView
 
         ImGui.SameLine();
         // Height control
-        ImGui.Text("Hauteur:");
+        ImGui.Text("Height:");
         ImGui.SameLine();
         ImGui.SetNextItemWidth(100);
         if (ImGui.InputInt("##height", ref _matrixHeight, 1, 10))
@@ -236,23 +272,25 @@ public class MatrixEditorView : IView
 
         if (ImGui.BeginTabBar("MatrixTabs"))
         {
-            if (ImGui.BeginTabItem("Headers"))
-            {
-                DrawHeadersGrid();
-                ImGui.EndTabItem();
-            }
-
-            if (ImGui.BeginTabItem("Altitudes"))
-            {
-                DrawHeightsGrid();
-                ImGui.EndTabItem();
-            }
-
             if (ImGui.BeginTabItem("MapFiles"))
             {
                 DrawMapFilesGrid();
                 ImGui.EndTabItem();
             }
+            
+            if (ImGui.BeginTabItem("Map Headers"))
+            {
+                DrawHeadersGrid();
+                ImGui.EndTabItem();
+            }
+
+            if (ImGui.BeginTabItem("Map Heights"))
+            {
+                DrawHeightsGrid();
+                ImGui.EndTabItem();
+            }
+
+
 
             ImGui.EndTabBar();
         }
@@ -262,12 +300,9 @@ public class MatrixEditorView : IView
     {
         if (_currentMatrix == null) return;
 
-        ImGui.Text("Headers (IDs des headers de carte)");
-        ImGui.Separator();
-
         // Arrays use [row, col] indexing
         // Color based on corresponding MapFiles cell
-        DrawGrid(_currentMatrix.Headers, "Headers",
+        DrawGrid(_currentMatrix.Headers, "MapHeaders",
             (row, col) => _currentMatrix.Headers[row, col],
             (row, col, value) => _currentMatrix.Headers[row, col] = value,
             isUShort: true,
@@ -278,12 +313,9 @@ public class MatrixEditorView : IView
     {
         if (_currentMatrix == null) return;
 
-        ImGui.Text("Altitudes (Altitudes des cartes)");
-        ImGui.Separator();
-
         // Arrays use [row, col] indexing
         // Color based on corresponding MapFiles cell
-        DrawGrid(_currentMatrix.Altitudes, "Altitudes",
+        DrawGrid(_currentMatrix.Altitudes, "MapHeights",
             (row, col) => _currentMatrix.Altitudes[row, col],
             (row, col, value) => _currentMatrix.Altitudes[row, col] = (byte)value,
             isUShort: false,
@@ -293,10 +325,6 @@ public class MatrixEditorView : IView
     private void DrawMapFilesGrid()
     {
         if (_currentMatrix == null) return;
-
-        ImGui.Text("MapFiles (IDs des fichiers de carte)");
-        ImGui.Separator();
-
         // Arrays use [row, col] indexing
         DrawGrid(_currentMatrix.Maps, "MapFiles",
             (row, col) => _currentMatrix.Maps[row, col],
@@ -464,7 +492,7 @@ public class MatrixEditorView : IView
         }
 
         ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1),
-            "[i] Cliquez sur une cellule pour éditer, double-cliquez sur MapFiles pour ouvrir la carte");
+            "[i] Click on a cell to edit it. Double click to open the related map");
     }
 
     private Vector4 GetCellColor(ushort value, int row, int col, bool useMapColoring)
@@ -508,6 +536,23 @@ public class MatrixEditorView : IView
             // Valid map - light green
             return new Vector4(0.2f, 0.5f, 0.2f, 0.3f);
         }
+    }
+
+    /// <summary>
+    /// Open the matrix editor and load a specific matrix by its ID
+    /// </summary>
+    /// <param name="matrixID">The matrix ID to load</param>
+    public void OpenWithMatrixID(int matrixID)
+    {
+        // Always open the window and request focus
+        IsVisible = true;
+        _shouldFocus = true;
+
+        // Load the matrix
+        LoadMatrix(matrixID);
+
+        // Scroll to the loaded matrix in the list
+        _shouldScrollToSelection = true;
     }
 
     private void LoadMatrix(int matrixIndex)
@@ -601,7 +646,7 @@ public class MatrixEditorView : IView
             return;
 
         string? filePath = _dialogService.OpenFileDialog(
-            "Importer une matrice",
+            "Import a matrix",
             "Binary files (*.bin)|*.bin|All files (*.*)|*.*"
         );
 
@@ -635,7 +680,7 @@ public class MatrixEditorView : IView
             return;
 
         string? filePath = _dialogService.SaveFileDialog(
-            "Exporter la matrice",
+            "Export the matrix",
             "Binary files (*.bin)|*.bin|All files (*.*)|*.*",
             $"matrix_{_selectedMatrixIndex}.bin"
         );
@@ -771,7 +816,7 @@ public class MatrixEditorView : IView
             return;
 
         string? filePath = _dialogService.OpenFileDialog(
-            "Charger une ColorTable",
+            "Load a ColorTable",
             "ColorTable files (*.ctb)|*.ctb|All files (*.*)|*.*"
         );
 
@@ -882,6 +927,197 @@ public class MatrixEditorView : IView
         catch
         {
             return string.Empty;
+        }
+    }
+
+    private void AddNewMatrix()
+    {
+        if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+        {
+            AppLogger.Warn("[MatrixEditor] Cannot add matrix: ROM not loaded");
+            return;
+        }
+
+        try
+        {
+            // Find next available matrix index
+            string matricesPath = Path.Combine(
+                _romService.CurrentRom.RomPath,
+                "unpacked",
+                "matrices"
+            );
+
+            if (!Directory.Exists(matricesPath))
+            {
+                Directory.CreateDirectory(matricesPath);
+            }
+
+            // Get existing matrix indices
+            var existingMatrices = Directory.GetFiles(matricesPath)
+                .Where(f => string.IsNullOrEmpty(Path.GetExtension(f)))
+                .Where(f => int.TryParse(Path.GetFileName(f), out _))
+                .Select(f => int.Parse(Path.GetFileName(f)))
+                .OrderBy(i => i)
+                .ToList();
+
+            // Find first gap or use next number
+            int newIndex = 0;
+            for (int i = 0; i < existingMatrices.Count; i++)
+            {
+                if (existingMatrices[i] != i)
+                {
+                    newIndex = i;
+                    break;
+                }
+                newIndex = i + 1;
+            }
+
+            // Create new empty matrix (1x1)
+            var newMatrix = new GameMatrix
+            {
+                Width = 1,
+                Height = 1,
+                Name = $"newMatrix {newIndex}",
+                Maps = new ushort[1, 1],
+                Headers = new ushort[1, 1],
+                Altitudes = new byte[1, 1]
+            };
+
+            // Initialize with empty cells
+            newMatrix.Maps[0, 0] = GameMatrix.EMPTY_CELL;
+            newMatrix.Headers[0, 0] = 0;
+            newMatrix.Altitudes[0, 0] = 0;
+
+            // Save to file
+            string matrixFileName = newIndex.ToString("D4");
+            string matrixPath = Path.Combine(matricesPath, matrixFileName);
+
+            byte[] data = newMatrix.ToBytes();
+            File.WriteAllBytes(matrixPath, data);
+
+            AppLogger.Info($"[MatrixEditor] Created new matrix at index {newIndex}");
+
+            // Refresh cache and UI
+            _cachedMatrixCount = -1;
+            _matrixNamesCache.Clear();
+            _hasLoggedMatrixPath = false;
+
+            // Load the new matrix
+            _selectedMatrixIndex = newIndex;
+            LoadMatrix(newIndex);
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"[MatrixEditor] Error creating new matrix: {ex.Message}");
+            AppLogger.Error($"[MatrixEditor] Stack trace: {ex.StackTrace}");
+        }
+    }
+
+    private void RequestDeleteMatrix(int matrixIndex)
+    {
+        _matrixToDelete = matrixIndex;
+        _showDeleteConfirmation = true;
+    }
+
+    private void DrawDeleteConfirmationDialog()
+    {
+        if (!_showDeleteConfirmation)
+            return;
+
+        ImGui.OpenPopup("Delete the matrix");
+
+        var viewport = ImGui.GetMainViewport();
+        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(400, 150));
+
+        if (ImGui.BeginPopupModal("Delete the matrix", ref _showDeleteConfirmation, ImGuiWindowFlags.NoResize))
+        {
+            ImGui.TextWrapped($"Are you sure you want to delete matrix {_matrixToDelete} ?");
+            ImGui.TextWrapped("This action is irreversible.");
+
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            float buttonWidth = 120;
+            float spacing = ImGui.GetStyle().ItemSpacing.X;
+            float totalWidth = buttonWidth * 2 + spacing;
+            float offsetX = (ImGui.GetContentRegionAvail().X - totalWidth) * 0.5f;
+
+            ImGui.SetCursorPosX(ImGui.GetCursorPosX() + offsetX);
+
+            if (ImGui.Button("Confirm", new Vector2(buttonWidth, 0)))
+            {
+                DeleteMatrix(_matrixToDelete);
+                _showDeleteConfirmation = false;
+                ImGui.CloseCurrentPopup();
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Cancel", new Vector2(buttonWidth, 0)))
+            {
+                _showDeleteConfirmation = false;
+                ImGui.CloseCurrentPopup();
+            }
+
+            ImGui.EndPopup();
+        }
+    }
+
+    private void DeleteMatrix(int matrixIndex)
+    {
+        if (_romService == null || _romService.CurrentRom == null || !_romService.CurrentRom.IsLoaded)
+        {
+            AppLogger.Warn("[MatrixEditor] Cannot delete matrix: ROM not loaded");
+            return;
+        }
+
+        try
+        {
+            string matrixFileName = matrixIndex.ToString("D4");
+            string matrixPath = Path.Combine(
+                _romService.CurrentRom.RomPath,
+                "unpacked",
+                "matrices",
+                matrixFileName
+            );
+
+            if (!File.Exists(matrixPath))
+            {
+                AppLogger.Warn($"[MatrixEditor] Matrix file not found for deletion: {matrixPath}");
+                return;
+            }
+
+            // Delete the file
+            File.Delete(matrixPath);
+            AppLogger.Info($"[MatrixEditor] Deleted matrix {matrixIndex}");
+
+            // Remove from cache
+            _matrixNamesCache.Remove(matrixIndex);
+
+            // Refresh cache
+            _cachedMatrixCount = -1;
+            _hasLoggedMatrixPath = false;
+
+            // If we deleted the currently loaded matrix, clear it
+            if (_selectedMatrixIndex == matrixIndex)
+            {
+                _currentMatrix = null;
+                _matrixLoaded = false;
+
+                // Try to load another matrix if available
+                int matrixCount = GetMatrixCount();
+                if (matrixCount > 0)
+                {
+                    _selectedMatrixIndex = 0;
+                    LoadMatrix(0);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"[MatrixEditor] Error deleting matrix {matrixIndex}: {ex.Message}");
+            AppLogger.Error($"[MatrixEditor] Stack trace: {ex.StackTrace}");
         }
     }
 }

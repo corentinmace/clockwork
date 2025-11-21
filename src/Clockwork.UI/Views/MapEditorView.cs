@@ -1,6 +1,7 @@
 using Clockwork.Core;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
+using Clockwork.UI.Icons;
 using ImGuiNET;
 
 namespace Clockwork.UI.Views;
@@ -51,7 +52,7 @@ public class MapEditorView : IView
 
         bool isVisible = IsVisible;
         ImGui.SetNextWindowSize(new System.Numerics.Vector2(1000, 700), ImGuiCond.FirstUseEver);
-        ImGui.Begin("Map Editor", ref isVisible);
+        ImGui.Begin($"{FontAwesomeIcons.Map} Map Editor", ref isVisible);
 
         // Check if ROM is loaded
         bool romLoaded = _romService?.CurrentRom != null;

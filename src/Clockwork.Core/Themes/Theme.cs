@@ -11,6 +11,10 @@ public class Theme
     public string Author { get; set; } = "Unknown";
     public bool IsReadOnly { get; set; } = false; // Predefined themes are read-only
 
+    // Font properties
+    public string FontName { get; set; } = "Default";
+    public float FontSize { get; set; } = 16.0f;
+
     // Style properties
     public float WindowRounding { get; set; } = 6.0f;
     public float FrameRounding { get; set; } = 3.0f;

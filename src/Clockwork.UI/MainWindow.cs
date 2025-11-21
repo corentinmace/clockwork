@@ -2,23 +2,27 @@ using Clockwork.Core;
 using Clockwork.Core.Logging;
 using Clockwork.Core.Services;
 using Clockwork.Core.Settings;
+using Clockwork.UI.Graphics;
+using Clockwork.UI.Icons;
 using Clockwork.UI.Themes;
 using Clockwork.UI.Views;
 using ImGuiNET;
-using Silk.NET.OpenGL;
-using Silk.NET.Windowing;
+using Veldrid;
+using Veldrid.Sdl2;
 
 namespace Clockwork.UI;
 
 /// <summary>
-/// Main application window using Silk.NET and ImGui.
+/// Main application window using Veldrid and ImGui.
 /// </summary>
 public class MainWindow
 {
-    private readonly IWindow _window;
-    private GL? _gl;
-    private ImGuiController? _imguiController;
+    private readonly Sdl2Window _window;
+    private readonly GraphicsDevice _graphicsDevice;
+    private ImGuiRenderer? _imguiRenderer;
+    private TextureManager? _textureManager;
     private ApplicationContext _appContext;
+    private CommandList? _commandList;
 
     // Views
     private readonly AboutView _aboutView;
@@ -27,24 +31,34 @@ public class MainWindow
     private readonly MapEditorView _mapEditorView;
     private readonly TextEditorWindow _textEditorWindow;
     private readonly ScriptEditorWindow _scriptEditorWindow;
+    private readonly LevelScriptEditorView _levelScriptEditorView;
     private readonly LogViewerWindow _logViewerWindow;
     private readonly SettingsWindow _settingsWindow;
     private readonly ThemeEditorView _themeEditorView;
     private readonly MatrixEditorView _matrixEditorView;
+    private readonly WildEditorView _wildEditorView;
+
+    // Tools
+    private readonly AddressHelperWindow _addressHelperWindow;
+    private readonly ScrcmdTableHelperWindow _scrcmdTableHelperWindow;
 
     // Sidebar state and metrics
     private bool _isSidebarCollapsed = false;
     private bool _showMetricsWindow = false;
+
+    // Status bar
+    private const float STATUS_BAR_HEIGHT = 30.0f;
 
     // ROM Save state
     private bool _isShowingSaveRomDialog = false;
     private string _saveRomLog = "";
     private bool _isSavingRom = false;
 
-    public MainWindow(ApplicationContext appContext, IWindow window)
+    public MainWindow(ApplicationContext appContext, Sdl2Window window, GraphicsDevice graphicsDevice)
     {
         _appContext = appContext;
         _window = window;
+        _graphicsDevice = graphicsDevice;
 
         // Initialize views
         _aboutView = new AboutView(_appContext);
@@ -53,38 +67,83 @@ public class MainWindow
         _mapEditorView = new MapEditorView(_appContext);
         _textEditorWindow = new TextEditorWindow(_appContext);
         _scriptEditorWindow = new ScriptEditorWindow(_appContext);
+        _levelScriptEditorView = new LevelScriptEditorView(_appContext);
         _logViewerWindow = new LogViewerWindow(_appContext);
         _settingsWindow = new SettingsWindow(_appContext);
         _themeEditorView = new ThemeEditorView();
         _matrixEditorView = new MatrixEditorView();
+        _wildEditorView = new WildEditorView(_appContext);
+
+        // Initialize tools
+        _addressHelperWindow = new AddressHelperWindow(_appContext);
+        _scrcmdTableHelperWindow = new ScrcmdTableHelperWindow(_appContext);
 
         // Connect theme editor to settings window
         _settingsWindow.SetThemeEditorView(_themeEditorView);
 
+        // Connect editors to header editor for navigation
+        _headerEditorView.SetEditorReferences(_textEditorWindow, _scriptEditorWindow, _levelScriptEditorView, _matrixEditorView, _wildEditorView);
+
+        // Connect tools (ScrcmdTableHelper -> AddressHelper integration)
+        _scrcmdTableHelperWindow.SetAddressHelperWindow(_addressHelperWindow);
+
         // Set up event handlers
-        _window.Load += OnLoad;
-        _window.Render += OnRender;
-        _window.Update += OnUpdate;
-        _window.Resize += OnResize;
-        _window.Closing += OnClosing;
+        _window.Resized += OnResize;
+        _window.Closed += OnClosing;
+
+        // Initialize
+        OnLoad();
     }
 
     public void Run()
     {
-        _window.Run();
+        AppLogger.Debug("Starting main render loop");
+
+        // Main render loop
+        while (_window.Exists)
+        {
+            var snapshot = _window.PumpEvents();
+            if (!_window.Exists)
+                break;
+
+            double deltaTime = 1.0 / 60.0; // Approximate deltatime (can be improved with actual timing)
+
+            // Update (pass snapshot to avoid calling PumpEvents twice)
+            OnUpdate(deltaTime, snapshot);
+
+            // Render
+            OnRender(deltaTime);
+        }
     }
 
     private void OnLoad()
     {
-        AppLogger.Info("MainWindow OnLoad: Initializing OpenGL and ImGui");
+        AppLogger.Info("MainWindow OnLoad: Initializing Veldrid and ImGui");
 
-        // Get OpenGL context
-        _gl = _window.CreateOpenGL();
-        AppLogger.Debug("OpenGL context created");
+        // Create command list for submitting rendering commands
+        _commandList = _graphicsDevice.ResourceFactory.CreateCommandList();
+        AppLogger.Debug("CommandList created");
 
-        // Initialize ImGui controller
-        _imguiController = new ImGuiController(_gl, _window, _window.Size.X, _window.Size.Y);
-        AppLogger.Debug("ImGuiController created");
+        // Initialize ImGui renderer
+        _imguiRenderer = new ImGuiRenderer(
+            _graphicsDevice,
+            _graphicsDevice.MainSwapchain.Framebuffer.OutputDescription,
+            (int)_window.Width,
+            (int)_window.Height);
+        AppLogger.Debug("ImGuiRenderer created");
+
+        // Initialize texture manager
+        _textureManager = new TextureManager(_graphicsDevice, _imguiRenderer);
+        AppLogger.Debug("TextureManager created");
+
+        // Set texture manager for header editor tooltips
+        _headerEditorView.SetTextureManager(_textureManager);
+        AppLogger.Debug("TextureManager set for HeaderEditorView");
+
+        // Configure ImGui
+        var io = ImGui.GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;
+        io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
 
         // Initialize theme manager
         ThemeManager.Initialize();
@@ -95,6 +154,12 @@ public class MainWindow
 
         // Initialize matrix editor view
         _matrixEditorView.Initialize(_appContext);
+
+        // Initialize wild editor view
+        _wildEditorView.Initialize(_appContext);
+
+        // Initialize level script editor view
+        _levelScriptEditorView.Initialize(_appContext);
 
         // Apply theme from settings
         string themeName = SettingsManager.Settings.CurrentThemeName;
@@ -109,15 +174,19 @@ public class MainWindow
         Console.WriteLine("Application started successfully!");
     }
 
-    private void OnResize(Silk.NET.Maths.Vector2D<int> size)
+    private void OnResize()
     {
-        _gl?.Viewport(0, 0, (uint)size.X, (uint)size.Y);
-        _imguiController?.WindowResized(size.X, size.Y);
+        _graphicsDevice.MainSwapchain.Resize((uint)_window.Width, (uint)_window.Height);
+        _imguiRenderer?.WindowResized((int)_window.Width, (int)_window.Height);
     }
 
-    private void OnUpdate(double deltaTime)
+    private void OnUpdate(double deltaTime, InputSnapshot snapshot)
     {
-        _imguiController?.Update((float)deltaTime);
+        // Update ImGui input (for main window)
+        _imguiRenderer?.Update((float)deltaTime, snapshot);
+
+        // Update animated textures (GIFs)
+        _textureManager?.Update(deltaTime);
 
         // Update application context
         _appContext.Update(deltaTime);
@@ -131,17 +200,28 @@ public class MainWindow
 
     private void OnRender(double deltaTime)
     {
+        if (_commandList == null || _imguiRenderer == null)
+            return;
+
+        // Begin command recording
+        _commandList.Begin();
+
         // Clear screen
-        _gl?.ClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        _gl?.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        _commandList.SetFramebuffer(_graphicsDevice.MainSwapchain.Framebuffer);
+        _commandList.ClearColorTarget(0, new RgbaFloat(0.1f, 0.1f, 0.1f, 1.0f));
 
         // Draw ImGui UI
         DrawUI();
 
         // Render ImGui
-        _imguiController?.Render();
+        _imguiRenderer.Render(_graphicsDevice, _commandList);
 
-        // Note: Buffer swap is automatic (ShouldSwapAutomatically = true)
+        // End command recording and submit
+        _commandList.End();
+        _graphicsDevice.SubmitCommands(_commandList);
+
+        // Swap buffers
+        _graphicsDevice.SwapBuffers(_graphicsDevice.MainSwapchain);
     }
 
     private void OnClosing()
@@ -149,20 +229,24 @@ public class MainWindow
         AppLogger.Info("MainWindow OnClosing: Cleaning up resources");
 
         // Save window state to settings
-        SettingsManager.Settings.WindowWidth = _window.Size.X;
-        SettingsManager.Settings.WindowHeight = _window.Size.Y;
+        SettingsManager.Settings.WindowWidth = (int)_window.Width;
+        SettingsManager.Settings.WindowHeight = (int)_window.Height;
         SettingsManager.Settings.WindowMaximized = _window.WindowState == WindowState.Maximized;
         SettingsManager.Settings.SidebarCollapsed = _isSidebarCollapsed;
         SettingsManager.Save();
-        AppLogger.Debug($"Window state saved: {_window.Size.X}x{_window.Size.Y}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
+        AppLogger.Debug($"Window state saved: {_window.Width}x{_window.Height}, Maximized: {_window.WindowState == WindowState.Maximized}, Sidebar: {_isSidebarCollapsed}");
 
-        _imguiController?.Dispose();
-        AppLogger.Debug("ImGuiController disposed");
+        _textureManager?.Dispose();
+        AppLogger.Debug("TextureManager disposed");
+
+        _imguiRenderer?.Dispose();
+        AppLogger.Debug("ImGuiRenderer disposed");
+
+        _commandList?.Dispose();
+        AppLogger.Debug("CommandList disposed");
 
         _appContext.Shutdown();
         AppLogger.Info("MainWindow closed");
-
-        _gl?.Dispose();
     }
 
     private void HandleKeyboardShortcuts()
@@ -194,8 +278,8 @@ public class MainWindow
         var viewport = ImGui.GetMainViewport();
         float menuBarHeight = ImGui.GetFrameHeight();
 
-        // DockSpace size (offset to leave space for sidebar)
-        var dockspaceSize = new System.Numerics.Vector2(viewport.WorkSize.X - sidebarWidth, viewport.WorkSize.Y);
+        // DockSpace size (offset to leave space for sidebar and status bar)
+        var dockspaceSize = new System.Numerics.Vector2(viewport.WorkSize.X - sidebarWidth, viewport.WorkSize.Y - STATUS_BAR_HEIGHT);
 
         ImGui.SetNextWindowPos(viewport.WorkPos);
         ImGui.SetNextWindowSize(viewport.WorkSize);
@@ -220,7 +304,7 @@ public class MainWindow
             ImGui.SetCursorPos(new System.Numerics.Vector2(sidebarWidth, menuBarHeight));
 
             uint dockspaceId = ImGui.GetID("MainDockSpace");
-            ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(dockspaceSize.X, dockspaceSize.Y - menuBarHeight), ImGuiDockNodeFlags.None);
+            ImGui.DockSpace(dockspaceId, new System.Numerics.Vector2(dockspaceSize.X, dockspaceSize.Y - menuBarHeight - STATUS_BAR_HEIGHT), ImGuiDockNodeFlags.None);
         }
 
         // Main menu
@@ -275,6 +359,19 @@ public class MainWindow
                 ImGui.EndMenu();
             }
 
+            if (ImGui.BeginMenu("Tools"))
+            {
+                if (ImGui.MenuItem("Address Helper"))
+                {
+                    _addressHelperWindow.IsVisible = true;
+                }
+                if (ImGui.MenuItem("Script Command Table"))
+                {
+                    _scrcmdTableHelperWindow.IsVisible = true;
+                }
+                ImGui.EndMenu();
+            }
+
             if (ImGui.BeginMenu("View"))
             {
                 if (ImGui.MenuItem("Log Viewer"))
@@ -318,17 +415,26 @@ public class MainWindow
         // Sidebar menu
         DrawSidebar();
 
+        // Status bar
+        DrawStatusBar();
+
         // Draw all views
         _aboutView.Draw();
         _romLoaderView.Draw();
         _headerEditorView.Draw();
         _mapEditorView.Draw();
         _matrixEditorView.Draw();
+        _wildEditorView.Draw();
         _textEditorWindow.Draw();
         _scriptEditorWindow.Draw();
+        _levelScriptEditorView.Draw();
         _logViewerWindow.Draw();
         _settingsWindow.Draw();
         _themeEditorView.Draw();
+
+        // Draw tools
+        _addressHelperWindow.Draw();
+        _scrcmdTableHelperWindow.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();
@@ -346,9 +452,9 @@ public class MainWindow
         var viewport = ImGui.GetMainViewport();
         float menuBarHeight = ImGui.GetFrameHeight();
 
-        // Position sidebar on the left, below menu
+        // Position sidebar on the left, below menu, above status bar
         ImGui.SetNextWindowPos(new System.Numerics.Vector2(viewport.WorkPos.X, viewport.WorkPos.Y + menuBarHeight));
-        ImGui.SetNextWindowSize(new System.Numerics.Vector2(sidebarWidth, viewport.WorkSize.Y - menuBarHeight));
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(sidebarWidth, viewport.WorkSize.Y - menuBarHeight - STATUS_BAR_HEIGHT));
 
         // Fixed window that cannot be moved or resized
         ImGuiWindowFlags sidebarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking;
@@ -356,13 +462,36 @@ public class MainWindow
         ImGui.Begin("Navigation", sidebarFlags);
 
         // Toggle collapse button
-        if (ImGui.Button(_isSidebarCollapsed ? "»" : "«", new System.Numerics.Vector2(-1, 30)))
+        if (ImGui.Button(_isSidebarCollapsed ? FontAwesomeIcons.ArrowRight : FontAwesomeIcons.ArrowLeft, new System.Numerics.Vector2(-1, 40)))
         {
             _isSidebarCollapsed = !_isSidebarCollapsed;
         }
 
-        if (!_isSidebarCollapsed)
+        if (_isSidebarCollapsed)
         {
+            // Collapsed mode: Show only icons as buttons
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            _headerEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.BookOpenReader, "Header Editor", _headerEditorView.IsVisible);
+            _mapEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Map, "Map Editor", _mapEditorView.IsVisible);
+            _matrixEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
+            _wildEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Paw, "Wild Editor", _wildEditorView.IsVisible);
+            _textEditorWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
+            _scriptEditorWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Code, "Script Editor", _scriptEditorWindow.IsVisible);
+            _levelScriptEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Database, "Level Script Editor", _levelScriptEditorView.IsVisible);
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            _addressHelperWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Calculator, "Address Helper", _addressHelperWindow.IsVisible);
+            _scrcmdTableHelperWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Terminal, "Script Cmd Helper", _scrcmdTableHelperWindow.IsVisible);
+        }
+        else
+        {
+            // Expanded mode: Show icons with labels
             ImGui.Spacing();
             ImGui.TextColored(new System.Numerics.Vector4(0.4f, 0.7f, 1.0f, 1.0f), "NAVIGATION");
             ImGui.Separator();
@@ -371,27 +500,161 @@ public class MainWindow
             // Editors section
             if (ImGui.CollapsingHeader("Editors", ImGuiTreeNodeFlags.DefaultOpen))
             {
-                if (ImGui.Selectable("  [H] Header Editor", _headerEditorView.IsVisible))
-                {
-                    _headerEditorView.IsVisible = !_headerEditorView.IsVisible;
-                }
-                if (ImGui.Selectable("  [M] Map Editor", _mapEditorView.IsVisible))
-                {
-                    _mapEditorView.IsVisible = !_mapEditorView.IsVisible;
-                }
-                if (ImGui.Selectable("  [G] Matrix Editor", _matrixEditorView.IsVisible))
-                {
-                    _matrixEditorView.IsVisible = !_matrixEditorView.IsVisible;
-                }
-                if (ImGui.Selectable("  [T] Text Editor", _textEditorWindow.IsVisible))
-                {
-                    _textEditorWindow.IsVisible = !_textEditorWindow.IsVisible;
-                }
-                if (ImGui.Selectable("  [S] Script Editor", _scriptEditorWindow.IsVisible))
-                {
-                    _scriptEditorWindow.IsVisible = !_scriptEditorWindow.IsVisible;
-                }
+                _headerEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.BookOpenReader, "Header Editor", _headerEditorView.IsVisible);
+                _mapEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Map, "Map Editor", _mapEditorView.IsVisible);
+                _matrixEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
+                _wildEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Paw, "Wild Editor", _wildEditorView.IsVisible);
+                _textEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
+                _scriptEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Code, "Script Editor", _scriptEditorWindow.IsVisible);
+                _levelScriptEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Database, "Level Script Editor", _levelScriptEditorView.IsVisible);
             }
+
+            ImGui.Spacing();
+
+            // Tools section
+            if (ImGui.CollapsingHeader("Tools"))
+            {
+                _addressHelperWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Calculator, "Address Helper", _addressHelperWindow.IsVisible);
+                _scrcmdTableHelperWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Terminal, "Script Cmd Helper", _scrcmdTableHelperWindow.IsVisible);
+            }
+        }
+
+        ImGui.End();
+    }
+
+    /// <summary>
+    /// Draw a sidebar item with icon and label (expanded mode)
+    /// </summary>
+    private bool DrawSidebarItem(string icon, string label, bool isVisible)
+    {
+        string displayText = $"{icon}  {label}";
+        if (ImGui.Selectable(displayText, isVisible))
+        {
+            return !isVisible;
+        }
+        return isVisible;
+    }
+
+    /// <summary>
+    /// Draw a sidebar icon button with tooltip (collapsed mode)
+    /// </summary>
+    private bool DrawSidebarIconButton(string icon, string tooltip, bool isVisible)
+    {
+        var buttonColor = isVisible
+            ? new System.Numerics.Vector4(0.3f, 0.6f, 0.9f, 1.0f)
+            : new System.Numerics.Vector4(0.2f, 0.2f, 0.2f, 0.5f);
+
+        ImGui.PushStyleColor(ImGuiCol.Button, buttonColor);
+
+        bool clicked = ImGui.Button(icon, new System.Numerics.Vector2(-1, 40));
+
+        ImGui.PopStyleColor();
+
+        // Show tooltip on hover
+        if (ImGui.IsItemHovered())
+        {
+            ImGui.BeginTooltip();
+            ImGui.Text(tooltip);
+            ImGui.EndTooltip();
+        }
+
+        if (clicked)
+        {
+            return !isVisible;
+        }
+        return isVisible;
+    }
+
+    /// <summary>
+    /// Draw the status bar at the bottom of the window
+    /// </summary>
+    private void DrawStatusBar()
+    {
+        var viewport = ImGui.GetMainViewport();
+        float menuBarHeight = ImGui.GetFrameHeight();
+
+        // Position status bar at the bottom of the window
+        float statusBarY = viewport.WorkPos.Y + viewport.WorkSize.Y - STATUS_BAR_HEIGHT;
+        ImGui.SetNextWindowPos(new System.Numerics.Vector2(viewport.WorkPos.X, statusBarY));
+        ImGui.SetNextWindowSize(new System.Numerics.Vector2(viewport.WorkSize.X, STATUS_BAR_HEIGHT));
+
+        // Fixed window that cannot be moved or resized
+        ImGuiWindowFlags statusBarFlags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
+                                          ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking | ImGuiWindowFlags.NoScrollbar;
+
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new System.Numerics.Vector2(8.0f, 4.0f));
+        ImGui.Begin("StatusBar", statusBarFlags);
+        ImGui.PopStyleVar();
+
+        // Get ROM service
+        var romService = _appContext.GetService<RomService>();
+        bool isRomLoaded = romService?.CurrentRom?.IsLoaded == true;
+
+        // ROM status
+        if (isRomLoaded)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.4f, 0.8f, 0.4f, 1.0f)); // Green
+            ImGui.Text($"{FontAwesomeIcons.CheckCircle} ROM Loaded");
+            ImGui.PopStyleColor();
+
+            // Show ROM info on hover
+            if (ImGui.IsItemHovered())
+            {
+                var romInfo = romService?.CurrentRom;
+                ImGui.BeginTooltip();
+                ImGui.Text($"Game: {romInfo?.GameCode}");
+                ImGui.Text($"Version: {romInfo?.Version}");
+                ImGui.Text($"Path: {romInfo?.RomPath}");
+                ImGui.EndTooltip();
+            }
+        }
+        else
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(0.8f, 0.4f, 0.4f, 1.0f)); // Red
+            ImGui.Text($"{FontAwesomeIcons.TimesCircle} No ROM Loaded");
+            ImGui.PopStyleColor();
+        }
+
+        // Error message (if any)
+        var lastError = AppLogger.GetLastError();
+        if (lastError != null)
+        {
+            ImGui.SameLine();
+            ImGui.Spacing();
+            ImGui.SameLine();
+            ImGui.Text("|");
+            ImGui.SameLine();
+
+            ImGui.PushStyleColor(ImGuiCol.Text, new System.Numerics.Vector4(1.0f, 0.3f, 0.3f, 1.0f)); // Bright red
+            string errorIcon = lastError.Level == LogLevel.Fatal ? FontAwesomeIcons.ExclamationTriangle : FontAwesomeIcons.TimesCircle;
+            ImGui.Text($"{errorIcon} {lastError.Message}");
+            ImGui.PopStyleColor();
+
+            // Show full error details on hover
+            if (ImGui.IsItemHovered())
+            {
+                ImGui.BeginTooltip();
+                ImGui.Text($"Time: {lastError.Timestamp:HH:mm:ss}");
+                ImGui.Text($"Level: {lastError.Level}");
+                ImGui.Separator();
+                ImGui.TextWrapped(lastError.Message);
+                ImGui.Spacing();
+                ImGui.TextDisabled("Click to open Log Viewer");
+                ImGui.EndTooltip();
+            }
+
+            // Click to open log viewer
+            if (ImGui.IsItemClicked())
+            {
+                _logViewerWindow.IsVisible = true;
+            }
+        }
+
+        // Log viewer button (right side)
+        ImGui.SameLine(viewport.WorkSize.X - 120);
+        if (ImGui.Button($"{FontAwesomeIcons.FileLines} Log Viewer"))
+        {
+            _logViewerWindow.IsVisible = !_logViewerWindow.IsVisible;
         }
 
         ImGui.End();
@@ -435,6 +698,25 @@ public class MainWindow
         Task.Run(() =>
         {
             var ndsToolService = _appContext.GetService<NdsToolService>();
+            var romPackingService = _appContext.GetService<RomPackingService>();
+
+            // Step 1: Pack all NARC archives
+            _saveRomLog += "=== Step 1: Packing NARC Archives ===\n";
+            bool narcPackingSuccess = romPackingService?.PackAllNarcs(
+                (msg) => { _saveRomLog += msg + "\n"; }
+            ) ?? false;
+
+            if (!narcPackingSuccess)
+            {
+                AppLogger.Error("NARC packing failed");
+                _saveRomLog += "\n=== NARC packing failed! ===\n";
+                _isSavingRom = false;
+                return;
+            }
+
+            _saveRomLog += "\n=== Step 2: Creating ROM File ===\n";
+
+            // Step 2: Pack ROM with ndstool
             bool success = ndsToolService?.PackRom(
                 romService.CurrentRom.RomPath,
                 savePath,
@@ -445,13 +727,13 @@ public class MainWindow
 
             if (success)
             {
-                AppLogger.Info("ROM packing completed successfully via UI");
+                AppLogger.Info("ROM saved successfully via UI");
                 _saveRomLog += "\n=== ROM saved successfully! ===\n";
             }
             else
             {
-                AppLogger.Error("ROM packing failed via UI");
-                _saveRomLog += "\n=== ROM save failed! ===\n";
+                AppLogger.Error("ROM creation failed via UI");
+                _saveRomLog += "\n=== ROM creation failed! ===\n";
             }
         });
     }
