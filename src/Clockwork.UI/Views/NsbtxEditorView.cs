@@ -21,6 +21,8 @@ public class NsbtxEditorView : IView
 
     // UI State
     private int _selectedNsbtxId = 0;
+    private int _selectedTextureIndex = -1;
+    private int _selectedPaletteIndex = -1;
     private string _statusMessage = string.Empty;
     private Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
     private float _statusTimer = 0.0f;
@@ -238,9 +240,21 @@ public class NsbtxEditorView : IView
             {
                 if (ImGui.BeginChild("TexturesList", new Vector2(0, 150), ImGuiChildFlags.None))
                 {
-                    foreach (var texName in currentNsbtx.TextureNames)
+                    for (int i = 0; i < currentNsbtx.TextureNames.Count; i++)
                     {
-                        ImGui.Text($"  {FontAwesomeIcons.Image} {texName}");
+                        string texName = currentNsbtx.TextureNames[i];
+                        bool isSelected = (_selectedTextureIndex == i);
+
+                        if (ImGui.Selectable($"{FontAwesomeIcons.Image} {texName}", isSelected))
+                        {
+                            _selectedTextureIndex = i;
+                            _selectedPaletteIndex = -1; // Deselect palette when selecting texture
+                        }
+
+                        if (isSelected)
+                        {
+                            ImGui.SetItemDefaultFocus();
+                        }
                     }
                     ImGui.EndChild();
                 }
@@ -263,9 +277,21 @@ public class NsbtxEditorView : IView
             {
                 if (ImGui.BeginChild("PalettesList", new Vector2(0, 150), ImGuiChildFlags.None))
                 {
-                    foreach (var palName in currentNsbtx.PaletteNames)
+                    for (int i = 0; i < currentNsbtx.PaletteNames.Count; i++)
                     {
-                        ImGui.Text($"  {FontAwesomeIcons.Palette} {palName}");
+                        string palName = currentNsbtx.PaletteNames[i];
+                        bool isSelected = (_selectedPaletteIndex == i);
+
+                        if (ImGui.Selectable($"{FontAwesomeIcons.Palette} {palName}", isSelected))
+                        {
+                            _selectedPaletteIndex = i;
+                            _selectedTextureIndex = -1; // Deselect texture when selecting palette
+                        }
+
+                        if (isSelected)
+                        {
+                            ImGui.SetItemDefaultFocus();
+                        }
                     }
                     ImGui.EndChild();
                 }
@@ -273,6 +299,46 @@ public class NsbtxEditorView : IView
             else
             {
                 ImGui.TextDisabled("  (no palette names found)");
+            }
+        }
+
+        ImGui.Spacing();
+
+        // Preview section
+        if (ImGui.CollapsingHeader("Preview", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            if (_selectedTextureIndex >= 0 && _selectedTextureIndex < currentNsbtx.TextureNames.Count)
+            {
+                ImGui.Text($"{FontAwesomeIcons.Image} Texture Preview");
+                ImGui.Separator();
+                ImGui.Spacing();
+
+                string texName = currentNsbtx.TextureNames[_selectedTextureIndex];
+                ImGui.Text($"Name: {texName}");
+                ImGui.Text($"Index: {_selectedTextureIndex}");
+
+                ImGui.Spacing();
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                    "Texture decoding and rendering not yet implemented.");
+            }
+            else if (_selectedPaletteIndex >= 0 && _selectedPaletteIndex < currentNsbtx.PaletteNames.Count)
+            {
+                ImGui.Text($"{FontAwesomeIcons.Palette} Palette Preview");
+                ImGui.Separator();
+                ImGui.Spacing();
+
+                string palName = currentNsbtx.PaletteNames[_selectedPaletteIndex];
+                ImGui.Text($"Name: {palName}");
+                ImGui.Text($"Index: {_selectedPaletteIndex}");
+
+                ImGui.Spacing();
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                    "Palette preview not yet implemented.");
+            }
+            else
+            {
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                    "Select a texture or palette to preview");
             }
         }
 
@@ -405,6 +471,9 @@ public class NsbtxEditorView : IView
         if (_nsbtxService?.LoadNsbtx(nsbtxId) != null)
         {
             SetStatus($"Loaded texture pack {nsbtxId:D4}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
+            // Reset selection when loading new NSBTX
+            _selectedTextureIndex = -1;
+            _selectedPaletteIndex = -1;
         }
         else
         {
