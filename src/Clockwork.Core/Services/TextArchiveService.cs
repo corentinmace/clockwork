@@ -54,7 +54,8 @@ public class TextArchiveService : IApplicationService
     }
 
     /// <summary>
-    /// Load a text archive by ID using the new TextConverter system
+    /// Load a text archive by ID using the new TextConverter system.
+    /// Automatically extracts from .bin to expanded/ .txt if needed.
     /// </summary>
     public TextArchive? LoadTextArchive(int archiveID)
     {
@@ -72,21 +73,58 @@ public class TextArchiveService : IApplicationService
 
         try
         {
-            string archivePath = GetTextArchivePath(archiveID);
+            string binPath = GetTextArchivePath(archiveID);
+            string txtPath = GetExpandedTextArchivePath(archiveID);
 
-            if (!File.Exists(archivePath))
+            if (!File.Exists(binPath))
             {
-                AppLogger.Warn($"Text archive {archiveID} not found at {archivePath}");
+                AppLogger.Warn($"Text archive {archiveID} not found at {binPath}");
                 return null;
             }
 
-            // Use the new TextArchive.ReadFromFile method
-            var archive = TextArchive.ReadFromFile(archivePath, archiveID);
+            // Ensure expanded directory exists
+            string expandedDir = Path.GetDirectoryName(txtPath)!;
+            if (!Directory.Exists(expandedDir))
+            {
+                Directory.CreateDirectory(expandedDir);
+            }
+
+            TextArchive? archive = null;
+
+            // Check if we should read from .txt or extract from .bin
+            bool shouldExtract = false;
+
+            if (!File.Exists(txtPath))
+            {
+                // .txt doesn't exist, need to extract
+                shouldExtract = true;
+                AppLogger.Debug($"Text archive {archiveID}: .txt not found, extracting from .bin");
+            }
+            else if (File.GetLastWriteTimeUtc(binPath) > File.GetLastWriteTimeUtc(txtPath))
+            {
+                // .bin is newer than .txt, need to re-extract
+                shouldExtract = true;
+                AppLogger.Debug($"Text archive {archiveID}: .bin is newer than .txt, re-extracting");
+            }
+
+            if (shouldExtract)
+            {
+                // Load from .bin and export to .txt
+                archive = TextArchive.ReadFromFile(binPath, archiveID);
+                archive.ExportToTextFile(txtPath);
+                AppLogger.Info($"Extracted text archive {archiveID} to expanded/ (.txt)");
+            }
+            else
+            {
+                // Load from .txt (it's up to date)
+                archive = TextArchive.ImportFromTextFile(txtPath, archiveID);
+                AppLogger.Debug($"Loaded text archive {archiveID} from expanded/ (.txt)");
+            }
 
             // Cache it
             _loadedArchives[archiveID] = archive;
 
-            AppLogger.Debug($"Loaded text archive {archiveID} with {archive.MessageCount} messages (key: 0x{archive.Key:X4})");
+            AppLogger.Debug($"Text archive {archiveID}: {archive.MessageCount} messages (key: 0x{archive.Key:X4})");
             return archive;
         }
         catch (Exception ex)
@@ -97,7 +135,8 @@ public class TextArchiveService : IApplicationService
     }
 
     /// <summary>
-    /// Save a text archive by ID
+    /// Save a text archive by ID.
+    /// Saves to both expanded/.txt and unpacked/bin to keep them synchronized.
     /// </summary>
     public bool SaveTextArchive(int archiveID, TextArchive archive)
     {
@@ -109,13 +148,32 @@ public class TextArchiveService : IApplicationService
 
         try
         {
-            string archivePath = GetTextArchivePath(archiveID);
-            archive.SaveToFile(archivePath);
+            string binPath = GetTextArchivePath(archiveID);
+            string txtPath = GetExpandedTextArchivePath(archiveID);
+
+            // Ensure directories exist
+            string expandedDir = Path.GetDirectoryName(txtPath)!;
+            if (!Directory.Exists(expandedDir))
+            {
+                Directory.CreateDirectory(expandedDir);
+            }
+
+            string unpackedDir = Path.GetDirectoryName(binPath)!;
+            if (!Directory.Exists(unpackedDir))
+            {
+                Directory.CreateDirectory(unpackedDir);
+            }
+
+            // Save to expanded/.txt (human-readable)
+            archive.ExportToTextFile(txtPath);
+
+            // Save to unpacked/bin (binary format for NARC packing)
+            archive.SaveToFile(binPath);
 
             // Update cache
             _loadedArchives[archiveID] = archive;
 
-            AppLogger.Info($"Saved text archive {archiveID}");
+            AppLogger.Info($"Saved text archive {archiveID} to both expanded/ and unpacked/");
             return true;
         }
         catch (Exception ex)
@@ -299,7 +357,7 @@ public class TextArchiveService : IApplicationService
     }
 
     /// <summary>
-    /// Get the file path for a text archive ID
+    /// Get the binary file path for a text archive ID (unpacked/)
     /// </summary>
     private string GetTextArchivePath(int archiveID)
     {
@@ -313,6 +371,23 @@ public class TextArchiveService : IApplicationService
         // Text archives are in: unpacked/textArchives/[ID] (no .bin extension)
         string archiveFileName = archiveID.ToString("D4");
         return Path.Combine(romPath, "unpacked", "textArchives", archiveFileName);
+    }
+
+    /// <summary>
+    /// Get the expanded text file path for a text archive ID (expanded/)
+    /// </summary>
+    private string GetExpandedTextArchivePath(int archiveID)
+    {
+        if (_romService?.CurrentRom?.IsLoaded != true)
+        {
+            throw new InvalidOperationException("ROM not loaded");
+        }
+
+        string romPath = _romService.CurrentRom.RomPath;
+
+        // Expanded text archives are in: expanded/textArchives/[ID].txt
+        string archiveFileName = archiveID.ToString("D4") + ".txt";
+        return Path.Combine(romPath, "expanded", "textArchives", archiveFileName);
     }
 
     /// <summary>
