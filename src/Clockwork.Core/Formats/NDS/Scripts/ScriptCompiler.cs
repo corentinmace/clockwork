@@ -349,10 +349,38 @@ public static class ScriptCompiler
     {
         result = 0;
 
-        // Define common constants used in scripts
+        // Try comparison operators from database
+        if (ScriptDatabase.ComparisonOperators.TryGetValue(value, out uint compOpValue))
+        {
+            result = compOpValue;
+            return true;
+        }
+
+        // Try movements from database
+        if (ScriptDatabase.Movements.TryGetValue(value, out uint movementValue))
+        {
+            result = movementValue;
+            return true;
+        }
+
+        // Try special overworlds from database
+        if (ScriptDatabase.SpecialOverworlds.TryGetValue(value, out uint specialOwValue))
+        {
+            result = specialOwValue;
+            return true;
+        }
+
+        // Try overworld directions from database
+        if (ScriptDatabase.OverworldDirections.TryGetValue(value, out uint owDirValue))
+        {
+            result = owDirValue;
+            return true;
+        }
+
+        // Fallback to hardcoded constants
         var constants = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase)
         {
-            // Comparison operators
+            // Comparison operators (fallback if not in database)
             { "EQUAL", 0 },
             { "NOTEQUAL", 1 },
             { "LESS", 2 },

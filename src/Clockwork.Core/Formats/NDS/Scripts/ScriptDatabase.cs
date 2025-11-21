@@ -11,6 +11,10 @@ namespace Clockwork.Core.Formats.NDS.Scripts;
 public static class ScriptDatabase
 {
     private static Dictionary<ushort, ScriptCommandInfo>? _platinumCommands;
+    private static Dictionary<string, uint>? _movements;
+    private static Dictionary<string, uint>? _comparisonOperators;
+    private static Dictionary<string, uint>? _specialOverworlds;
+    private static Dictionary<string, uint>? _overworldDirections;
     private static bool _isInitialized = false;
     private static ScriptCommandConfigService? _configService;
 
@@ -35,6 +39,66 @@ public static class ScriptDatabase
                 LoadCommands();
             }
             return _platinumCommands!;
+        }
+    }
+
+    /// <summary>
+    /// Gets movement constants (e.g., "WalkUp" -> 0)
+    /// </summary>
+    public static Dictionary<string, uint> Movements
+    {
+        get
+        {
+            if (!_isInitialized)
+            {
+                LoadCommands();
+            }
+            return _movements ?? new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// Gets comparison operator constants (e.g., "EQUAL" -> 0)
+    /// </summary>
+    public static Dictionary<string, uint> ComparisonOperators
+    {
+        get
+        {
+            if (!_isInitialized)
+            {
+                LoadCommands();
+            }
+            return _comparisonOperators ?? new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// Gets special overworld constants
+    /// </summary>
+    public static Dictionary<string, uint> SpecialOverworlds
+    {
+        get
+        {
+            if (!_isInitialized)
+            {
+                LoadCommands();
+            }
+            return _specialOverworlds ?? new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    /// <summary>
+    /// Gets overworld direction constants
+    /// </summary>
+    public static Dictionary<string, uint> OverworldDirections
+    {
+        get
+        {
+            if (!_isInitialized)
+            {
+                LoadCommands();
+            }
+            return _overworldDirections ?? new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
         }
     }
 
@@ -86,6 +150,14 @@ public static class ScriptDatabase
             if (commands != null && commands.Count > 0)
             {
                 _platinumCommands = commands;
+
+                // Also load constants
+                var (movements, compOps, specialOw, owDirs) = _configService.LoadConstants();
+                _movements = movements;
+                _comparisonOperators = compOps;
+                _specialOverworlds = specialOw;
+                _overworldDirections = owDirs;
+
                 _isInitialized = true;
                 Console.WriteLine($"Loaded {_platinumCommands.Count} script commands from config service");
                 return;

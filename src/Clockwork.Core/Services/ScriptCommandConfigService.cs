@@ -117,6 +117,88 @@ public class ScriptCommandConfigService : IApplicationService
     }
 
     /// <summary>
+    /// Loads constants (movements, comparisons, etc.) from the configuration file
+    /// </summary>
+    public (Dictionary<string, uint> movements,
+            Dictionary<string, uint> comparisonOperators,
+            Dictionary<string, uint> specialOverworlds,
+            Dictionary<string, uint> overworldDirections) LoadConstants()
+    {
+        var movements = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        var comparisonOperators = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        var specialOverworlds = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+        var overworldDirections = new Dictionary<string, uint>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            if (!File.Exists(CommandsFilePath))
+            {
+                return (movements, comparisonOperators, specialOverworlds, overworldDirections);
+            }
+
+            var jsonContent = File.ReadAllText(CommandsFilePath);
+            var jsonDoc = JsonDocument.Parse(jsonContent);
+            var root = jsonDoc.RootElement;
+
+            // Load movements
+            if (root.TryGetProperty("movements", out var movementsElement))
+            {
+                foreach (var prop in movementsElement.EnumerateObject())
+                {
+                    if (uint.TryParse(prop.Value.ToString(), out uint value))
+                    {
+                        movements[prop.Name] = value;
+                    }
+                }
+            }
+
+            // Load comparison operators
+            if (root.TryGetProperty("comparisonOperators", out var compOperatorsElement))
+            {
+                foreach (var prop in compOperatorsElement.EnumerateObject())
+                {
+                    if (uint.TryParse(prop.Value.ToString(), out uint value))
+                    {
+                        comparisonOperators[prop.Name] = value;
+                    }
+                }
+            }
+
+            // Load special overworlds
+            if (root.TryGetProperty("specialOverworlds", out var specialOwElement))
+            {
+                foreach (var prop in specialOwElement.EnumerateObject())
+                {
+                    if (uint.TryParse(prop.Value.ToString(), out uint value))
+                    {
+                        specialOverworlds[prop.Name] = value;
+                    }
+                }
+            }
+
+            // Load overworld directions
+            if (root.TryGetProperty("overworldDirections", out var owDirectionsElement))
+            {
+                foreach (var prop in owDirectionsElement.EnumerateObject())
+                {
+                    if (uint.TryParse(prop.Value.ToString(), out uint value))
+                    {
+                        overworldDirections[prop.Name] = value;
+                    }
+                }
+            }
+
+            AppLogger.Info($"Loaded constants: {movements.Count} movements, {comparisonOperators.Count} operators, {specialOverworlds.Count} overworlds, {overworldDirections.Count} directions");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"Failed to load constants from {CommandsFilePath}: {ex.Message}");
+        }
+
+        return (movements, comparisonOperators, specialOverworlds, overworldDirections);
+    }
+
+    /// <summary>
     /// Parses JSON content into command dictionary
     /// </summary>
     private Dictionary<ushort, Formats.NDS.Scripts.ScriptCommandInfo> ParseCommandsJson(string jsonContent)
