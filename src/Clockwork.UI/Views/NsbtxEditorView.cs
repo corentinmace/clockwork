@@ -1052,10 +1052,33 @@ public class NsbtxEditorView : IView
                 ImGui.TextColored(new Vector4(1.0f, 1.0f, 0.7f, 1.0f), "Lighting");
                 ImGui.Spacing();
 
-                int lightType = currentArea.LightType;
-                if (ImGui.InputInt("Light Type", ref lightType))
+                // Light type combo box
+                string[] lightTypeNames = new string[]
                 {
-                    currentArea.LightType = (ushort)Math.Clamp(lightType, 0, ushort.MaxValue);
+                    "0: Day/Night Light",
+                    "1: Model's light",
+                    "2: Unknown Light"
+                };
+
+                int currentLightType = Math.Clamp((int)currentArea.LightType, 0, 2);
+                string currentLightTypeName = currentLightType < lightTypeNames.Length
+                    ? lightTypeNames[currentLightType]
+                    : $"{currentArea.LightType}: Custom";
+
+                ImGui.SetNextItemWidth(250);
+                if (ImGui.BeginCombo("Light Type", currentLightTypeName))
+                {
+                    for (int i = 0; i < lightTypeNames.Length; i++)
+                    {
+                        bool isSelected = (currentLightType == i);
+                        if (ImGui.Selectable(lightTypeNames[i], isSelected))
+                        {
+                            currentArea.LightType = (ushort)i;
+                        }
+                        if (isSelected)
+                            ImGui.SetItemDefaultFocus();
+                    }
+                    ImGui.EndCombo();
                 }
 
                 ImGui.Spacing();
