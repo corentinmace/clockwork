@@ -245,7 +245,7 @@ public static class ScriptCompiler
 
     /// <summary>
     /// Tries to parse references like "Function#1", "Script#2", etc.
-    /// Returns the numeric ID with a special offset marker
+    /// Encodes the reference type using special markers in the high bits
     /// </summary>
     private static bool TryParseReference(string value, out uint result)
     {
@@ -258,9 +258,28 @@ public static class ScriptCompiler
             string type = match.Groups[1].Value;
             uint id = uint.Parse(match.Groups[2].Value);
 
-            // Encode as special marker (we'll use high bits to indicate type)
-            // For now, just use the ID directly - the compiler will fix offsets later
-            result = id;
+            // Encode type in high bits using special markers
+            // These will be resolved to actual offsets during FixRelativeOffsets
+            // Format: [8 bits type marker][24 bits ID]
+            const uint FUNCTION_MARKER = 0x80000000;  // Bit 31 set
+            const uint SCRIPT_MARKER = 0x40000000;    // Bit 30 set
+            const uint ACTION_MARKER = 0x20000000;    // Bit 29 set
+
+            uint marker = type.ToLower() switch
+            {
+                "function" => FUNCTION_MARKER,
+                "script" => SCRIPT_MARKER,
+                "action" => ACTION_MARKER,
+                _ => 0
+            };
+
+            // Combine marker with ID (ID should fit in 24 bits)
+            if (id > 0x00FFFFFF)
+            {
+                throw new ScriptCompilationException($"Reference ID {id} is too large (max: 16777215)");
+            }
+
+            result = marker | id;
             return true;
         }
 
