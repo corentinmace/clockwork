@@ -1,3 +1,5 @@
+using Clockwork.Core.Logging;
+
 namespace Clockwork.Core.Formats.NDS.Scripts;
 
 /// <summary>
@@ -77,81 +79,237 @@ public class ScriptFile
     }
 
     /// <summary>
-    /// Converts the script file to binary format
+    /// Converts the script file to binary format (LiTRE-compatible format)
+    /// Format:
+    /// - Script offsets (4 bytes each)
+    /// - Magic 0xFD13 (2 bytes) - marks end of header
+    /// - Script data
+    /// - Function data
+    /// - Action data (with halfword alignment)
     /// </summary>
     public byte[] ToBytes()
     {
+        AppLogger.Info($"Compiling ScriptFile: {Scripts.Count} scripts, {Functions.Count} functions, {Actions.Count} actions");
+
         using var ms = new MemoryStream();
         using var writer = new BinaryWriter(ms);
 
-        // Simple format: Write header with counts, then all container data
-        // Header structure:
-        // - ushort: Script count
-        // - ushort: Function count
-        // - ushort: Action count
-        // - ushort: Reserved (padding)
+        // Phase 1: Reserve space for script offset table
+        long headerStartPos = writer.BaseStream.Position;
+        for (int i = 0; i < Scripts.Count; i++)
+        {
+            writer.Write((uint)0); // Placeholder offsets
+        }
 
-        writer.Write((ushort)Scripts.Count);
-        writer.Write((ushort)Functions.Count);
-        writer.Write((ushort)Actions.Count);
-        writer.Write((ushort)0); // Reserved
+        // Write magic number 0xFD13 to mark end of header
+        writer.Write((ushort)0xFD13);
 
-        // Calculate and write offset tables
-        List<uint> scriptOffsets = new();
-        List<uint> functionOffsets = new();
-        List<uint> actionOffsets = new();
+        // Track actual offsets for each container
+        Dictionary<(ContainerType type, uint id), long> containerOffsets = new();
 
-        uint currentOffset = (uint)(8 + (Scripts.Count + Functions.Count + Actions.Count) * 4);
-
-        // Calculate script offsets
+        // Phase 2: Write Scripts
         foreach (var script in Scripts)
         {
-            scriptOffsets.Add(currentOffset);
-            currentOffset += (uint)script.GetTotalSize();
+            long offset = writer.BaseStream.Position;
+            containerOffsets[(ContainerType.Script, script.ID)] = offset;
+
+            // Write script commands
+            foreach (var command in script.Commands)
+            {
+                writer.Write(command.CommandID);
+                foreach (var param in command.Parameters)
+                {
+                    writer.Write(param);
+                }
+            }
         }
 
-        // Calculate function offsets
+        // Phase 3: Write Functions
+        AppLogger.Debug($"Writing {Functions.Count} functions");
         foreach (var function in Functions)
         {
-            functionOffsets.Add(currentOffset);
-            currentOffset += (uint)function.GetTotalSize();
+            long offset = writer.BaseStream.Position;
+            containerOffsets[(ContainerType.Function, function.ID)] = offset;
+            AppLogger.Debug($"  Function #{function.ID} at offset 0x{offset:X}");
+
+            // Write function commands
+            foreach (var command in function.Commands)
+            {
+                writer.Write(command.CommandID);
+                foreach (var param in command.Parameters)
+                {
+                    writer.Write(param);
+                }
+            }
         }
 
-        // Calculate action offsets
-        foreach (var action in Actions)
+        // Phase 4: Write Actions (with halfword alignment)
+        // Ensure position is aligned to 2-byte boundary
+        if (writer.BaseStream.Position % 2 != 0)
         {
-            actionOffsets.Add(currentOffset);
-            currentOffset += (uint)action.GetTotalSize();
-        }
-
-        // Write offset tables
-        foreach (var offset in scriptOffsets)
-            writer.Write(offset);
-        foreach (var offset in functionOffsets)
-            writer.Write(offset);
-        foreach (var offset in actionOffsets)
-            writer.Write(offset);
-
-        // Write container data
-        foreach (var script in Scripts)
-        {
-            var data = script.ToBytes();
-            writer.Write(data);
-        }
-
-        foreach (var function in Functions)
-        {
-            var data = function.ToBytes();
-            writer.Write(data);
+            writer.Write((byte)0); // Padding byte
         }
 
         foreach (var action in Actions)
         {
-            var data = action.ToBytes();
-            writer.Write(data);
+            long offset = writer.BaseStream.Position;
+            containerOffsets[(ContainerType.Action, action.ID)] = offset;
+
+            // Write action commands
+            foreach (var command in action.Commands)
+            {
+                writer.Write(command.CommandID);
+                foreach (var param in command.Parameters)
+                {
+                    writer.Write(param);
+                }
+            }
         }
 
-        return ms.ToArray();
+        // Phase 5: Back-patch script offsets in header
+        long endPos = writer.BaseStream.Position;
+        writer.BaseStream.Position = headerStartPos;
+
+        for (int i = 0; i < Scripts.Count; i++)
+        {
+            var script = Scripts[i];
+            if (containerOffsets.TryGetValue((ContainerType.Script, script.ID), out long offset))
+            {
+                writer.Write((uint)offset);
+            }
+            else
+            {
+                writer.Write((uint)0); // No offset found
+            }
+        }
+
+        // Restore position to end
+        writer.BaseStream.Position = endPos;
+
+        // Phase 6: Convert offset parameters to relative offsets
+        // Get the complete data
+        byte[] data = ms.ToArray();
+
+        // Fix up relative offsets in commands
+        FixRelativeOffsets(data, containerOffsets);
+
+        return data;
+    }
+
+    /// <summary>
+    /// Fixes relative offset parameters in script commands
+    /// Offset parameters must be relative to the current position + 4
+    /// </summary>
+    private void FixRelativeOffsets(byte[] data, Dictionary<(ContainerType type, uint id), long> containerOffsets)
+    {
+        // Markers used to encode reference types (must match ScriptCompiler)
+        const uint FUNCTION_MARKER = 0x80000000;
+        const uint SCRIPT_MARKER = 0x40000000;
+        const uint ACTION_MARKER = 0x20000000;
+        const uint MARKER_MASK = 0xE0000000;  // Mask for all marker bits
+        const uint ID_MASK = 0x00FFFFFF;      // Mask for ID bits
+
+        // Start after the header (script offsets + 0xFD13)
+        int headerSize = Scripts.Count * 4 + 2;
+        int position = headerSize;
+
+        // Process all containers in order
+        var allContainers = new List<(ContainerType type, uint id, ScriptContainer container)>();
+        foreach (var script in Scripts)
+            allContainers.Add((ContainerType.Script, script.ID, script));
+        foreach (var function in Functions)
+            allContainers.Add((ContainerType.Function, function.ID, function));
+        foreach (var action in Actions)
+            allContainers.Add((ContainerType.Action, action.ID, action));
+
+        // Process each container
+        foreach (var (containerType, containerId, container) in allContainers)
+        {
+            // Skip padding byte if present (for actions)
+            if (position % 2 != 0 && containerType == ContainerType.Action)
+            {
+                position++;
+            }
+
+            // Process each command in the container
+            foreach (var command in container.Commands)
+            {
+                int commandStartPos = position;
+
+                // Skip command ID (2 bytes)
+                position += 2;
+
+                // Get command info to know parameter types
+                var commandInfo = ScriptDatabase.GetCommandInfo(command.CommandID);
+                if (commandInfo == null)
+                {
+                    // Unknown command, skip all parameters
+                    foreach (var param in command.Parameters)
+                    {
+                        position += param.Length;
+                    }
+                    continue;
+                }
+
+                // Process each parameter
+                for (int paramIndex = 0; paramIndex < command.Parameters.Count; paramIndex++)
+                {
+                    var paramBytes = command.Parameters[paramIndex];
+                    var paramType = commandInfo.Parameters[paramIndex];
+
+                    // Check if this is an Offset parameter
+                    if (paramType == ScriptParameterType.Offset && paramBytes.Length == 4)
+                    {
+                        // Read the offset value (little-endian)
+                        uint offsetValue = BitConverter.ToUInt32(paramBytes, 0);
+
+                        // Check if this is a reference marker
+                        uint markerBits = offsetValue & MARKER_MASK;
+                        if (markerBits != 0)
+                        {
+                            // Extract reference type and ID
+                            uint refId = offsetValue & ID_MASK;
+                            ContainerType refType = markerBits switch
+                            {
+                                FUNCTION_MARKER => ContainerType.Function,
+                                SCRIPT_MARKER => ContainerType.Script,
+                                ACTION_MARKER => ContainerType.Action,
+                                _ => ContainerType.Script
+                            };
+
+                            // Look up the target offset
+                            AppLogger.Debug($"Resolving reference: {refType} #{refId} at position 0x{position:X}");
+                            if (containerOffsets.TryGetValue((refType, refId), out long targetOffset))
+                            {
+                                // Calculate relative offset: target - (current position + 4)
+                                // The +4 accounts for the size of the offset field itself
+                                int relativeOffset = (int)(targetOffset - position - 4);
+
+                                AppLogger.Debug($"  -> Target at 0x{targetOffset:X}, relative offset: 0x{relativeOffset:X}");
+
+                                // Write the relative offset back to the data array
+                                byte[] relativeBytes = BitConverter.GetBytes(relativeOffset);
+                                Array.Copy(relativeBytes, 0, data, position, 4);
+
+                                // Also update the parameter bytes in the command object
+                                Array.Copy(relativeBytes, 0, paramBytes, 0, 4);
+                            }
+                            else
+                            {
+                                AppLogger.Warn($"Cannot resolve reference to {refType} #{refId} at position 0x{position:X}");
+                                AppLogger.Debug($"  Available keys in containerOffsets:");
+                                foreach (var key in containerOffsets.Keys)
+                                {
+                                    AppLogger.Debug($"    - {key.type} #{key.id}");
+                                }
+                            }
+                        }
+                    }
+
+                    position += paramBytes.Length;
+                }
+            }
+        }
     }
 
     /// <summary>

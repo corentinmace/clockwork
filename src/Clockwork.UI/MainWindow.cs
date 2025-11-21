@@ -41,6 +41,7 @@ public class MainWindow
     // Tools
     private readonly AddressHelperWindow _addressHelperWindow;
     private readonly ScrcmdTableHelperWindow _scrcmdTableHelperWindow;
+    private readonly ScriptCommandDatabaseView _scriptCommandDatabaseView;
 
     // Sidebar state and metrics
     private bool _isSidebarCollapsed = false;
@@ -77,6 +78,8 @@ public class MainWindow
         // Initialize tools
         _addressHelperWindow = new AddressHelperWindow(_appContext);
         _scrcmdTableHelperWindow = new ScrcmdTableHelperWindow(_appContext);
+        _scriptCommandDatabaseView = new ScriptCommandDatabaseView();
+        _scriptCommandDatabaseView.Initialize(_appContext);
 
         // Connect theme editor to settings window
         _settingsWindow.SetThemeEditorView(_themeEditorView);
@@ -369,6 +372,10 @@ public class MainWindow
                 {
                     _scrcmdTableHelperWindow.IsVisible = true;
                 }
+                if (ImGui.MenuItem("Script Command Database"))
+                {
+                    _scriptCommandDatabaseView.IsVisible = true;
+                }
                 ImGui.EndMenu();
             }
 
@@ -435,6 +442,7 @@ public class MainWindow
         // Draw tools
         _addressHelperWindow.Draw();
         _scrcmdTableHelperWindow.Draw();
+        _scriptCommandDatabaseView.Draw();
 
         // Draw dialogs
         DrawSaveRomDialog();
@@ -699,9 +707,25 @@ public class MainWindow
         {
             var ndsToolService = _appContext.GetService<NdsToolService>();
             var romPackingService = _appContext.GetService<RomPackingService>();
+            var textArchiveService = _appContext.GetService<TextArchiveService>();
+
+            // Step 0: Rebuild text archives from expanded/ folder
+            _saveRomLog += "=== Step 0: Repacking Expanded Files ===\n";
+            bool textArchiveSuccess = textArchiveService?.BuildRequiredBins() ?? false;
+
+            if (!textArchiveSuccess)
+            {
+                AppLogger.Error("Text archive rebuilding failed");
+                _saveRomLog += "\n=== Text archive rebuilding failed! Save aborted. ===\n";
+                _isSavingRom = false;
+                return;
+            }
+
+            _saveRomLog += "Text archives rebuilt successfully.\n";
+            _saveRomLog += "Note: Scripts are compiled individually when saved in editor.\n";
 
             // Step 1: Pack all NARC archives
-            _saveRomLog += "=== Step 1: Packing NARC Archives ===\n";
+            _saveRomLog += "\n=== Step 1: Packing NARC Archives ===\n";
             bool narcPackingSuccess = romPackingService?.PackAllNarcs(
                 (msg) => { _saveRomLog += msg + "\n"; }
             ) ?? false;

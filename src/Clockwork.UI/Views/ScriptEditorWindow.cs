@@ -16,6 +16,7 @@ public class ScriptEditorWindow : IView
 {
     private readonly ApplicationContext _appContext;
     private readonly RomService? _romService;
+    private readonly ScriptService? _scriptService;
 
     public bool IsVisible { get; set; } = false;
 
@@ -60,6 +61,7 @@ public class ScriptEditorWindow : IView
     {
         _appContext = appContext;
         _romService = appContext.GetService<RomService>();
+        _scriptService = appContext.GetService<ScriptService>();
     }
 
     public void Draw()
@@ -406,8 +408,23 @@ public class ScriptEditorWindow : IView
             File.WriteAllText(functionPath, _functionTabText);
             File.WriteAllText(actionPath, _actionTabText);
 
-            _isDirty = false;
-            SetStatus($"Saved Script File {_currentFileID} to export directory", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
+            // Compile the script to binary immediately
+            string errorMessage = string.Empty;
+            bool compiled = _scriptService?.CompileScriptToBinary(_currentFileID, out errorMessage) ?? false;
+            if (compiled)
+            {
+                _isDirty = false;
+                SetStatus($"Saved and compiled Script File {_currentFileID}", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
+            }
+            else
+            {
+                _isDirty = false;
+                string displayMsg = string.IsNullOrEmpty(errorMessage)
+                    ? "Compilation failed - check logs"
+                    : errorMessage;
+                SetStatus($"Compilation Error: {displayMsg}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f), 15f);
+                AppLogger.Error($"Script {_currentFileID} compilation errors:\n{errorMessage}");
+            }
         }
         catch (Exception ex)
         {
@@ -517,10 +534,10 @@ public class ScriptEditorWindow : IView
         ImGui.End();
     }
 
-    private void SetStatus(string message, Vector4 color)
+    private void SetStatus(string message, Vector4 color, float duration = 5f)
     {
         _statusMessage = message;
         _statusColor = color;
-        _statusTimer = 5f;
+        _statusTimer = duration;
     }
 }

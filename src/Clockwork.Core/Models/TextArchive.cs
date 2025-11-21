@@ -1,254 +1,262 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
+using Clockwork.Core.Formats.NDS;
+using Clockwork.Core.Logging;
 
 namespace Clockwork.Core.Models;
 
 /// <summary>
 /// Represents a Pokemon DS text archive with encrypted messages.
-/// Based on the format used in Diamond/Pearl/Platinum/HeartGold/SoulSilver.
+/// Based on LiTRE's TextArchive implementation.
 /// </summary>
 public class TextArchive
 {
+    public int ID { get; }
     public List<string> Messages { get; set; } = new();
-    public ushort EncryptionKey { get; set; }
-
-    private static Dictionary<ushort, char>? _charDictionary;
+    public ushort Key { get; set; }
 
     /// <summary>
-    /// Read a text archive from binary data.
+    /// Creates a new TextArchive from messages
     /// </summary>
-    public static TextArchive ReadFromBytes(byte[] data)
+    public TextArchive(int id, List<string>? messages = null)
+    {
+        ID = id;
+        if (messages != null)
+        {
+            Messages = messages;
+        }
+    }
+
+    /// <summary>
+    /// Read a text archive from binary data
+    /// </summary>
+    public static TextArchive ReadFromBytes(byte[] data, int archiveID = 0)
     {
         using var ms = new MemoryStream(data);
-        using var reader = new BinaryReader(ms);
+        var messages = TextConverter.ReadMessageFromStream(ms, out ushort key);
 
-        var archive = new TextArchive();
-
-        // Read header
-        ushort stringCount = reader.ReadUInt16();
-        ushort initialKey = reader.ReadUInt16();
-        archive.EncryptionKey = initialKey;
-
-        // Calculate base key
-        ushort baseKey = (ushort)((initialKey * 0x2FD) & 0xFFFF);
-
-        // Read offset and size table (encrypted)
-        var offsets = new uint[stringCount];
-        var sizes = new uint[stringCount];
-
-        for (int i = 0; i < stringCount; i++)
+        return new TextArchive(archiveID, messages)
         {
-            // Calculate key for this entry
-            ushort key1 = (ushort)((baseKey * (i + 1)) & 0xFFFF);
-            uint key2 = (uint)(key1 | (key1 << 16));
-
-            // Read and decrypt offset and size
-            uint encOffset = reader.ReadUInt32();
-            uint encSize = reader.ReadUInt32();
-
-            offsets[i] = encOffset ^ key2;
-            sizes[i] = encSize ^ key2;
-        }
-
-        // Read and decode messages
-        for (int i = 0; i < stringCount; i++)
-        {
-            ms.Position = offsets[i];
-            byte[] messageData = reader.ReadBytes((int)sizes[i]);
-
-            string message = DecodeMessage(messageData, i, initialKey);
-            archive.Messages.Add(message);
-        }
-
-        return archive;
+            Key = key
+        };
     }
 
     /// <summary>
-    /// Decode a single message from encrypted bytes.
+    /// Read a text archive from a file path
     /// </summary>
-    private static string DecodeMessage(byte[] data, int messageIndex, ushort initialKey)
+    public static TextArchive ReadFromFile(string filePath, int archiveID = 0)
     {
-        // Calculate message key
-        ushort key = (ushort)(((0x91BD3 * (messageIndex + 1)) & 0xFFFF));
-
-        var sb = new StringBuilder();
-        bool isCompressed = false;
-        int bitIndex = 0;
-        ushort compressedValue = 0;
-
-        using var ms = new MemoryStream(data);
-        using var reader = new BinaryReader(ms);
-
-        while (ms.Position < ms.Length)
+        if (!File.Exists(filePath))
         {
-            ushort charValue;
+            throw new FileNotFoundException($"Text archive file not found: {filePath}");
+        }
 
-            if (isCompressed)
+        byte[] data = File.ReadAllBytes(filePath);
+        return ReadFromBytes(data, archiveID);
+    }
+
+    /// <summary>
+    /// Convert the text archive to binary data
+    /// </summary>
+    public byte[] ToBytes()
+    {
+        Stream stream = new MemoryStream();
+        if (!TextConverter.WriteMessagesToStream(ref stream, Messages, Key))
+        {
+            AppLogger.Error($"Failed to convert Text Archive ID {ID} to byte array.");
+        }
+        return ((MemoryStream)stream).ToArray();
+    }
+
+    /// <summary>
+    /// Save the text archive to a file
+    /// </summary>
+    public void SaveToFile(string filePath)
+    {
+        try
+        {
+            byte[] data = ToBytes();
+            File.WriteAllBytes(filePath, data);
+            AppLogger.Info($"Saved text archive {ID} to {filePath}");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"Failed to save text archive {ID}: {ex.Message}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Export to plain text format (for editing)
+    /// </summary>
+    public void ExportToTextFile(string filePath)
+    {
+        try
+        {
+            var utf8WithoutBom = new UTF8Encoding(false);
+            string firstLine = $"# Key: 0x{Key:X4}";
+            string textToSave = string.Join(Environment.NewLine, Messages);
+            textToSave = firstLine + Environment.NewLine + textToSave;
+
+            File.WriteAllText(filePath, textToSave, utf8WithoutBom);
+            AppLogger.Info($"Exported text archive {ID} to {filePath}");
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"Failed to export text archive {ID}: {ex.Message}");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Import from plain text format
+    /// </summary>
+    public static TextArchive ImportFromTextFile(string filePath, int archiveID = 0)
+    {
+        if (!File.Exists(filePath))
+        {
+            throw new FileNotFoundException($"Text file not found: {filePath}");
+        }
+
+        try
+        {
+            List<string> lines = File.ReadAllLines(filePath).ToList();
+            if (lines.Count == 0)
             {
-                // Extract 9-bit values from compressed stream
-                if (bitIndex == 0)
+                throw new InvalidDataException("Text file is empty");
+            }
+
+            // First line should be the key
+            string firstLine = lines[0];
+            if (!firstLine.StartsWith("# Key: "))
+            {
+                throw new InvalidDataException("Text file is missing the key in the first line (format: # Key: 0xXXXX)");
+            }
+
+            string keyHex = firstLine.Substring(7).Trim();
+            if (!ushort.TryParse(keyHex.Replace("0x", ""), System.Globalization.NumberStyles.HexNumber, null, out ushort key))
+            {
+                throw new InvalidDataException("Text file has an invalid key format");
+            }
+
+            // Check for newline character in last line and add a blank line if needed
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                if (fs.Length > 0)
                 {
-                    compressedValue = DecryptChar(reader.ReadUInt16(), ref key);
-                    charValue = (ushort)(compressedValue & 0x1FF);
-                    bitIndex = 9;
+                    fs.Seek(-1, SeekOrigin.End);
+                    int lastByte = fs.ReadByte();
+                    if (lastByte == '\n' || lastByte == '\r')
+                    {
+                        lines.Add(string.Empty);
+                    }
                 }
-                else if (bitIndex == 9)
-                {
-                    charValue = (ushort)(compressedValue >> 9);
-                    bitIndex = 0;
-                }
-                else
-                {
-                    charValue = 0xFFFF;
-                }
-            }
-            else
-            {
-                // Read uncompressed 16-bit value
-                charValue = DecryptChar(reader.ReadUInt16(), ref key);
             }
 
-            // Handle control codes
-            if (charValue == 0xFFFF)
+            // Remove the first line (the key) from the messages
+            lines.RemoveAt(0);
+
+            var archive = new TextArchive(archiveID, lines)
             {
-                // Terminator
-                break;
-            }
-            else if (charValue == 0xFFFE)
-            {
-                // Verbose code - next value is literal hex
-                ushort verboseValue = DecryptChar(reader.ReadUInt16(), ref key);
-                sb.Append($"\\x{verboseValue:X4}");
-            }
-            else if (charValue == 0xF100)
-            {
-                // Compression flag
-                isCompressed = !isCompressed;
-                bitIndex = 0;
-            }
-            else if (charValue == 0xE000)
-            {
-                // Newline
-                sb.Append('\n');
-            }
-            else if (charValue == 0x25BC)
-            {
-                // Carriage return
-                sb.Append('\r');
-            }
-            else if (charValue == 0x25BD)
-            {
-                // Form feed
-                sb.Append('\f');
-            }
-            else if (charValue >= 0xF000 && charValue <= 0xF0FF)
-            {
-                // Special formatting code
-                sb.Append($"[{charValue:X4}]");
-            }
-            else
-            {
-                // Regular character
-                char c = GetCharacter(charValue);
-                sb.Append(c);
-            }
+                Key = key
+            };
+
+            AppLogger.Info($"Imported text archive {archiveID} from {filePath}");
+            return archive;
         }
-
-        return sb.ToString();
+        catch (Exception ex)
+        {
+            AppLogger.Error($"Failed to import text archive from {filePath}: {ex.Message}");
+            throw;
+        }
     }
 
     /// <summary>
-    /// Decrypt a single character value.
+    /// Get simple trainer names (without {TRAINER_NAME:} wrapper)
     /// </summary>
-    private static ushort DecryptChar(ushort encrypted, ref ushort key)
+    public List<string> GetSimpleTrainerNames()
     {
-        ushort decrypted = (ushort)(encrypted ^ key);
-        key = (ushort)((key + 0x493D) & 0xFFFF);
-        return decrypted;
+        List<string> simpleMessages = new List<string>();
+        foreach (string msg in Messages)
+        {
+            string simpleMsg = TextConverter.GetSimpleTrainerName(msg);
+            simpleMessages.Add(simpleMsg);
+        }
+        return simpleMessages;
     }
 
     /// <summary>
-    /// Get character from character code using the lookup table.
+    /// Set a simple trainer name at a specific index
     /// </summary>
-    private static char GetCharacter(ushort code)
+    public bool SetSimpleTrainerName(int messageIndex, string newSimpleName)
     {
-        if (_charDictionary == null)
+        if (messageIndex < 0)
         {
-            _charDictionary = BuildCharDictionary();
+            AppLogger.Error($"Invalid message index {messageIndex} for Text Archive ID {ID}");
+            return false;
         }
 
-        if (_charDictionary.TryGetValue(code, out char c))
+        if (messageIndex >= Messages.Count)
         {
-            return c;
+            Messages.Add("{TRAINER_NAME:" + newSimpleName + "}");
+            return true;
         }
 
-        // Unknown character
-        return '?';
+        string currentMessage = Messages[messageIndex];
+        string updatedMessage = TextConverter.GetProperTrainerName(currentMessage, newSimpleName);
+        if (updatedMessage == currentMessage)
+        {
+            // No change made
+            return false;
+        }
+
+        Messages[messageIndex] = updatedMessage;
+        return true;
     }
 
     /// <summary>
-    /// Build the character lookup dictionary for Pokemon DS games.
-    /// Based on the character table from Gen IV games.
+    /// Get a message by index
     /// </summary>
-    private static Dictionary<ushort, char> BuildCharDictionary()
+    public string GetMessage(int index)
     {
-        var dict = new Dictionary<ushort, char>();
+        if (index >= 0 && index < Messages.Count)
+            return Messages[index];
 
-        // ASCII-like characters
-        for (ushort i = 0x20; i <= 0x7E; i++)
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Set a message by index
+    /// </summary>
+    public void SetMessage(int index, string message)
+    {
+        if (index >= 0 && index < Messages.Count)
         {
-            dict[i] = (char)i;
+            Messages[index] = message;
         }
+        else if (index == Messages.Count)
+        {
+            Messages.Add(message);
+        }
+        else
+        {
+            AppLogger.Warn($"Invalid message index {index} for Text Archive ID {ID}");
+        }
+    }
 
-        // Special Pokemon characters
-        dict[0x0001] = 'À';
-        dict[0x0002] = 'Á';
-        dict[0x0003] = 'Â';
-        dict[0x0004] = 'Ç';
-        dict[0x0005] = 'È';
-        dict[0x0006] = 'É';
-        dict[0x0007] = 'Ê';
-        dict[0x0008] = 'Ë';
-        dict[0x0009] = 'Ì';
-        dict[0x000A] = 'Î';
-        dict[0x000B] = 'Ï';
-        dict[0x000C] = 'Ò';
-        dict[0x000D] = 'Ó';
-        dict[0x000E] = 'Ô';
-        dict[0x000F] = 'Œ';
-        dict[0x0010] = 'Ù';
-        dict[0x0011] = 'Ú';
-        dict[0x0012] = 'Û';
-        dict[0x0013] = 'Ñ';
-        dict[0x0014] = 'ß';
-        dict[0x0015] = 'à';
-        dict[0x0016] = 'á';
-        dict[0x0019] = 'ç';
-        dict[0x001A] = 'è';
-        dict[0x001B] = 'é';
-        dict[0x001C] = 'ê';
-        dict[0x001D] = 'ë';
-        dict[0x001E] = 'ì';
-        dict[0x0020] = 'î';
-        dict[0x0021] = 'ï';
-        dict[0x0022] = 'ò';
-        dict[0x0023] = 'ó';
-        dict[0x0024] = 'ô';
-        dict[0x0025] = 'œ';
-        dict[0x0026] = 'ù';
-        dict[0x0027] = 'ú';
-        dict[0x0028] = 'û';
-        dict[0x0029] = 'ñ';
+    /// <summary>
+    /// Get the number of messages
+    /// </summary>
+    public int MessageCount => Messages.Count;
 
-        // Japanese characters (simplified mapping)
-        dict[0x0121] = 'ア';
-        dict[0x0122] = 'イ';
-        dict[0x0123] = 'ウ';
-        dict[0x0124] = 'エ';
-        dict[0x0125] = 'オ';
-
-        return dict;
+    /// <summary>
+    /// Convert to string (all messages)
+    /// </summary>
+    public override string ToString()
+    {
+        return string.Join(Environment.NewLine, Messages);
     }
 }
