@@ -36,6 +36,7 @@ internal class Program
             var levelScriptService = new LevelScriptService(appContext);
             var wildEncounterService = new WildEncounterService(appContext);
             var textArchiveService = new TextArchiveService(appContext);
+            var scriptCommandConfigService = new ScriptCommandConfigService();
             var scriptService = new ScriptService(appContext);
             var romPackingService = new RomPackingService(appContext);
 
@@ -48,6 +49,7 @@ internal class Program
             appContext.AddService(levelScriptService);
             appContext.AddService(wildEncounterService);
             appContext.AddService(textArchiveService);
+            appContext.AddService(scriptCommandConfigService);
             appContext.AddService(scriptService);
             appContext.AddService(romPackingService);
 
@@ -59,6 +61,10 @@ internal class Program
             AppLogger.Debug("Configuring service dependencies");
             headerService.SetRomService(romService);
             mapService.SetRomService(romService);
+
+            // Initialize script command database with config service
+            AppLogger.Debug("Initializing script command database");
+            Clockwork.Core.Formats.NDS.Scripts.ScriptDatabase.SetConfigService(scriptCommandConfigService);
 
             // Veldrid window configuration
             AppLogger.Debug("Configuring Veldrid window");

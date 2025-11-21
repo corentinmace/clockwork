@@ -48,7 +48,9 @@ public static class ScriptCompiler
             var commandInfo = ScriptDatabase.GetCommandInfo(commandName);
             if (commandInfo == null)
             {
-                throw new Exception($"Unknown command: {commandName}");
+                throw new ScriptCompilationException(
+                    $"Unknown command '{commandName}'. This command is not defined in the script command database. " +
+                    $"Check the command name or update ScriptCommands.json in %appdata%/Clockwork/Scrcmd/");
             }
 
             // Parse parameters
@@ -75,13 +77,23 @@ public static class ScriptCompiler
         var result = new List<byte[]>();
 
         if (string.IsNullOrWhiteSpace(paramsStr))
+        {
+            if (commandInfo.Parameters.Count > 0)
+            {
+                throw new ScriptCompilationException(
+                    $"Command '{commandInfo.Name}' expects {commandInfo.Parameters.Count} parameter(s), but got 0. " +
+                    $"Expected: {commandInfo.GetSignature()}");
+            }
             return result;
+        }
 
         var paramStrings = SplitParameters(paramsStr);
 
         if (paramStrings.Count != commandInfo.Parameters.Count)
         {
-            throw new Exception($"Command {commandInfo.Name} expects {commandInfo.Parameters.Count} parameters, got {paramStrings.Count}");
+            throw new ScriptCompilationException(
+                $"Command '{commandInfo.Name}' expects {commandInfo.Parameters.Count} parameter(s), but got {paramStrings.Count}. " +
+                $"Expected: {commandInfo.GetSignature()}");
         }
 
         for (int i = 0; i < paramStrings.Count; i++)
@@ -89,8 +101,21 @@ public static class ScriptCompiler
             var paramStr = paramStrings[i].Trim();
             var paramType = commandInfo.Parameters[i];
 
-            byte[] paramBytes = EncodeParameter(paramStr, paramType);
-            result.Add(paramBytes);
+            try
+            {
+                byte[] paramBytes = EncodeParameter(paramStr, paramType, commandInfo.Name, i);
+                result.Add(paramBytes);
+            }
+            catch (ScriptCompilationException)
+            {
+                throw; // Re-throw our custom exception
+            }
+            catch (Exception ex)
+            {
+                throw new ScriptCompilationException(
+                    $"Invalid parameter #{i + 1} for command '{commandInfo.Name}': " +
+                    $"Cannot parse '{paramStr}' as {paramType}. {ex.Message}");
+            }
         }
 
         return result;
@@ -137,59 +162,125 @@ public static class ScriptCompiler
     }
 
     /// <summary>
-    /// Encodes a parameter value to bytes
+    /// Encodes a parameter value to bytes with validation
     /// </summary>
-    private static byte[] EncodeParameter(string value, ScriptParameterType type)
+    private static byte[] EncodeParameter(string value, ScriptParameterType type, string commandName, int paramIndex)
     {
         value = value.Trim();
 
-        switch (type)
+        if (string.IsNullOrWhiteSpace(value))
         {
-            case ScriptParameterType.Byte:
-                {
-                    byte byteValue = ParseNumeric<byte>(value);
-                    return new[] { byteValue };
-                }
+            throw new ScriptCompilationException(
+                $"Parameter #{paramIndex + 1} for command '{commandName}' cannot be empty");
+        }
 
-            case ScriptParameterType.Word:
-                {
-                    ushort wordValue = ParseNumeric<ushort>(value);
-                    return BitConverter.GetBytes(wordValue);
-                }
-
-            case ScriptParameterType.DWord:
-                {
-                    uint dwordValue = ParseNumeric<uint>(value);
-                    return BitConverter.GetBytes(dwordValue);
-                }
-
-            case ScriptParameterType.Offset:
-                {
-                    // Remove @ prefix if present
-                    if (value.StartsWith("@"))
-                        value = value.Substring(1);
-
-                    uint offsetValue = ParseNumeric<uint>(value);
-                    return BitConverter.GetBytes(offsetValue);
-                }
-
-            case ScriptParameterType.Variable:
-                {
-                    // For variable parameters, try to parse as hex bytes
-                    // Format: "0x01 0x02 0x03" or "01 02 03"
-                    var hexValues = value.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                    var bytes = new List<byte>();
-
-                    foreach (var hex in hexValues)
+        try
+        {
+            switch (type)
+            {
+                case ScriptParameterType.Byte:
                     {
-                        bytes.Add(ParseNumeric<byte>(hex));
+                        byte byteValue = ParseNumericWithValidation<byte>(value, commandName, paramIndex, "Byte", 0, 255);
+                        return new[] { byteValue };
                     }
 
-                    return bytes.ToArray();
-                }
+                case ScriptParameterType.Word:
+                    {
+                        ushort wordValue = ParseNumericWithValidation<ushort>(value, commandName, paramIndex, "Word", 0, 65535);
+                        return BitConverter.GetBytes(wordValue);
+                    }
 
-            default:
-                throw new Exception($"Unknown parameter type: {type}");
+                case ScriptParameterType.DWord:
+                    {
+                        uint dwordValue = ParseNumericWithValidation<uint>(value, commandName, paramIndex, "DWord", 0, uint.MaxValue);
+                        return BitConverter.GetBytes(dwordValue);
+                    }
+
+                case ScriptParameterType.Offset:
+                    {
+                        // Remove @ prefix if present
+                        if (value.StartsWith("@"))
+                            value = value.Substring(1);
+
+                        uint offsetValue = ParseNumericWithValidation<uint>(value, commandName, paramIndex, "Offset", 0, uint.MaxValue);
+                        return BitConverter.GetBytes(offsetValue);
+                    }
+
+                case ScriptParameterType.Variable:
+                    {
+                        // For variable parameters, try to parse as hex bytes
+                        // Format: "0x01 0x02 0x03" or "01 02 03"
+                        var hexValues = value.Split(new[] { ' ', ',', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                        var bytes = new List<byte>();
+
+                        foreach (var hex in hexValues)
+                        {
+                            try
+                            {
+                                bytes.Add(ParseNumeric<byte>(hex));
+                            }
+                            catch
+                            {
+                                throw new ScriptCompilationException(
+                                    $"Invalid variable parameter #{paramIndex + 1} for command '{commandName}': " +
+                                    $"Cannot parse '{hex}' as byte value. Expected format: '0x01 0x02' or '1 2'");
+                            }
+                        }
+
+                        return bytes.ToArray();
+                    }
+
+                default:
+                    throw new ScriptCompilationException(
+                        $"Unknown parameter type '{type}' for parameter #{paramIndex + 1} in command '{commandName}'");
+            }
+        }
+        catch (ScriptCompilationException)
+        {
+            throw; // Re-throw our custom exceptions
+        }
+        catch (Exception ex)
+        {
+            throw new ScriptCompilationException(
+                $"Failed to encode parameter #{paramIndex + 1} for command '{commandName}': {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Parses numeric value with validation
+    /// </summary>
+    private static T ParseNumericWithValidation<T>(string value, string commandName, int paramIndex, string typeName, long min, long max) where T : struct
+    {
+        try
+        {
+            T result = ParseNumeric<T>(value);
+
+            // Validate range
+            long numValue = Convert.ToInt64(result);
+            if (numValue < min || numValue > max)
+            {
+                throw new ScriptCompilationException(
+                    $"Parameter #{paramIndex + 1} for command '{commandName}' is out of range. " +
+                    $"Value '{value}' ({numValue}) must be between {min} and {max} for type {typeName}");
+            }
+
+            return result;
+        }
+        catch (ScriptCompilationException)
+        {
+            throw; // Re-throw our custom exceptions
+        }
+        catch (FormatException)
+        {
+            throw new ScriptCompilationException(
+                $"Invalid {typeName} parameter #{paramIndex + 1} for command '{commandName}': " +
+                $"Cannot parse '{value}' as a number. Expected format: decimal (e.g., '10') or hex (e.g., '0x0A')");
+        }
+        catch (OverflowException)
+        {
+            throw new ScriptCompilationException(
+                $"Parameter #{paramIndex + 1} for command '{commandName}' is too large for type {typeName}. " +
+                $"Value '{value}' must be between {min} and {max}");
         }
     }
 

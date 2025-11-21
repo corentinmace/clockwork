@@ -1,15 +1,27 @@
 using System.Text.Json;
 using System.Reflection;
+using Clockwork.Core.Services;
 
 namespace Clockwork.Core.Formats.NDS.Scripts;
 
 /// <summary>
 /// Database of script commands for different Pokémon NDS games
+/// Loads from %appdata%/Clockwork/Scrcmd/ScriptCommands.json
 /// </summary>
 public static class ScriptDatabase
 {
     private static Dictionary<ushort, ScriptCommandInfo>? _platinumCommands;
     private static bool _isInitialized = false;
+    private static ScriptCommandConfigService? _configService;
+
+    /// <summary>
+    /// Sets the configuration service used to load commands
+    /// </summary>
+    public static void SetConfigService(ScriptCommandConfigService configService)
+    {
+        _configService = configService;
+        _isInitialized = false; // Force reload on next access
+    }
 
     /// <summary>
     /// Gets script command database for Platinum (default)
@@ -20,7 +32,7 @@ public static class ScriptDatabase
         {
             if (!_isInitialized)
             {
-                LoadFromJson();
+                LoadCommands();
             }
             return _platinumCommands!;
         }
@@ -56,7 +68,35 @@ public static class ScriptDatabase
         return commands.FirstOrDefault(c => c.Name.Equals(commandName, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static void LoadFromJson()
+    /// <summary>
+    /// Reloads commands from configuration file
+    /// </summary>
+    public static void ReloadFromConfig()
+    {
+        _isInitialized = false;
+        LoadCommands();
+    }
+
+    private static void LoadCommands()
+    {
+        // Try loading from config service first
+        if (_configService != null)
+        {
+            var commands = _configService.LoadCommands();
+            if (commands != null && commands.Count > 0)
+            {
+                _platinumCommands = commands;
+                _isInitialized = true;
+                Console.WriteLine($"Loaded {_platinumCommands.Count} script commands from config service");
+                return;
+            }
+        }
+
+        // Fallback to embedded resources if config service fails
+        LoadFromEmbeddedResources();
+    }
+
+    private static void LoadFromEmbeddedResources()
     {
         try
         {
@@ -118,11 +158,11 @@ public static class ScriptDatabase
             }
 
             _isInitialized = true;
-            Console.WriteLine($"Loaded {_platinumCommands.Count} script commands from JSON");
+            Console.WriteLine($"Loaded {_platinumCommands.Count} script commands from embedded resources (fallback)");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading script commands from JSON: {ex.Message}");
+            Console.WriteLine($"Error loading script commands from embedded resources: {ex.Message}");
             _platinumCommands = new Dictionary<ushort, ScriptCommandInfo>();
             _isInitialized = true;
         }
