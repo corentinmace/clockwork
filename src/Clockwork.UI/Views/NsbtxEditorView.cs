@@ -582,53 +582,90 @@ public class NsbtxEditorView : IView
 
     private void LoadTexturePreview(int textureIndex, int paletteIndex = 0)
     {
-        // Clean up previous texture
-        if (_currentGLTexture != 0)
+        try
         {
-            GL.DeleteTexture(_currentGLTexture);
-            _currentGLTexture = 0;
+            // Clean up previous texture
+            if (_currentGLTexture != 0)
+            {
+                GL.DeleteTexture(_currentGLTexture);
+                _currentGLTexture = 0;
+            }
+
+            var currentNsbtx = _nsbtxService?.CurrentNsbtx;
+            if (currentNsbtx == null || textureIndex < 0 || textureIndex >= currentNsbtx.Textures.Count)
+            {
+                Core.Logging.AppLogger.Warn($"[NsbtxEditor] Invalid texture index: {textureIndex}");
+                return;
+            }
+
+            var texInfo = currentNsbtx.Textures[textureIndex];
+            Core.Logging.AppLogger.Debug($"[NsbtxEditor] Loading texture {textureIndex}: {currentNsbtx.TextureNames[textureIndex]}");
+            Core.Logging.AppLogger.Debug($"[NsbtxEditor] Format: {texInfo.Format}, Dimensions: {texInfo.ActualWidth}x{texInfo.ActualHeight}");
+            Core.Logging.AppLogger.Debug($"[NsbtxEditor] Palette index: {paletteIndex}, Palette count: {currentNsbtx.Palettes.Count}");
+
+            // Decode texture to RGBA
+            var rgbaData = currentNsbtx.DecodeTextureToRGBA(textureIndex, paletteIndex);
+            if (rgbaData == null)
+            {
+                Core.Logging.AppLogger.Error($"[NsbtxEditor] Failed to decode texture {textureIndex}");
+                SetStatus($"Failed to decode texture (unsupported format {texInfo.Format})", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+                return;
+            }
+
+            _currentTextureWidth = texInfo.ActualWidth;
+            _currentTextureHeight = texInfo.ActualHeight;
+
+            Core.Logging.AppLogger.Debug($"[NsbtxEditor] Decoded {rgbaData.Length} bytes, expected {_currentTextureWidth * _currentTextureHeight * 4}");
+
+            if (rgbaData.Length != _currentTextureWidth * _currentTextureHeight * 4)
+            {
+                Core.Logging.AppLogger.Error($"[NsbtxEditor] Data size mismatch! Got {rgbaData.Length}, expected {_currentTextureWidth * _currentTextureHeight * 4}");
+                SetStatus("Texture data size mismatch", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+                return;
+            }
+
+            // Create OpenGL texture
+            _currentGLTexture = GL.GenTexture();
+            GL.BindTexture(TextureTarget.Texture2D, _currentGLTexture);
+
+            Core.Logging.AppLogger.Debug($"[NsbtxEditor] Created GL texture {_currentGLTexture}");
+
+            // Upload texture data
+            GL.TexImage2D(
+                TextureTarget.Texture2D,
+                0,
+                PixelInternalFormat.Rgba,
+                _currentTextureWidth,
+                _currentTextureHeight,
+                0,
+                PixelFormat.Rgba,
+                PixelType.UnsignedByte,
+                rgbaData
+            );
+
+            // Set texture parameters
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+
+            GL.BindTexture(TextureTarget.Texture2D, 0);
+
+            Core.Logging.AppLogger.Info($"[NsbtxEditor] Successfully loaded texture {textureIndex}");
+            SetStatus($"Loaded texture: {currentNsbtx.TextureNames[textureIndex]}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
         }
-
-        var currentNsbtx = _nsbtxService?.CurrentNsbtx;
-        if (currentNsbtx == null || textureIndex < 0 || textureIndex >= currentNsbtx.Textures.Count)
-            return;
-
-        // Decode texture to RGBA
-        var rgbaData = currentNsbtx.DecodeTextureToRGBA(textureIndex, paletteIndex);
-        if (rgbaData == null)
+        catch (Exception ex)
         {
-            SetStatus("Failed to decode texture", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
-            return;
+            Core.Logging.AppLogger.Error($"[NsbtxEditor] Exception loading texture {textureIndex}: {ex.Message}");
+            Core.Logging.AppLogger.Error($"[NsbtxEditor] Stack trace: {ex.StackTrace}");
+            SetStatus($"Error loading texture: {ex.Message}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+
+            if (_currentGLTexture != 0)
+            {
+                GL.DeleteTexture(_currentGLTexture);
+                _currentGLTexture = 0;
+            }
         }
-
-        var texInfo = currentNsbtx.Textures[textureIndex];
-        _currentTextureWidth = texInfo.ActualWidth;
-        _currentTextureHeight = texInfo.ActualHeight;
-
-        // Create OpenGL texture
-        _currentGLTexture = GL.GenTexture();
-        GL.BindTexture(TextureTarget.Texture2D, _currentGLTexture);
-
-        // Upload texture data
-        GL.TexImage2D(
-            TextureTarget.Texture2D,
-            0,
-            PixelInternalFormat.Rgba,
-            _currentTextureWidth,
-            _currentTextureHeight,
-            0,
-            PixelFormat.Rgba,
-            PixelType.UnsignedByte,
-            rgbaData
-        );
-
-        // Set texture parameters
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
-        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
-
-        GL.BindTexture(TextureTarget.Texture2D, 0);
     }
 
     private void SetStatus(string message, Vector4 color)
