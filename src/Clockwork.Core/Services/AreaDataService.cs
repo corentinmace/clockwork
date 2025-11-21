@@ -93,15 +93,19 @@ public class AreaDataService : IApplicationService
         try
         {
             byte[] data = File.ReadAllBytes(filePath);
+
+            AppLogger.Debug($"[AreaDataService] Loading area data {areaDataId}, file size: {data.Length} bytes");
+
             CurrentAreaData = AreaData.ReadFromBytes(data);
             CurrentAreaDataId = areaDataId;
 
-            AppLogger.Info($"[AreaDataService] Loaded area data {areaDataId}");
+            AppLogger.Info($"[AreaDataService] Loaded area data {areaDataId} (Buildings: {CurrentAreaData.BuildingsTileset}, Map: {CurrentAreaData.MapBaseTileset}, Light: {CurrentAreaData.LightType})");
             return CurrentAreaData;
         }
         catch (Exception ex)
         {
             AppLogger.Error($"[AreaDataService] Failed to load area data {areaDataId}: {ex.Message}");
+            AppLogger.Debug($"[AreaDataService] File path was: {filePath}");
             return null;
         }
     }

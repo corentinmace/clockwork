@@ -31,6 +31,12 @@ public class AreaData
     {
         var area = new AreaData();
 
+        // Validate minimum size (at least 8 bytes: 2 buildings + 2 map + 4 seasonal/padding)
+        if (data.Length < 8)
+        {
+            throw new InvalidDataException($"Area data file is too short: {data.Length} bytes (minimum 8 required)");
+        }
+
         using var ms = new MemoryStream(data);
         using var reader = new BinaryReader(ms);
 
@@ -61,7 +67,17 @@ public class AreaData
             area.UsesTwoByteFormat = false;
         }
 
-        area.LightType = reader.ReadUInt16();
+        // Read light type if available (some files may be 8 bytes only)
+        if (data.Length >= 10)
+        {
+            area.LightType = reader.ReadUInt16();
+        }
+        else
+        {
+            // Default light type for short files
+            area.LightType = 0;
+            Logging.AppLogger.Warn($"[AreaData] File is only {data.Length} bytes, missing light type field");
+        }
 
         return area;
     }
