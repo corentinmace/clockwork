@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Numerics;
 using System.Linq;
 using ImGuiNET;
 using Clockwork.Core;
+using Clockwork.Core.Models;
 using Clockwork.Core.Services;
 using Clockwork.Core.Logging;
 using Clockwork.UI.Icons;
@@ -18,18 +18,19 @@ namespace Clockwork.UI.Views
     {
         private readonly ApplicationContext _appContext;
         private RomService? _romService;
+        private TextArchiveService? _textArchiveService;
 
-        private List<string> messages = new List<string>();
-        private string currentFilePath = "";
+        // Current archive being edited
+        private TextArchive? _currentArchive;
+        private int _currentArchiveID = -1;
         private int selectedMessageIndex = -1;
         private string editBuffer = "";
         private bool isDirty = false;
         private string statusMessage = "";
         private float statusMessageTimer = 0f;
-        private ushort encryptionKey = 0; // Store the encryption key from .txt file
 
-        // ROM text archives
-        private List<string> availableTextArchives = new List<string>();
+        // Available archives in ROM
+        private List<int> _availableArchiveIDs = new List<int>();
         private int selectedArchiveIndex = -1;
         private string[] archiveNames = Array.Empty<string>();
 
@@ -47,6 +48,7 @@ namespace Clockwork.UI.Views
         {
             _appContext = appContext;
             _romService = _appContext.GetService<RomService>();
+            _textArchiveService = _appContext.GetService<TextArchiveService>();
         }
 
         /// <summary>
@@ -54,39 +56,35 @@ namespace Clockwork.UI.Views
         /// </summary>
         private void RefreshTextArchivesList()
         {
-            availableTextArchives.Clear();
+            _availableArchiveIDs.Clear();
             archiveNames = Array.Empty<string>();
             selectedArchiveIndex = -1;
 
-            if (_romService?.CurrentRom?.GameDirectories == null)
+            if (_textArchiveService == null || _romService?.CurrentRom?.IsLoaded != true)
+            {
+                SetStatusMessage("No ROM loaded");
                 return;
-
-            if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out string? textArchivesPath))
-                return;
-
-            if (!Directory.Exists(textArchivesPath))
-                return;
+            }
 
             try
             {
-                var files = Directory.GetFiles(textArchivesPath, "*.txt") // Only .txt files from expanded/
-                    .OrderBy(f => f)
-                    .ToList();
+                _availableArchiveIDs = _textArchiveService.GetAvailableArchiveIDs();
+                archiveNames = _availableArchiveIDs.Select(id => $"{id:D4}").ToArray();
 
-                availableTextArchives = files;
-                archiveNames = files.Select(f => Path.GetFileName(f)).ToArray();
-
-                if (availableTextArchives.Count > 0)
+                if (_availableArchiveIDs.Count > 0)
                 {
-                    SetStatusMessage($"Found {availableTextArchives.Count} text archives");
+                    SetStatusMessage($"Found {_availableArchiveIDs.Count} text archives");
                 }
                 else
                 {
                     SetStatusMessage("No text archives found in ROM");
                 }
+
+                AppLogger.Info($"Refreshed text archives list: {_availableArchiveIDs.Count} archives found");
             }
             catch (Exception ex)
             {
+                AppLogger.Error($"Error listing text archives: {ex.Message}");
                 SetStatusMessage($"Error listing text archives: {ex.Message}");
             }
         }
@@ -94,7 +92,6 @@ namespace Clockwork.UI.Views
         /// <summary>
         /// Open the text editor and load a specific text archive by its ID
         /// </summary>
-        /// <param name="archiveID">The text archive ID to load (e.g., 433 for location names)</param>
         public void OpenWithArchiveID(int archiveID)
         {
             AppLogger.Info($"[TextEditor] OpenWithArchiveID called with ID: {archiveID}");
@@ -104,145 +101,112 @@ namespace Clockwork.UI.Views
             _shouldFocus = true;
 
             // Refresh archive list if not already loaded
-            if (availableTextArchives.Count == 0)
+            if (_availableArchiveIDs.Count == 0)
             {
                 AppLogger.Debug("[TextEditor] Refreshing text archives list...");
                 RefreshTextArchivesList();
             }
 
             // Check if ROM is loaded
-            if (_romService?.CurrentRom?.GameDirectories == null)
+            if (_textArchiveService == null || _romService?.CurrentRom?.IsLoaded != true)
             {
-                AppLogger.Warn("[TextEditor] No ROM loaded or GameDirectories is null");
+                AppLogger.Warn("[TextEditor] No ROM loaded or TextArchiveService is null");
                 SetStatusMessage("No ROM loaded. Please load a ROM first.");
                 return;
             }
 
-            if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out string? textArchivesPath))
+            // Load the archive via the service (auto-extracts if needed)
+            LoadArchive(archiveID);
+        }
+
+        /// <summary>
+        /// Load a text archive by ID using TextArchiveService
+        /// </summary>
+        private void LoadArchive(int archiveID)
+        {
+            if (_textArchiveService == null)
             {
-                AppLogger.Warn("[TextEditor] expandedTextArchives directory not found in GameDirectories");
-                SetStatusMessage("Text archives directory not found in ROM.");
+                SetStatusMessage("TextArchiveService not available");
                 return;
             }
 
-            // Build the file path for this archive ID (format: 0000.txt, 0001.txt, etc.)
-            string fileName = $"{archiveID:D4}.txt";
-            string filePath = Path.Combine(textArchivesPath, fileName);
-
-            AppLogger.Debug($"[TextEditor] Looking for file: {filePath}");
-            AppLogger.Debug($"[TextEditor] File exists: {File.Exists(filePath)}");
-
-            if (File.Exists(filePath))
-            {
-                // Find the index in the available archives list
-                selectedArchiveIndex = availableTextArchives.FindIndex(f =>
-                    Path.GetFileName(f).Equals(fileName, StringComparison.OrdinalIgnoreCase));
-
-                AppLogger.Debug($"[TextEditor] Selected archive index: {selectedArchiveIndex}");
-
-                // Load the file
-                LoadFile(filePath);
-            }
-            else
-            {
-                AppLogger.Error($"[TextEditor] Text archive {archiveID} not found at: {filePath}");
-                SetStatusMessage($"Text archive {archiveID} not found at: {filePath}");
-            }
-        }
-
-        /// <summary>
-        /// Load a message archive file (.txt format from expanded/)
-        /// Format:
-        /// # Key: 0x1234
-        /// message 1
-        /// message 2
-        /// ...
-        /// </summary>
-        public void LoadFile(string filePath)
-        {
             try
             {
-                if (!File.Exists(filePath))
+                AppLogger.Info($"Loading text archive {archiveID}...");
+
+                // Load via service (handles auto-extraction)
+                _currentArchive = _textArchiveService.LoadTextArchive(archiveID);
+
+                if (_currentArchive == null)
                 {
-                    SetStatusMessage($"File not found: {filePath}");
+                    AppLogger.Error($"Failed to load text archive {archiveID}");
+                    SetStatusMessage($"Failed to load text archive {archiveID}");
                     return;
                 }
 
-                var lines = File.ReadAllLines(filePath).ToList();
-
-                if (lines.Count == 0)
-                {
-                    SetStatusMessage("File is empty");
-                    return;
-                }
-
-                // Parse first line to extract encryption key
-                string firstLine = lines[0];
-                if (firstLine.StartsWith("# Key: 0x") || firstLine.StartsWith("# Key: "))
-                {
-                    string keyStr = firstLine.Substring(7).Trim();
-                    if (keyStr.StartsWith("0x"))
-                        keyStr = keyStr.Substring(2);
-
-                    if (ushort.TryParse(keyStr, System.Globalization.NumberStyles.HexNumber, null, out ushort key))
-                    {
-                        encryptionKey = key;
-                    }
-
-                    // Remove first line (key line)
-                    lines.RemoveAt(0);
-                }
-                else
-                {
-                    encryptionKey = 0;
-                }
-
-                messages = lines;
-                currentFilePath = filePath;
+                _currentArchiveID = archiveID;
                 selectedMessageIndex = -1;
                 editBuffer = "";
                 isDirty = false;
-                SetStatusMessage($"Loaded {messages.Count} messages from {Path.GetFileName(filePath)} (Key: 0x{encryptionKey:X4})");
+
+                // Update selection in list
+                selectedArchiveIndex = _availableArchiveIDs.IndexOf(archiveID);
+
+                SetStatusMessage($"Loaded archive {archiveID}: {_currentArchive.MessageCount} messages (Key: 0x{_currentArchive.Key:X4})");
+                AppLogger.Info($"Successfully loaded text archive {archiveID}: {_currentArchive.MessageCount} messages");
             }
             catch (Exception ex)
             {
-                SetStatusMessage($"Error loading file: {ex.Message}");
-                messages = new List<string>();
+                AppLogger.Error($"Error loading text archive {archiveID}: {ex.Message}");
+                SetStatusMessage($"Error loading archive: {ex.Message}");
+                _currentArchive = null;
+                _currentArchiveID = -1;
             }
         }
 
         /// <summary>
-        /// Save the current message archive (.txt format to expanded/ and repack to binary in unpacked/)
+        /// Save the current text archive
         /// </summary>
-        public void SaveFile()
+        public void SaveArchive()
         {
-            if (string.IsNullOrEmpty(currentFilePath))
+            if (_currentArchive == null || _currentArchiveID < 0)
             {
-                SetStatusMessage("No file loaded");
+                SetStatusMessage("No archive loaded");
+                return;
+            }
+
+            if (_textArchiveService == null)
+            {
+                SetStatusMessage("TextArchiveService not available");
                 return;
             }
 
             try
             {
                 // Commit current edit
-                if (selectedMessageIndex >= 0 && selectedMessageIndex < messages.Count)
+                if (selectedMessageIndex >= 0 && selectedMessageIndex < _currentArchive.MessageCount)
                 {
-                    messages[selectedMessageIndex] = editBuffer;
+                    _currentArchive.SetMessage(selectedMessageIndex, editBuffer);
                 }
 
-                // Write with key in first line to expanded/ .txt file
-                var lines = new List<string>();
-                lines.Add($"# Key: 0x{encryptionKey:X4}");
-                lines.AddRange(messages);
+                // Save via service (saves to both .txt and .bin)
+                bool success = _textArchiveService.SaveTextArchive(_currentArchiveID, _currentArchive);
 
-                File.WriteAllLines(currentFilePath, lines);
-                isDirty = false;
-
-                SetStatusMessage($"Saved {messages.Count} messages to {Path.GetFileName(currentFilePath)}");
+                if (success)
+                {
+                    isDirty = false;
+                    SetStatusMessage($"Saved archive {_currentArchiveID}");
+                    AppLogger.Info($"Saved text archive {_currentArchiveID}");
+                }
+                else
+                {
+                    SetStatusMessage($"Failed to save archive {_currentArchiveID}");
+                }
             }
             catch (Exception ex)
             {
-                SetStatusMessage($"Error saving file: {ex.Message}");
+                AppLogger.Error($"Error saving text archive: {ex.Message}");
+                SetStatusMessage($"Error saving: {ex.Message}");
             }
         }
 
@@ -255,7 +219,7 @@ namespace Clockwork.UI.Views
                 return;
 
             // Refresh text archives list when window becomes visible
-            if (availableTextArchives.Count == 0 && _romService?.CurrentRom?.IsLoaded == true)
+            if (_availableArchiveIDs.Count == 0 && _romService?.CurrentRom?.IsLoaded == true)
             {
                 RefreshTextArchivesList();
             }
@@ -279,7 +243,7 @@ namespace Clockwork.UI.Views
                 DrawToolbar();
                 ImGui.Separator();
 
-                if (messages.Count > 0)
+                if (_currentArchive != null && _currentArchive.MessageCount > 0)
                 {
                     // Split view: message list on left, editor on right
                     DrawSplitView();
@@ -287,7 +251,7 @@ namespace Clockwork.UI.Views
                 else
                 {
                     ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
-                        "No file loaded. Use File > Load to open a message archive.");
+                        "No archive loaded. Select an archive from the dropdown above.");
                 }
 
                 // Status bar at bottom
@@ -305,16 +269,16 @@ namespace Clockwork.UI.Views
             // Text Archive selector (if ROM is loaded)
             if (_romService?.CurrentRom?.IsLoaded == true && archiveNames.Length > 0)
             {
-                ImGui.Text("Text Archive:");
+                ImGui.Text("Archive:");
                 ImGui.SameLine();
-                ImGui.SetNextItemWidth(200);
+                ImGui.SetNextItemWidth(150);
                 if (ImGui.Combo("##archive", ref selectedArchiveIndex, archiveNames, archiveNames.Length))
                 {
                     // Archive selection changed - auto-load the selected archive
-                    if (selectedArchiveIndex >= 0 && selectedArchiveIndex < availableTextArchives.Count)
+                    if (selectedArchiveIndex >= 0 && selectedArchiveIndex < _availableArchiveIDs.Count)
                     {
-                        string archivePath = availableTextArchives[selectedArchiveIndex];
-                        LoadFile(archivePath);
+                        int archiveID = _availableArchiveIDs[selectedArchiveIndex];
+                        LoadArchive(archiveID);
                     }
                 }
 
@@ -324,7 +288,7 @@ namespace Clockwork.UI.Views
             {
                 ImGui.TextColored(new Vector4(1.0f, 0.6f, 0.0f, 1.0f), "No text archives found");
                 ImGui.SameLine();
-                if (ImGui.Button($"{FontAwesomeIcons.Refresh}  Refresh"))
+                if (ImGui.Button($"{FontAwesomeIcons.Refresh} Refresh"))
                 {
                     RefreshTextArchivesList();
                 }
@@ -336,17 +300,16 @@ namespace Clockwork.UI.Views
                 ImGui.SameLine();
             }
 
-            ImGui.SameLine();
-            if (ImGui.Button($"{FontAwesomeIcons.Save}  Save") && !string.IsNullOrEmpty(currentFilePath))
+            if (ImGui.Button($"{FontAwesomeIcons.Save} Save") && _currentArchive != null)
             {
-                SaveFile();
+                SaveArchive();
             }
 
             ImGui.SameLine();
-            if (ImGui.Button($"{FontAwesomeIcons.Plus}  Add Message"))
+            if (ImGui.Button($"{FontAwesomeIcons.Plus} Add Message") && _currentArchive != null)
             {
-                messages.Add("");
-                selectedMessageIndex = messages.Count - 1;
+                _currentArchive.Messages.Add("");
+                selectedMessageIndex = _currentArchive.MessageCount - 1;
                 editBuffer = "";
                 isDirty = true;
             }
@@ -360,7 +323,7 @@ namespace Clockwork.UI.Views
             }
 
             ImGui.SameLine();
-            if (ImGui.Button($"{FontAwesomeIcons.Search}  Search"))
+            if (ImGui.Button($"{FontAwesomeIcons.Search} Search"))
             {
                 PerformSearch();
             }
@@ -377,7 +340,8 @@ namespace Clockwork.UI.Views
                     {
                         currentSearchIndex--;
                         selectedMessageIndex = searchResults[currentSearchIndex];
-                        editBuffer = messages[selectedMessageIndex];
+                        if (_currentArchive != null)
+                            editBuffer = _currentArchive.GetMessage(selectedMessageIndex);
                     }
 
                     ImGui.SameLine();
@@ -385,7 +349,8 @@ namespace Clockwork.UI.Views
                     {
                         currentSearchIndex++;
                         selectedMessageIndex = searchResults[currentSearchIndex];
-                        editBuffer = messages[selectedMessageIndex];
+                        if (_currentArchive != null)
+                            editBuffer = _currentArchive.GetMessage(selectedMessageIndex);
                     }
                 }
             }
@@ -393,6 +358,9 @@ namespace Clockwork.UI.Views
 
         private void DrawSplitView()
         {
+            if (_currentArchive == null)
+                return;
+
             var availableRegion = ImGui.GetContentRegionAvail();
             float listWidth = availableRegion.X * 0.3f;
             float editorWidth = availableRegion.X * 0.7f - 10;
@@ -400,10 +368,10 @@ namespace Clockwork.UI.Views
             // Left panel: Message list
             ImGui.BeginChild("MessageList", new Vector2(listWidth, -30), ImGuiChildFlags.Border);
             {
-                ImGui.Text($"Messages ({messages.Count})");
+                ImGui.Text($"Messages ({_currentArchive.MessageCount})");
                 ImGui.Separator();
 
-                for (int i = 0; i < messages.Count; i++)
+                for (int i = 0; i < _currentArchive.MessageCount; i++)
                 {
                     bool isSelected = selectedMessageIndex == i;
                     bool isSearchResult = searchResults.Contains(i);
@@ -414,7 +382,8 @@ namespace Clockwork.UI.Views
                         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 1.0f, 0.0f, 1.0f));
                     }
 
-                    string preview = messages[i];
+                    string message = _currentArchive.GetMessage(i);
+                    string preview = message;
                     if (preview.Length > 50)
                     {
                         preview = preview.Substring(0, 50) + "...";
@@ -424,17 +393,18 @@ namespace Clockwork.UI.Views
                     if (ImGui.Selectable($"{i:D4}: {preview}##msg{i}", isSelected))
                     {
                         // Save current edit before switching
-                        if (selectedMessageIndex >= 0 && selectedMessageIndex < messages.Count)
+                        if (selectedMessageIndex >= 0 && selectedMessageIndex < _currentArchive.MessageCount)
                         {
-                            if (messages[selectedMessageIndex] != editBuffer)
+                            string currentMessage = _currentArchive.GetMessage(selectedMessageIndex);
+                            if (currentMessage != editBuffer)
                             {
-                                messages[selectedMessageIndex] = editBuffer;
+                                _currentArchive.SetMessage(selectedMessageIndex, editBuffer);
                                 isDirty = true;
                             }
                         }
 
                         selectedMessageIndex = i;
-                        editBuffer = messages[i];
+                        editBuffer = message;
                     }
 
                     if (isSearchResult && !isSelected)
@@ -447,7 +417,7 @@ namespace Clockwork.UI.Views
                     {
                         if (ImGui.MenuItem("Delete"))
                         {
-                            messages.RemoveAt(i);
+                            _currentArchive.Messages.RemoveAt(i);
                             if (selectedMessageIndex == i)
                             {
                                 selectedMessageIndex = -1;
@@ -462,7 +432,7 @@ namespace Clockwork.UI.Views
 
                         if (ImGui.MenuItem("Duplicate"))
                         {
-                            messages.Insert(i + 1, messages[i]);
+                            _currentArchive.Messages.Insert(i + 1, message);
                             isDirty = true;
                         }
 
@@ -477,7 +447,7 @@ namespace Clockwork.UI.Views
             // Right panel: Message editor
             ImGui.BeginChild("MessageEditor", new Vector2(editorWidth, -30), ImGuiChildFlags.Border);
             {
-                if (selectedMessageIndex >= 0 && selectedMessageIndex < messages.Count)
+                if (selectedMessageIndex >= 0 && selectedMessageIndex < _currentArchive.MessageCount)
                 {
                     ImGui.Text($"Editing Message {selectedMessageIndex:D4}");
                     ImGui.Separator();
@@ -486,18 +456,19 @@ namespace Clockwork.UI.Views
                     if (ImGui.InputTextMultiline("##editor", ref editBuffer, 10000,
                         new Vector2(-20, -100)))
                     {
-                        if (messages[selectedMessageIndex] != editBuffer)
+                        string currentMessage = _currentArchive.GetMessage(selectedMessageIndex);
+                        if (currentMessage != editBuffer)
                         {
                             isDirty = true;
                         }
                     }
 
                     ImGui.Separator();
-                    ImGui.TextWrapped("Special characters: \\n (newline), \\r (return), \\f (form feed)");
+                    ImGui.TextWrapped("Special sequences: \\n (newline), {COMMAND, param1, param2}, {TRAINER_NAME:name}");
 
                     if (ImGui.Button("Apply Changes"))
                     {
-                        messages[selectedMessageIndex] = editBuffer;
+                        _currentArchive.SetMessage(selectedMessageIndex, editBuffer);
                         isDirty = true;
                         SetStatusMessage("Changes applied");
                     }
@@ -505,7 +476,7 @@ namespace Clockwork.UI.Views
                     ImGui.SameLine();
                     if (ImGui.Button("Revert"))
                     {
-                        editBuffer = messages[selectedMessageIndex];
+                        editBuffer = _currentArchive.GetMessage(selectedMessageIndex);
                         SetStatusMessage("Changes reverted");
                     }
                 }
@@ -522,9 +493,9 @@ namespace Clockwork.UI.Views
         {
             string status = "";
 
-            if (!string.IsNullOrEmpty(currentFilePath))
+            if (_currentArchive != null && _currentArchiveID >= 0)
             {
-                status += $"File: {Path.GetFileName(currentFilePath)}";
+                status += $"Archive: {_currentArchiveID:D4} ({_currentArchive.MessageCount} messages, Key: 0x{_currentArchive.Key:X4})";
             }
 
             if (isDirty)
@@ -552,14 +523,15 @@ namespace Clockwork.UI.Views
             searchResults.Clear();
             currentSearchIndex = -1;
 
-            if (string.IsNullOrWhiteSpace(searchQuery))
+            if (string.IsNullOrWhiteSpace(searchQuery) || _currentArchive == null)
             {
                 return;
             }
 
-            for (int i = 0; i < messages.Count; i++)
+            for (int i = 0; i < _currentArchive.MessageCount; i++)
             {
-                if (messages[i].Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
+                string message = _currentArchive.GetMessage(i);
+                if (message.Contains(searchQuery, StringComparison.OrdinalIgnoreCase))
                 {
                     searchResults.Add(i);
                 }
@@ -569,7 +541,7 @@ namespace Clockwork.UI.Views
             {
                 currentSearchIndex = 0;
                 selectedMessageIndex = searchResults[0];
-                editBuffer = messages[selectedMessageIndex];
+                editBuffer = _currentArchive.GetMessage(selectedMessageIndex);
                 SetStatusMessage($"Found {searchResults.Count} matches");
             }
             else
@@ -585,7 +557,7 @@ namespace Clockwork.UI.Views
         }
 
         public bool IsDirty => isDirty;
-        public int MessageCount => messages.Count;
-        public string CurrentFile => currentFilePath;
+        public int MessageCount => _currentArchive?.MessageCount ?? 0;
+        public int CurrentArchiveID => _currentArchiveID;
     }
 }
