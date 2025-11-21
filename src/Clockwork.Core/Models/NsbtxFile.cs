@@ -75,11 +75,13 @@ public class NsbtxFile
             throw new InvalidDataException($"Invalid NSBTX magic: expected 'BTX0', got '{file.Magic}'");
         }
 
-        reader.ReadUInt32(); // BOM (byte order mark) 0xFEFF
+        ushort bom = reader.ReadUInt16(); // BOM (byte order mark) 0xFEFF - u16, NOT u32!
         file.Version = reader.ReadUInt16();
         file.FileSize = reader.ReadUInt32();
         ushort headerSize = reader.ReadUInt16();
         file.BlockCount = reader.ReadUInt16();
+
+        AppLogger.Debug($"[NSBTX] BOM: 0x{bom:X4}");
 
         AppLogger.Debug($"[NSBTX] BTX0 header: version={file.Version}, fileSize={file.FileSize}, headerSize={headerSize}, blockCount={file.BlockCount}");
 
