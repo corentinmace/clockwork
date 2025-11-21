@@ -441,103 +441,48 @@ public class ScriptService : IApplicationService
         if (File.Exists(textPaths[0]))
         {
             var scriptText = File.ReadAllText(textPaths[0]);
-            script.Scripts = ParseContainersFromText(scriptText, ContainerType.Script, errors);
+            try
+            {
+                script.Scripts = ScriptCompiler.ParseContainersFromText(scriptText, ContainerType.Script);
+            }
+            catch (Formats.NDS.Scripts.ScriptCompilationException ex)
+            {
+                errors.Add($"Scripts: {ex.Message}");
+                AppLogger.Error($"Failed to compile scripts: {ex.Message}");
+            }
         }
 
         // Import functions
         if (File.Exists(textPaths[1]))
         {
             var functionText = File.ReadAllText(textPaths[1]);
-            script.Functions = ParseContainersFromText(functionText, ContainerType.Function, errors);
+            try
+            {
+                script.Functions = ScriptCompiler.ParseContainersFromText(functionText, ContainerType.Function);
+            }
+            catch (Formats.NDS.Scripts.ScriptCompilationException ex)
+            {
+                errors.Add($"Functions: {ex.Message}");
+                AppLogger.Error($"Failed to compile functions: {ex.Message}");
+            }
         }
 
         // Import actions
         if (File.Exists(textPaths[2]))
         {
             var actionText = File.ReadAllText(textPaths[2]);
-            script.Actions = ParseContainersFromText(actionText, ContainerType.Action, errors);
-        }
-
-        return script;
-    }
-
-    /// <summary>
-    /// Parse containers from text (separated by blank lines)
-    /// </summary>
-    private List<ScriptContainer> ParseContainersFromText(string text, ContainerType type, List<string> errors)
-    {
-        var containers = new List<ScriptContainer>();
-        var lines = text.Split('\n');
-
-        var currentText = new List<string>();
-        uint currentID = 0;
-
-        foreach (var line in lines)
-        {
-            // Check for container header comment (// Script 0, // Function 1, etc.)
-            if (line.TrimStart().StartsWith($"// {type} "))
-            {
-                // Save previous container if any
-                if (currentText.Count > 0)
-                {
-                    var containerText = string.Join("\n", currentText);
-                    try
-                    {
-                        var container = ScriptCompiler.CompileContainer(containerText, type, currentID);
-                        containers.Add(container);
-                    }
-                    catch (Formats.NDS.Scripts.ScriptCompilationException ex)
-                    {
-                        string errorMsg = $"[{type} {currentID}] {ex.Message}";
-                        errors.Add(errorMsg);
-                        AppLogger.Error($"Failed to compile {type} {currentID}: {ex.Message}");
-                    }
-                    catch (Exception ex)
-                    {
-                        string errorMsg = $"[{type} {currentID}] Unexpected error: {ex.Message}";
-                        errors.Add(errorMsg);
-                        AppLogger.Error($"Failed to compile {type} {currentID}: {ex.Message}");
-                    }
-                    currentText.Clear();
-                }
-
-                // Extract ID from header
-                var parts = line.Split(' ');
-                if (parts.Length >= 3 && uint.TryParse(parts[2], out uint id))
-                {
-                    currentID = id;
-                }
-            }
-            else
-            {
-                currentText.Add(line);
-            }
-        }
-
-        // Save last container
-        if (currentText.Count > 0)
-        {
-            var containerText = string.Join("\n", currentText);
             try
             {
-                var container = ScriptCompiler.CompileContainer(containerText, type, currentID);
-                containers.Add(container);
+                script.Actions = ScriptCompiler.ParseContainersFromText(actionText, ContainerType.Action);
             }
             catch (Formats.NDS.Scripts.ScriptCompilationException ex)
             {
-                string errorMsg = $"[{type} {currentID}] {ex.Message}";
-                errors.Add(errorMsg);
-                AppLogger.Error($"Failed to compile {type} {currentID}: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                string errorMsg = $"[{type} {currentID}] Unexpected error: {ex.Message}";
-                errors.Add(errorMsg);
-                AppLogger.Error($"Failed to compile {type} {currentID}: {ex.Message}");
+                errors.Add($"Actions: {ex.Message}");
+                AppLogger.Error($"Failed to compile actions: {ex.Message}");
             }
         }
 
-        return containers;
+        return script;
     }
 
     /// <summary>

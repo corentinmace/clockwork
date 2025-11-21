@@ -419,22 +419,77 @@ public static class ScriptCompiler
     }
 
     /// <summary>
-    /// Parses multiple containers from text (separated by comments)
+    /// Parses multiple containers from text (separated by headers like "Script 1:", "Function 2:", "Action 3:")
     /// </summary>
-    private static List<ScriptContainer> ParseContainersFromText(string text, ContainerType type)
+    public static List<ScriptContainer> ParseContainersFromText(string text, ContainerType type)
     {
         var containers = new List<ScriptContainer>();
 
         if (string.IsNullOrWhiteSpace(text))
             return containers;
 
-        // For now, treat the entire text as a single container
-        // TODO: Support multiple containers separated by comment headers
-        var container = CompileContainer(text, type, 0);
+        // Regex to match container headers: "Script 1:", "Function 2:", "Action 3:"
+        var headerRegex = new Regex(@"^(Script|Function|Action)\s+(\d+)\s*:\s*$", RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        var matches = headerRegex.Matches(text);
 
-        if (container.Commands.Count > 0)
+        if (matches.Count == 0)
         {
-            containers.Add(container);
+            // No headers found - treat entire text as a single container with ID 0
+            var container = CompileContainer(text, type, 0);
+            if (container.Commands.Count > 0)
+            {
+                containers.Add(container);
+            }
+            return containers;
+        }
+
+        // Parse each container block
+        for (int i = 0; i < matches.Count; i++)
+        {
+            var match = matches[i];
+            string containerTypeStr = match.Groups[1].Value;
+            uint id = uint.Parse(match.Groups[2].Value);
+
+            // Verify the header type matches the expected container type
+            ContainerType detectedType = containerTypeStr.ToLower() switch
+            {
+                "script" => ContainerType.Script,
+                "function" => ContainerType.Function,
+                "action" => ContainerType.Action,
+                _ => type // Fallback to expected type
+            };
+
+            if (detectedType != type)
+            {
+                // Skip containers that don't match the expected type
+                // (e.g., if parsing Scripts tab, skip any Function/Action headers that might be there)
+                continue;
+            }
+
+            // Extract content between this header and the next one (or end of file)
+            int startIndex = match.Index + match.Length;
+            int endIndex = (i < matches.Count - 1) ? matches[i + 1].Index : text.Length;
+            string containerText = text.Substring(startIndex, endIndex - startIndex).Trim();
+
+            // Remove trailing "End" if present
+            if (containerText.EndsWith("End", StringComparison.OrdinalIgnoreCase))
+            {
+                containerText = containerText.Substring(0, containerText.Length - 3).Trim();
+            }
+
+            try
+            {
+                var container = CompileContainer(containerText, type, id);
+                if (container.Commands.Count > 0)
+                {
+                    containers.Add(container);
+                }
+            }
+            catch (ScriptCompilationException ex)
+            {
+                // Add container ID to error message
+                throw new ScriptCompilationException($"{type} {id}: {ex.Message}", ex);
+            }
         }
 
         return containers;
