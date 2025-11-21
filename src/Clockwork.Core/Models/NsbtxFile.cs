@@ -136,163 +136,208 @@ public class NsbtxFile
         }
 
         uint sectionSize = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x08: sectionSize = {sectionSize}");
+        AppLogger.Debug($"[NSBTX] Section size: {sectionSize}");
 
-        uint unknown1 = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x0C: unknown1 = 0x{unknown1:X8}");
+        // Texture Information block
+        uint texUnk = reader.ReadUInt32();
+        ushort texDataSize = (ushort)(reader.ReadUInt16() << 3);
+        ushort texDictOffset = reader.ReadUInt16();
+        ushort texUnk2 = reader.ReadUInt16();
+        reader.BaseStream.Position += 2; // Skip padding
+        uint texDataOffset = reader.ReadUInt32();
 
-        ushort textureDataSizeShr3 = reader.ReadUInt16();
-        AppLogger.Debug($"[NSBTX] @0x10: textureDataSizeShr3 = {textureDataSizeShr3} (real size: {textureDataSizeShr3 << 3})");
+        AppLogger.Debug($"[NSBTX] Texture info: dictOffset={texDictOffset}, dataSize={texDataSize}, dataOffset={texDataOffset}");
 
-        ushort texturesOff = reader.ReadUInt16();
-        AppLogger.Debug($"[NSBTX] @0x12: texturesOff = {texturesOff} (absolute: {tex0Offset + texturesOff})");
+        // Compressed Texture Information block
+        uint compTexUnk = reader.ReadUInt32();
+        ushort compTexDataSize = (ushort)(reader.ReadUInt16() << 3);
+        ushort compTexDictOffset = reader.ReadUInt16();
+        ushort compTexUnk2 = reader.ReadUInt16();
+        reader.BaseStream.Position += 2; // Skip padding
+        uint compTexDataOffset = reader.ReadUInt32();
+        uint compTexPalIndex = reader.ReadUInt32();
 
-        ushort compressedTextureSizeShr3 = reader.ReadUInt16();
-        AppLogger.Debug($"[NSBTX] @0x14: compressedTextureSizeShr3 = {compressedTextureSizeShr3}");
+        // Palette Information block
+        uint palUnk = reader.ReadUInt32();
+        ushort palDataSize = (ushort)(reader.ReadUInt16() << 3);
+        ushort palUnk2 = reader.ReadUInt16();
+        ushort palDictOffset = reader.ReadUInt16();
+        reader.BaseStream.Position += 2; // Skip padding
+        uint palDataOffset = reader.ReadUInt32();
 
-        ushort compressedTexturesOff = reader.ReadUInt16();
-        AppLogger.Debug($"[NSBTX] @0x16: compressedTexturesOff = {compressedTexturesOff}");
+        AppLogger.Debug($"[NSBTX] Palette info: dictOffset={palDictOffset}, dataSize={palDataSize}, dataOffset={palDataOffset}");
+        AppLogger.Debug($"[NSBTX] Current position after header: 0x{ms.Position:X}");
 
-        uint compressedTextureInfoOff = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x18: compressedTextureInfoOff = {compressedTextureInfoOff}");
-
-        uint unknown2 = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x1C: unknown2 = 0x{unknown2:X8}");
-
-        uint textureDataOff = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x20: textureDataOff = {textureDataOff}");
-
-        uint textureInfoOff = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x24: textureInfoOff = {textureInfoOff}");
-
-        uint unknown3 = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x28: unknown3 = 0x{unknown3:X8}");
-
-        uint paletteDataSizeShr3 = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x2C: paletteDataSizeShr3 = {paletteDataSizeShr3} (real size: {paletteDataSizeShr3 << 3})");
-
-        uint paletteDataOff = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x30: paletteDataOff = {paletteDataOff}");
-
-        uint paletteInfoOff = reader.ReadUInt32();
-        AppLogger.Debug($"[NSBTX] @0x34: paletteInfoOff = {paletteInfoOff}");
-
-        // Current position should be at 0x38
-        AppLogger.Debug($"[NSBTX] Current position after header: 0x{ms.Position:X} (expected 0x38)");
-
-        // Parse texture names
-        if (texturesOff > 0 && texturesOff < data.Length - tex0Offset)
+        // Parse texture names using dictionary offset
+        if (texDictOffset > 0 && texDictOffset < data.Length - tex0Offset)
         {
-            AppLogger.Debug($"[NSBTX] Parsing textures at offset {tex0Offset + texturesOff}");
-            file.TextureNames = ParseNameList(data, tex0Offset + texturesOff);
+            AppLogger.Debug($"[NSBTX] Parsing textures at offset {tex0Offset + texDictOffset}");
+            file.TextureNames = ParseTextureNameList(data, tex0Offset + texDictOffset);
             AppLogger.Info($"[NSBTX] Found {file.TextureNames.Count} textures");
         }
         else
         {
-            AppLogger.Warn($"[NSBTX] Invalid textures offset: {texturesOff}");
+            AppLogger.Warn($"[NSBTX] Invalid texture dictionary offset: {texDictOffset}");
         }
 
-        // Parse palette names - try paletteInfoOff instead of after paletteDataOff
-        if (paletteInfoOff > 0 && paletteInfoOff < data.Length - tex0Offset)
+        // Parse palette names using dictionary offset
+        if (palDictOffset > 0 && palDictOffset < data.Length - tex0Offset)
         {
-            AppLogger.Debug($"[NSBTX] Parsing palettes at paletteInfoOff: {tex0Offset + (int)paletteInfoOff}");
-            file.PaletteNames = ParseNameList(data, tex0Offset + (int)paletteInfoOff);
+            AppLogger.Debug($"[NSBTX] Parsing palettes at offset {tex0Offset + palDictOffset}");
+            file.PaletteNames = ParsePaletteNameList(data, tex0Offset + palDictOffset);
             AppLogger.Info($"[NSBTX] Found {file.PaletteNames.Count} palettes");
         }
         else
         {
-            AppLogger.Warn($"[NSBTX] Invalid palette info offset: {paletteInfoOff}");
+            AppLogger.Warn($"[NSBTX] Invalid palette dictionary offset: {palDictOffset}");
         }
     }
 
     /// <summary>
-    /// Parses a NameList structure to extract names
-    /// NameList structure:
-    /// - 1 byte: dummy
-    /// - 1 byte: count
-    /// - 2 bytes: size
-    /// - ... (header data)
-    /// - data array
-    /// - names array (16 bytes each, null-padded ASCII)
+    /// Parses texture name list (texture entries are 8 bytes each)
     /// </summary>
-    private static List<string> ParseNameList(byte[] data, int offset)
+    private static List<string> ParseTextureNameList(byte[] data, int offset)
     {
         var names = new List<string>();
 
-        AppLogger.Debug($"[NSBTX] ParseNameList: offset={offset}, dataLength={data.Length}");
+        AppLogger.Debug($"[NSBTX] ParseTextureNameList: offset={offset}");
 
         if (offset + 4 > data.Length)
         {
-            AppLogger.Warn($"[NSBTX] NameList offset out of bounds");
+            AppLogger.Warn($"[NSBTX] Texture name list offset out of bounds");
             return names;
         }
 
         using var ms = new MemoryStream(data, offset, data.Length - offset);
         using var reader = new BinaryReader(ms);
 
+        // Read main header
         byte dummy = reader.ReadByte();
-        byte count = reader.ReadByte();
-        ushort size = reader.ReadUInt16();
+        byte numObjs = reader.ReadByte();
+        ushort sectionSize = reader.ReadUInt16();
 
-        AppLogger.Debug($"[NSBTX] NameList header: dummy={dummy}, count={count}, size={size}");
+        AppLogger.Debug($"[NSBTX] Texture list: count={numObjs}, sectionSize={sectionSize}");
 
-        if (count == 0)
+        if (numObjs == 0)
         {
-            AppLogger.Debug($"[NSBTX] NameList count is 0");
             return names;
         }
 
-        // The names are located at a specific offset in the NameList
-        // Skip to the names section
-        // Structure: header (variable) + data section + names section
+        // Read unknown block header
+        ushort headerSize = reader.ReadUInt16();
+        ushort blockSectionSize = reader.ReadUInt16();
+        uint constant = reader.ReadUInt32();
 
-        // Read unknown header
-        ushort unknownHeaderSize = reader.ReadUInt16();
-        ushort elementSize = reader.ReadUInt16();
-        ushort dataSectionSize = reader.ReadUInt16();
+        AppLogger.Debug($"[NSBTX] Unknown block: headerSize={headerSize}, blockSectionSize={blockSectionSize}, constant=0x{constant:X8}");
 
-        AppLogger.Debug($"[NSBTX] NameList sizes: unknownHeaderSize={unknownHeaderSize}, elementSize={elementSize}, dataSectionSize={dataSectionSize}");
-
-        // Skip the unknown header section
-        if (unknownHeaderSize > 6)
+        // Skip the rest of the unknown block header
+        if (headerSize > 8)
         {
-            reader.ReadBytes(unknownHeaderSize - 6);
+            reader.ReadBytes(headerSize - 8);
         }
 
-        // Skip the data section
-        reader.ReadBytes(dataSectionSize);
+        // Skip texture info entries (8 bytes each)
+        int textureInfoSize = numObjs * 8;
+        reader.ReadBytes(textureInfoSize);
 
-        AppLogger.Debug($"[NSBTX] At position {ms.Position}, reading {count} names");
+        AppLogger.Debug($"[NSBTX] Skipped {textureInfoSize} bytes of texture info, now at position {ms.Position}");
 
-        // Now we're at the names section
-        // Read 'count' names, each 16 bytes
-        for (int i = 0; i < count; i++)
+        // Read texture names (16 bytes each, ASCII)
+        for (int i = 0; i < numObjs; i++)
         {
             if (ms.Position + 16 > ms.Length)
             {
-                AppLogger.Warn($"[NSBTX] Cannot read name {i}, out of bounds (pos={ms.Position}, length={ms.Length})");
+                AppLogger.Warn($"[NSBTX] Cannot read texture name {i}, out of bounds");
                 break;
             }
 
             byte[] nameBytes = reader.ReadBytes(16);
-
-            // Find the null terminator
             int nullIndex = Array.IndexOf(nameBytes, (byte)0);
             int length = nullIndex >= 0 ? nullIndex : 16;
 
             if (length > 0)
             {
-                string name = Encoding.ASCII.GetString(nameBytes, 0, length).Trim();
-                if (!string.IsNullOrWhiteSpace(name))
-                {
-                    AppLogger.Debug($"[NSBTX] Name {i}: '{name}'");
-                    names.Add(name);
-                }
+                string name = Encoding.ASCII.GetString(nameBytes, 0, length);
+                names.Add(name);
+                AppLogger.Debug($"[NSBTX] Texture {i}: '{name}'");
             }
         }
 
-        AppLogger.Debug($"[NSBTX] ParseNameList completed: {names.Count} names found");
+        AppLogger.Info($"[NSBTX] Parsed {names.Count} texture names");
+        return names;
+    }
 
+    /// <summary>
+    /// Parses palette name list (palette entries are 4 bytes each)
+    /// </summary>
+    private static List<string> ParsePaletteNameList(byte[] data, int offset)
+    {
+        var names = new List<string>();
+
+        AppLogger.Debug($"[NSBTX] ParsePaletteNameList: offset={offset}");
+
+        if (offset + 4 > data.Length)
+        {
+            AppLogger.Warn($"[NSBTX] Palette name list offset out of bounds");
+            return names;
+        }
+
+        using var ms = new MemoryStream(data, offset, data.Length - offset);
+        using var reader = new BinaryReader(ms);
+
+        // Read main header
+        byte dummy = reader.ReadByte();
+        byte numObjs = reader.ReadByte();
+        ushort sectionSize = reader.ReadUInt16();
+
+        AppLogger.Debug($"[NSBTX] Palette list: count={numObjs}, sectionSize={sectionSize}");
+
+        if (numObjs == 0)
+        {
+            return names;
+        }
+
+        // Read unknown block header
+        ushort headerSize = reader.ReadUInt16();
+        ushort blockSectionSize = reader.ReadUInt16();
+        uint constant = reader.ReadUInt32();
+
+        AppLogger.Debug($"[NSBTX] Unknown block: headerSize={headerSize}, blockSectionSize={blockSectionSize}, constant=0x{constant:X8}");
+
+        // Skip the rest of the unknown block header
+        if (headerSize > 8)
+        {
+            reader.ReadBytes(headerSize - 8);
+        }
+
+        // Skip palette info entries (4 bytes each - different from textures!)
+        int paletteInfoSize = numObjs * 4;
+        reader.ReadBytes(paletteInfoSize);
+
+        AppLogger.Debug($"[NSBTX] Skipped {paletteInfoSize} bytes of palette info, now at position {ms.Position}");
+
+        // Read palette names (16 bytes each, ASCII)
+        for (int i = 0; i < numObjs; i++)
+        {
+            if (ms.Position + 16 > ms.Length)
+            {
+                AppLogger.Warn($"[NSBTX] Cannot read palette name {i}, out of bounds");
+                break;
+            }
+
+            byte[] nameBytes = reader.ReadBytes(16);
+            int nullIndex = Array.IndexOf(nameBytes, (byte)0);
+            int length = nullIndex >= 0 ? nullIndex : 16;
+
+            if (length > 0)
+            {
+                string name = Encoding.ASCII.GetString(nameBytes, 0, length);
+                names.Add(name);
+                AppLogger.Debug($"[NSBTX] Palette {i}: '{name}'");
+            }
+        }
+
+        AppLogger.Info($"[NSBTX] Parsed {names.Count} palette names");
         return names;
     }
 
