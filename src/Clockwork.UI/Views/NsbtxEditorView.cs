@@ -435,27 +435,121 @@ public class NsbtxEditorView : IView
                         if (_selectedTextureIndex >= 0 && _selectedTextureIndex < currentNsbtx.Textures.Count)
                         {
                             var texInfo = currentNsbtx.Textures[_selectedTextureIndex];
+
+                            // Detailed texture info
+                            ImGui.Text("=== Texture Metadata ===");
+                            ImGui.Text($"Parameters raw: 0x{texInfo.Parameters:X4} (binary: {Convert.ToString(texInfo.Parameters, 2).PadLeft(16, '0')})");
+                            ImGui.Text($"Width byte: 0x{texInfo.Width:X2} → {texInfo.ActualWidth}px");
+                            ImGui.Text($"Height byte: 0x{texInfo.Height:X2} → {texInfo.ActualHeight}px");
+                            ImGui.Text($"Texture offset: 0x{texInfo.TextureOffset:X} (absolute: 0x{currentNsbtx.Tex0Offset + (int)currentNsbtx.TextureDataOffset + texInfo.TextureOffset:X})");
+                            ImGui.Text($"Format: {texInfo.Format} ({GetFormatName(texInfo.Format)})");
+                            ImGui.Text($"Color0 Transparent: {texInfo.Color0Transparent}");
+
+                            ImGui.Spacing();
+                            ImGui.Separator();
+                            ImGui.Spacing();
+
                             var rawData = currentNsbtx.GetTextureData(_selectedTextureIndex);
                             if (rawData != null)
                             {
-                                ImGui.Text($"Raw texture data size: {rawData.Length} bytes");
-
-                                // Show first 64 bytes as hex
-                                int bytesToShow = Math.Min(64, rawData.Length);
-                                ImGui.Text("First bytes (hex):");
-                                string hexStr = BitConverter.ToString(rawData, 0, bytesToShow).Replace("-", " ");
-                                ImGui.TextWrapped(hexStr);
-
-                                // Decode and show first 4 pixels
-                                var decoded = currentNsbtx.DecodeTextureToRGBA(_selectedTextureIndex, _currentPaletteIndex, _useTiledFormat);
-                                if (decoded != null && decoded.Length >= 16)
+                                ImGui.Text("=== Raw Texture Data ===");
+                                ImGui.Text($"Data size: {rawData.Length} bytes");
+                                int expectedSize = texInfo.Format switch
                                 {
-                                    ImGui.Spacing();
-                                    ImGui.Text("First 4 pixels (RGBA):");
-                                    for (int i = 0; i < 4 && i * 4 < decoded.Length; i++)
+                                    1 => texInfo.ActualWidth * texInfo.ActualHeight,
+                                    2 => (texInfo.ActualWidth * texInfo.ActualHeight) / 4,
+                                    3 => (texInfo.ActualWidth * texInfo.ActualHeight) / 2,
+                                    4 => texInfo.ActualWidth * texInfo.ActualHeight,
+                                    6 => texInfo.ActualWidth * texInfo.ActualHeight,
+                                    7 => texInfo.ActualWidth * texInfo.ActualHeight * 2,
+                                    _ => 0
+                                };
+                                ImGui.Text($"Expected size: {expectedSize} bytes");
+                                bool sizeMatch = rawData.Length == expectedSize;
+                                if (sizeMatch)
+                                    ImGui.TextColored(new Vector4(0.4f, 1.0f, 0.4f, 1.0f), "✓ Size matches");
+                                else
+                                    ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), $"✗ Size mismatch! Diff: {rawData.Length - expectedSize}");
+
+                                // Show first 128 bytes as hex grid
+                                ImGui.Spacing();
+                                int bytesToShow = Math.Min(128, rawData.Length);
+                                ImGui.Text($"First {bytesToShow} bytes:");
+                                ImGui.BeginChild("HexDump", new Vector2(0, 200), ImGuiChildFlags.Border);
+                                for (int i = 0; i < bytesToShow; i += 16)
+                                {
+                                    string hexLine = $"{i:X4}: ";
+                                    for (int j = 0; j < 16 && i + j < bytesToShow; j++)
                                     {
-                                        int idx = i * 4;
-                                        ImGui.Text($"Pixel {i}: R={decoded[idx]:X2} G={decoded[idx+1]:X2} B={decoded[idx+2]:X2} A={decoded[idx+3]:X2}");
+                                        hexLine += $"{rawData[i + j]:X2} ";
+                                    }
+                                    ImGui.TextUnformatted(hexLine);
+                                }
+                                ImGui.EndChild();
+
+                                ImGui.Spacing();
+                                ImGui.Separator();
+                                ImGui.Spacing();
+
+                                // Palette info for paletted textures
+                                if (texInfo.Format >= 2 && texInfo.Format <= 4)
+                                {
+                                    ImGui.Text("=== Palette Info ===");
+                                    var palette = currentNsbtx.GetPaletteData(_currentPaletteIndex);
+                                    if (palette != null)
+                                    {
+                                        ImGui.Text($"Palette {_currentPaletteIndex}: {currentNsbtx.PaletteNames[_currentPaletteIndex]}");
+                                        ImGui.Text("First 16 colors (RGB555):");
+                                        for (int i = 0; i < Math.Min(16, palette.Length); i++)
+                                        {
+                                            ushort color = palette[i];
+                                            int r = ((color >> 0) & 0x1F) * 255 / 31;
+                                            int g = ((color >> 5) & 0x1F) * 255 / 31;
+                                            int b = ((color >> 10) & 0x1F) * 255 / 31;
+
+                                            // Show color swatch
+                                            var colorVec = new Vector4(r / 255f, g / 255f, b / 255f, 1.0f);
+                                            ImGui.ColorButton($"##color{i}", colorVec, ImGuiColorEditFlags.NoTooltip, new Vector2(20, 20));
+                                            ImGui.SameLine();
+                                            ImGui.Text($"{i}: RGB555=0x{color:X4} → RGB({r},{g},{b})");
+                                        }
+                                    }
+
+                                    ImGui.Spacing();
+                                    ImGui.Separator();
+                                    ImGui.Spacing();
+                                }
+
+                                // Decode and show pixel grid
+                                ImGui.Text("=== Decoded Pixels ===");
+                                var decoded = currentNsbtx.DecodeTextureToRGBA(_selectedTextureIndex, _currentPaletteIndex, _useTiledFormat);
+                                if (decoded != null)
+                                {
+                                    ImGui.Text($"Decoded data: {decoded.Length} bytes ({decoded.Length / 4} pixels)");
+
+                                    // Show first 8x8 pixels as color swatches
+                                    ImGui.Text("First 8x8 pixel grid:");
+                                    int pixelsPerRow = Math.Min(8, texInfo.ActualWidth);
+                                    int rowsToShow = Math.Min(8, texInfo.ActualHeight);
+
+                                    for (int y = 0; y < rowsToShow; y++)
+                                    {
+                                        for (int x = 0; x < pixelsPerRow; x++)
+                                        {
+                                            int pixelIdx = (y * texInfo.ActualWidth + x) * 4;
+                                            if (pixelIdx + 3 < decoded.Length)
+                                            {
+                                                float r = decoded[pixelIdx + 0] / 255f;
+                                                float g = decoded[pixelIdx + 1] / 255f;
+                                                float b = decoded[pixelIdx + 2] / 255f;
+                                                float a = decoded[pixelIdx + 3] / 255f;
+                                                ImGui.ColorButton($"##pix{y}_{x}", new Vector4(r, g, b, a),
+                                                    ImGuiColorEditFlags.NoTooltip | ImGuiColorEditFlags.NoPicker,
+                                                    new Vector2(16, 16));
+                                                ImGui.SameLine();
+                                            }
+                                        }
+                                        ImGui.NewLine();
                                     }
                                 }
                             }
