@@ -251,7 +251,16 @@ public class NsbtxFile
                 break;
             }
 
+            long posBeforeRead = ms.Position;
             byte[] nameBytes = reader.ReadBytes(16);
+
+            // Log raw bytes for first 5 and last 5 entries
+            if (i < 5 || i >= numObjs - 5)
+            {
+                string hexBytes = BitConverter.ToString(nameBytes).Replace("-", " ");
+                AppLogger.Debug($"[NSBTX] Texture {i} raw bytes at 0x{posBeforeRead:X}: {hexBytes}");
+            }
+
             int nullIndex = Array.IndexOf(nameBytes, (byte)0);
             int length = nullIndex >= 0 ? nullIndex : 16;
 
@@ -259,7 +268,10 @@ public class NsbtxFile
             {
                 string name = Encoding.ASCII.GetString(nameBytes, 0, length);
                 names.Add(name);
-                AppLogger.Debug($"[NSBTX] Texture {i}: '{name}'");
+                if (i < 5 || i >= numObjs - 5)
+                {
+                    AppLogger.Debug($"[NSBTX] Texture {i}: '{name}' (length={length})");
+                }
             }
         }
 
@@ -325,7 +337,16 @@ public class NsbtxFile
                 break;
             }
 
+            long posBeforeRead = ms.Position;
             byte[] nameBytes = reader.ReadBytes(16);
+
+            // Log raw bytes for first 5 and last 5 entries
+            if (i < 5 || i >= numObjs - 5)
+            {
+                string hexBytes = BitConverter.ToString(nameBytes).Replace("-", " ");
+                AppLogger.Debug($"[NSBTX] Palette {i} raw bytes at 0x{posBeforeRead:X}: {hexBytes}");
+            }
+
             int nullIndex = Array.IndexOf(nameBytes, (byte)0);
             int length = nullIndex >= 0 ? nullIndex : 16;
 
@@ -333,7 +354,10 @@ public class NsbtxFile
             {
                 string name = Encoding.ASCII.GetString(nameBytes, 0, length);
                 names.Add(name);
-                AppLogger.Debug($"[NSBTX] Palette {i}: '{name}'");
+                if (i < 5 || i >= numObjs - 5)
+                {
+                    AppLogger.Debug($"[NSBTX] Palette {i}: '{name}' (length={length})");
+                }
             }
         }
 
