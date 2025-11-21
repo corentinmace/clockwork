@@ -141,69 +141,101 @@ public class ScriptCommandConfigService : IApplicationService
             var root = jsonDoc.RootElement;
 
             // Load movements
+            // Format in JSON: "0x0000": "MovementName"
             if (root.TryGetProperty("movements", out var movementsElement))
             {
                 foreach (var prop in movementsElement.EnumerateObject())
                 {
                     try
                     {
-                        uint value = prop.Value.GetUInt32();
-                        movements[prop.Name] = value;
+                        // Key is hex value like "0x0000", value is name like "WalkUp"
+                        string hexKey = prop.Name;
+                        string constantName = prop.Value.GetString() ?? "";
+
+                        if (string.IsNullOrEmpty(constantName))
+                            continue;
+
+                        uint value = Convert.ToUInt32(hexKey.StartsWith("0x") ? hexKey.Substring(2) : hexKey, 16);
+                        movements[constantName] = value;
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        AppLogger.Warn($"Failed to parse movement '{prop.Name}': {prop.Value}");
+                        AppLogger.Warn($"Failed to parse movement '{prop.Name}': {ex.Message}");
                     }
                 }
             }
 
             // Load comparison operators
+            // Format in JSON: "0x0001": "EQUAL"
             if (root.TryGetProperty("comparisonOperators", out var compOperatorsElement))
             {
                 foreach (var prop in compOperatorsElement.EnumerateObject())
                 {
                     try
                     {
-                        uint value = prop.Value.GetUInt32();
-                        comparisonOperators[prop.Name] = value;
+                        // Key is hex value like "0x0001", value is name like "EQUAL"
+                        string hexKey = prop.Name;
+                        string constantName = prop.Value.GetString() ?? "";
+
+                        if (string.IsNullOrEmpty(constantName))
+                            continue;
+
+                        uint value = Convert.ToUInt32(hexKey.StartsWith("0x") ? hexKey.Substring(2) : hexKey, 16);
+                        comparisonOperators[constantName] = value;
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        AppLogger.Warn($"Failed to parse comparison operator '{prop.Name}': {prop.Value}");
+                        AppLogger.Warn($"Failed to parse comparison operator '{prop.Name}': {ex.Message}");
                     }
                 }
             }
 
             // Load special overworlds
+            // Format in JSON: "0x00FF": "Player"
             if (root.TryGetProperty("specialOverworlds", out var specialOwElement))
             {
                 foreach (var prop in specialOwElement.EnumerateObject())
                 {
                     try
                     {
-                        uint value = prop.Value.GetUInt32();
-                        specialOverworlds[prop.Name] = value;
+                        // Key is hex value like "0x00FF", value is name like "Player"
+                        string hexKey = prop.Name;
+                        string constantName = prop.Value.GetString() ?? "";
+
+                        if (string.IsNullOrEmpty(constantName))
+                            continue;
+
+                        uint value = Convert.ToUInt32(hexKey.StartsWith("0x") ? hexKey.Substring(2) : hexKey, 16);
+                        specialOverworlds[constantName] = value;
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        AppLogger.Warn($"Failed to parse special overworld '{prop.Name}': {prop.Value}");
+                        AppLogger.Warn($"Failed to parse special overworld '{prop.Name}': {ex.Message}");
                     }
                 }
             }
 
             // Load overworld directions
+            // Format in JSON: "0x0000": "Up"
             if (root.TryGetProperty("overworldDirections", out var owDirectionsElement))
             {
                 foreach (var prop in owDirectionsElement.EnumerateObject())
                 {
                     try
                     {
-                        uint value = prop.Value.GetUInt32();
-                        overworldDirections[prop.Name] = value;
+                        // Key is hex value like "0x0000", value is name like "Up"
+                        string hexKey = prop.Name;
+                        string constantName = prop.Value.GetString() ?? "";
+
+                        if (string.IsNullOrEmpty(constantName))
+                            continue;
+
+                        uint value = Convert.ToUInt32(hexKey.StartsWith("0x") ? hexKey.Substring(2) : hexKey, 16);
+                        overworldDirections[constantName] = value;
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        AppLogger.Warn($"Failed to parse overworld direction '{prop.Name}': {prop.Value}");
+                        AppLogger.Warn($"Failed to parse overworld direction '{prop.Name}': {ex.Message}");
                     }
                 }
             }
