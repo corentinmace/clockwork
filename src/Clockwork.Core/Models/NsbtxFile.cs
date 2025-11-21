@@ -116,9 +116,9 @@ public class NsbtxFile
     {
         AppLogger.Debug($"[NSBTX] ParseTex0Block: offset={tex0Offset}, dataLength={data.Length}");
 
-        if (tex0Offset + 16 > data.Length)
+        if (tex0Offset + 64 > data.Length)
         {
-            AppLogger.Warn($"[NSBTX] TEX0 offset out of bounds");
+            AppLogger.Warn($"[NSBTX] TEX0 offset out of bounds (need at least 64 bytes)");
             return;
         }
 
@@ -127,7 +127,7 @@ public class NsbtxFile
 
         // Read TEX0 header
         string stamp = Encoding.ASCII.GetString(reader.ReadBytes(4));
-        AppLogger.Debug($"[NSBTX] TEX0 stamp: '{stamp}'");
+        AppLogger.Debug($"[NSBTX] TEX0 stamp: '{stamp}' at offset {tex0Offset}");
 
         if (stamp != "TEX0")
         {
@@ -136,27 +136,49 @@ public class NsbtxFile
         }
 
         uint sectionSize = reader.ReadUInt32();
-        reader.ReadUInt32(); // unknown
+        AppLogger.Debug($"[NSBTX] @0x08: sectionSize = {sectionSize}");
 
-        reader.ReadUInt16(); // texture_data_size_shr_3
-        ushort texturesOff = reader.ReadUInt16(); // offset to TextureList (relative to TEX0)
+        uint unknown1 = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x0C: unknown1 = 0x{unknown1:X8}");
 
-        reader.ReadUInt16(); // compressed_texture_data_size_shr_3
-        reader.ReadUInt16(); // compressed_textures_off
+        ushort textureDataSizeShr3 = reader.ReadUInt16();
+        AppLogger.Debug($"[NSBTX] @0x10: textureDataSizeShr3 = {textureDataSizeShr3} (real size: {textureDataSizeShr3 << 3})");
 
-        reader.ReadUInt32(); // compressed_texture_info_off
-        reader.ReadUInt32(); // unknown
+        ushort texturesOff = reader.ReadUInt16();
+        AppLogger.Debug($"[NSBTX] @0x12: texturesOff = {texturesOff} (absolute: {tex0Offset + texturesOff})");
 
-        uint textureDataSize = reader.ReadUInt32(); // texture data size
-        reader.ReadUInt32(); // texture_info_off
+        ushort compressedTextureSizeShr3 = reader.ReadUInt16();
+        AppLogger.Debug($"[NSBTX] @0x14: compressedTextureSizeShr3 = {compressedTextureSizeShr3}");
 
-        reader.ReadUInt32(); // unknown
-        uint paletteDataSize = reader.ReadUInt32(); // palette data size shr 3
+        ushort compressedTexturesOff = reader.ReadUInt16();
+        AppLogger.Debug($"[NSBTX] @0x16: compressedTexturesOff = {compressedTexturesOff}");
 
-        reader.ReadUInt32(); // palette_info_off
-        uint palettesOff = reader.ReadUInt32(); // offset to PaletteList (relative to TEX0)
+        uint compressedTextureInfoOff = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x18: compressedTextureInfoOff = {compressedTextureInfoOff}");
 
-        AppLogger.Debug($"[NSBTX] TEX0 header: sectionSize={sectionSize}, texturesOff={texturesOff}, palettesOff={palettesOff}");
+        uint unknown2 = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x1C: unknown2 = 0x{unknown2:X8}");
+
+        uint textureDataOff = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x20: textureDataOff = {textureDataOff}");
+
+        uint textureInfoOff = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x24: textureInfoOff = {textureInfoOff}");
+
+        uint unknown3 = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x28: unknown3 = 0x{unknown3:X8}");
+
+        uint paletteDataSizeShr3 = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x2C: paletteDataSizeShr3 = {paletteDataSizeShr3} (real size: {paletteDataSizeShr3 << 3})");
+
+        uint paletteDataOff = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x30: paletteDataOff = {paletteDataOff}");
+
+        uint paletteInfoOff = reader.ReadUInt32();
+        AppLogger.Debug($"[NSBTX] @0x34: paletteInfoOff = {paletteInfoOff}");
+
+        // Current position should be at 0x38
+        AppLogger.Debug($"[NSBTX] Current position after header: 0x{ms.Position:X} (expected 0x38)");
 
         // Parse texture names
         if (texturesOff > 0 && texturesOff < data.Length - tex0Offset)
@@ -170,16 +192,16 @@ public class NsbtxFile
             AppLogger.Warn($"[NSBTX] Invalid textures offset: {texturesOff}");
         }
 
-        // Parse palette names
-        if (palettesOff > 0 && palettesOff < data.Length - tex0Offset)
+        // Parse palette names - try paletteInfoOff instead of after paletteDataOff
+        if (paletteInfoOff > 0 && paletteInfoOff < data.Length - tex0Offset)
         {
-            AppLogger.Debug($"[NSBTX] Parsing palettes at offset {tex0Offset + (int)palettesOff}");
-            file.PaletteNames = ParseNameList(data, tex0Offset + (int)palettesOff);
+            AppLogger.Debug($"[NSBTX] Parsing palettes at paletteInfoOff: {tex0Offset + (int)paletteInfoOff}");
+            file.PaletteNames = ParseNameList(data, tex0Offset + (int)paletteInfoOff);
             AppLogger.Info($"[NSBTX] Found {file.PaletteNames.Count} palettes");
         }
         else
         {
-            AppLogger.Warn($"[NSBTX] Invalid palettes offset: {palettesOff}");
+            AppLogger.Warn($"[NSBTX] Invalid palette info offset: {paletteInfoOff}");
         }
     }
 
