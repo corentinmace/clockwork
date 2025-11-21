@@ -16,9 +16,8 @@ public class AreaDataService : IApplicationService
     public AreaData? CurrentAreaData { get; private set; }
     public int CurrentAreaDataId { get; private set; } = -1;
 
-    // Area data directory paths (relative to ROM root)
-    private const string DP_PT_AREA_DATA_DIR = "unpacked/fielddata/areadata/area_map_tex";
-    private const string HGSS_AREA_DATA_DIR = "unpacked/a/0/1/2"; // NARC 2 in overlay 0/1
+    // Area data directory path (relative to ROM root)
+    private const string AREA_DATA_DIR = "unpacked/fielddata/areadata/area_map_tex";
 
     public AreaDataService(ApplicationContext appContext)
     {
@@ -199,7 +198,7 @@ public class AreaDataService : IApplicationService
     }
 
     /// <summary>
-    /// Gets the area data directory based on game version
+    /// Gets the area data directory (DP/Pt only)
     /// </summary>
     private string GetAreaDataDirectory()
     {
@@ -207,15 +206,7 @@ public class AreaDataService : IApplicationService
             return string.Empty;
 
         var romPath = _romService.CurrentRom.RootPath;
-        var gameVersion = _romService.CurrentRom.GameVersion;
-
-        string relativeDir = gameVersion switch
-        {
-            GameVersion.HeartGold or GameVersion.SoulSilver => HGSS_AREA_DATA_DIR,
-            _ => DP_PT_AREA_DATA_DIR
-        };
-
-        return Path.Combine(romPath, relativeDir);
+        return Path.Combine(romPath, AREA_DATA_DIR);
     }
 
     /// <summary>

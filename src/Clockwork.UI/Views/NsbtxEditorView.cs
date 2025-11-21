@@ -612,6 +612,9 @@ public class NsbtxEditorView : IView
             _showRemoveConfirm = true;
             _nsbtxToRemove = _selectedNsbtxId;
         }
+
+        // Area Data section
+        DrawAreaDataSection();
     }
 
     private void DrawStatusBar()
@@ -865,4 +868,272 @@ public class NsbtxEditorView : IView
         _statusColor = color;
         _statusTimer = 5.0f; // Show for 5 seconds
     }
+
+    #region Area Data Methods
+
+    private void DrawAreaDataSection()
+    {
+        if (_areaDataService == null || _romService == null)
+            return;
+
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+
+        if (ImGui.CollapsingHeader("Area Data", ImGuiTreeNodeFlags.DefaultOpen))
+        {
+            ImGui.Text("Area Configuration (links areas to tilesets)");
+            ImGui.Spacing();
+
+            // Reload button
+            if (ImGui.Button($"{FontAwesomeIcons.Refresh} Reload Areas"))
+            {
+                _areaDataService.LoadAvailableAreaData();
+                SetStatus("Area data list reloaded", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
+            }
+
+            ImGui.SameLine();
+
+            // Add button
+            if (ImGui.Button($"{FontAwesomeIcons.Plus} Add Area"))
+            {
+                _showAreaDataAddDialog = true;
+                _newAreaDataId = 0;
+                _sourceAreaDataId = _selectedAreaDataId >= 0 ? _selectedAreaDataId : 0;
+            }
+
+            ImGui.Spacing();
+
+            // Area data list and editor side by side
+            if (ImGui.BeginChild("AreaDataContent", new Vector2(0, 300)))
+            {
+                // Left: Area list
+                if (ImGui.BeginChild("AreaDataList", new Vector2(150, 0), ImGuiChildFlags.Border))
+                {
+                    ImGui.Text("Areas");
+                    ImGui.Separator();
+
+                    // Search filter
+                    ImGui.SetNextItemWidth(-1);
+                    ImGui.InputTextWithHint("##areasearch", "Search...", ref _areaDataSearchFilter, 256);
+
+                    ImGui.Spacing();
+
+                    // List
+                    var areaIds = _areaDataService.AvailableAreaDataIds;
+                    var filteredIds = string.IsNullOrWhiteSpace(_areaDataSearchFilter)
+                        ? areaIds
+                        : areaIds.Where(id => id.ToString().Contains(_areaDataSearchFilter)).ToList();
+
+                    foreach (var id in filteredIds)
+                    {
+                        bool isSelected = (_selectedAreaDataId == id);
+                        if (ImGui.Selectable($"{id:D4}", isSelected))
+                        {
+                            _selectedAreaDataId = id;
+                            _areaDataService.LoadAreaData(id);
+                        }
+                    }
+
+                    ImGui.EndChild();
+                }
+
+                ImGui.SameLine();
+
+                // Right: Area editor
+                if (ImGui.BeginChild("AreaDataEditor", new Vector2(0, 0), ImGuiChildFlags.Border))
+                {
+                    var currentArea = _areaDataService.CurrentAreaData;
+                    if (currentArea != null && _selectedAreaDataId >= 0)
+                    {
+                        ImGui.Text($"Area {_selectedAreaDataId:D4}");
+                        ImGui.Separator();
+                        ImGui.Spacing();
+
+                        int buildingsTileset = currentArea.BuildingsTileset;
+                        if (ImGui.InputInt("Buildings Tileset", ref buildingsTileset))
+                        {
+                            currentArea.BuildingsTileset = (ushort)Math.Clamp(buildingsTileset, 0, ushort.MaxValue);
+                        }
+
+                        int mapBaseTileset = currentArea.MapBaseTileset;
+                        if (ImGui.InputInt("Map Base Tileset", ref mapBaseTileset))
+                        {
+                            currentArea.MapBaseTileset = (ushort)Math.Clamp(mapBaseTileset, 0, ushort.MaxValue);
+                        }
+
+                        // Seasonal variants (only if not 2-byte format)
+                        if (!currentArea.UsesTwoByteFormat)
+                        {
+                            ImGui.Spacing();
+                            ImGui.Text("Seasonal Map Tilesets:");
+
+                            int spring = currentArea.MapTilesetSpring;
+                            if (ImGui.InputInt("Spring", ref spring))
+                            {
+                                currentArea.MapTilesetSpring = (byte)Math.Clamp(spring, 0, 255);
+                            }
+
+                            int summer = currentArea.MapTilesetSummer;
+                            if (ImGui.InputInt("Summer", ref summer))
+                            {
+                                currentArea.MapTilesetSummer = (byte)Math.Clamp(summer, 0, 255);
+                            }
+
+                            int fall = currentArea.MapTilesetFall;
+                            if (ImGui.InputInt("Fall", ref fall))
+                            {
+                                currentArea.MapTilesetFall = (byte)Math.Clamp(fall, 0, 255);
+                            }
+
+                            int winter = currentArea.MapTilesetWinter;
+                            if (ImGui.InputInt("Winter", ref winter))
+                            {
+                                currentArea.MapTilesetWinter = (byte)Math.Clamp(winter, 0, 254); // Max 254, 255 is special
+                            }
+                        }
+
+                        ImGui.Spacing();
+
+                        int lightType = currentArea.LightType;
+                        if (ImGui.InputInt("Light Type", ref lightType))
+                        {
+                            currentArea.LightType = (ushort)Math.Clamp(lightType, 0, ushort.MaxValue);
+                        }
+
+                        ImGui.Spacing();
+                        ImGui.Separator();
+                        ImGui.Spacing();
+
+                        // Save button
+                        if (ImGui.Button($"{FontAwesomeIcons.Save} Save Area Data", new Vector2(-1, 0)))
+                        {
+                            if (_areaDataService.SaveCurrentAreaData())
+                            {
+                                SetStatus($"Saved area data {_selectedAreaDataId:D4}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
+                            }
+                            else
+                            {
+                                SetStatus("Failed to save area data", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+                            }
+                        }
+
+                        if (ImGui.Button($"{FontAwesomeIcons.Trash} Remove Area", new Vector2(-1, 0)))
+                        {
+                            _showAreaDataRemoveConfirm = true;
+                            _areaDataToRemove = _selectedAreaDataId;
+                        }
+                    }
+                    else
+                    {
+                        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                            "Select an area from the list");
+                    }
+
+                    ImGui.EndChild();
+                }
+
+                ImGui.EndChild();
+            }
+        }
+
+        // Dialogs
+        DrawAreaDataAddDialog();
+        DrawAreaDataRemoveConfirmDialog();
+    }
+
+    private void DrawAreaDataAddDialog()
+    {
+        if (!_showAreaDataAddDialog) return;
+
+        ImGui.OpenPopup("Add Area Data");
+
+        var center = ImGui.GetMainViewport().GetCenter();
+        ImGui.SetNextWindowPos(center, ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+
+        if (ImGui.BeginPopupModal("Add Area Data", ref _showAreaDataAddDialog, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.Text("Create a new area data by duplicating an existing one.");
+            ImGui.Spacing();
+
+            ImGui.Text("New Area ID:");
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(200);
+            ImGui.InputInt("##newAreaId", ref _newAreaDataId);
+
+            ImGui.Text("Copy from ID:");
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(200);
+            ImGui.InputInt("##sourceAreaId", ref _sourceAreaDataId);
+
+            ImGui.Spacing();
+            ImGui.Separator();
+            ImGui.Spacing();
+
+            if (ImGui.Button("Create", new Vector2(120, 0)))
+            {
+                if (_areaDataService?.AddAreaData(_sourceAreaDataId, _newAreaDataId) == true)
+                {
+                    SetStatus($"Created area data {_newAreaDataId:D4}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
+                    _showAreaDataAddDialog = false;
+                }
+                else
+                {
+                    SetStatus("Failed to create area data", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+                }
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Cancel", new Vector2(120, 0)))
+            {
+                _showAreaDataAddDialog = false;
+            }
+
+            ImGui.EndPopup();
+        }
+    }
+
+    private void DrawAreaDataRemoveConfirmDialog()
+    {
+        if (!_showAreaDataRemoveConfirm) return;
+
+        ImGui.OpenPopup("Confirm Remove Area");
+
+        var center = ImGui.GetMainViewport().GetCenter();
+        ImGui.SetNextWindowPos(center, ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
+
+        if (ImGui.BeginPopupModal("Confirm Remove Area", ref _showAreaDataRemoveConfirm, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            ImGui.Text($"Are you sure you want to remove area data {_areaDataToRemove:D4}?");
+            ImGui.TextColored(new Vector4(1.0f, 0.4f, 0.4f, 1.0f), "This action cannot be undone!");
+            ImGui.Spacing();
+
+            if (ImGui.Button("Remove", new Vector2(120, 0)))
+            {
+                if (_areaDataService?.RemoveAreaData(_areaDataToRemove) == true)
+                {
+                    SetStatus($"Removed area data {_areaDataToRemove:D4}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
+                    _showAreaDataRemoveConfirm = false;
+                    _selectedAreaDataId = -1;
+                }
+                else
+                {
+                    SetStatus("Failed to remove area data", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+                }
+            }
+
+            ImGui.SameLine();
+
+            if (ImGui.Button("Cancel", new Vector2(120, 0)))
+            {
+                _showAreaDataRemoveConfirm = false;
+            }
+
+            ImGui.EndPopup();
+        }
+    }
+
+    #endregion
 }
+
