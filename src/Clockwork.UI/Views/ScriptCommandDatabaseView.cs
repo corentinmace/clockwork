@@ -2,6 +2,7 @@ using ImGuiNET;
 using System.Numerics;
 using Clockwork.Core;
 using Clockwork.Core.Formats.NDS.Scripts;
+using Clockwork.Core.Logging;
 
 namespace Clockwork.UI.Views;
 
@@ -37,7 +38,8 @@ public class ScriptCommandDatabaseView : IView
         }
 
         ImGui.SetNextWindowSize(new Vector2(1000, 600), ImGuiCond.FirstUseEver);
-        if (ImGui.Begin("Script Command Database", ref IsVisible))
+        bool isVisible = IsVisible;
+        if (ImGui.Begin("Script Command Database", ref isVisible))
         {
             // Header with search and count
             ImGui.Text($"Loaded Commands: {_allCommands.Count}");
@@ -132,6 +134,7 @@ public class ScriptCommandDatabaseView : IView
             }
 
             ImGui.End();
+            IsVisible = isVisible;
         }
     }
 

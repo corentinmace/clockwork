@@ -56,7 +56,8 @@ public class NsbtxEditorView : IView
         if (!IsVisible) return;
 
         ImGui.SetNextWindowSize(new Vector2(900, 600), ImGuiCond.FirstUseEver);
-        if (ImGui.Begin($"{FontAwesomeIcons.Image} NSBTX Texture Editor", ref IsVisible))
+        bool isVisible = IsVisible;
+        if (ImGui.Begin($"{FontAwesomeIcons.Image} NSBTX Texture Editor", ref isVisible))
         {
             // Check if ROM is loaded
             bool romLoaded = _romService?.CurrentRom != null;
@@ -70,7 +71,7 @@ public class NsbtxEditorView : IView
             }
 
             // Reload button
-            if (ImGui.Button($"{FontAwesomeIcons.ArrowsRotate} Reload List"))
+            if (ImGui.Button($"{FontAwesomeIcons.Refresh} Reload List"))
             {
                 _nsbtxService?.LoadAvailableNsbtx();
                 SetStatus("NSBTX list reloaded", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
@@ -105,7 +106,7 @@ public class NsbtxEditorView : IView
             // Main layout: List on left, details on right
             if (ImGui.BeginChild("MainContent", new Vector2(0, -30)))
             {
-                if (ImGui.BeginChild("LeftPanel", new Vector2(250, 0), true))
+                if (ImGui.BeginChild("LeftPanel", new Vector2(250, 0), ImGuiChildFlags.None))
                 {
                     DrawNsbtxList();
                     ImGui.EndChild();
@@ -113,7 +114,7 @@ public class NsbtxEditorView : IView
 
                 ImGui.SameLine();
 
-                if (ImGui.BeginChild("RightPanel", new Vector2(0, 0), true))
+                if (ImGui.BeginChild("RightPanel", new Vector2(0, 0), ImGuiChildFlags.None))
                 {
                     DrawNsbtxDetails();
                     ImGui.EndChild();
@@ -130,6 +131,7 @@ public class NsbtxEditorView : IView
             DrawRemoveConfirmDialog();
 
             ImGui.End();
+            IsVisible = isVisible;
         }
 
         // Update status timer
@@ -234,7 +236,7 @@ public class NsbtxEditorView : IView
 
             if (currentNsbtx.TextureNames.Count > 0)
             {
-                if (ImGui.BeginChild("TexturesList", new Vector2(0, 150), true))
+                if (ImGui.BeginChild("TexturesList", new Vector2(0, 150), ImGuiChildFlags.None))
                 {
                     foreach (var texName in currentNsbtx.TextureNames)
                     {
@@ -259,7 +261,7 @@ public class NsbtxEditorView : IView
 
             if (currentNsbtx.PaletteNames.Count > 0)
             {
-                if (ImGui.BeginChild("PalettesList", new Vector2(0, 150), true))
+                if (ImGui.BeginChild("PalettesList", new Vector2(0, 150), ImGuiChildFlags.None))
                 {
                     foreach (var palName in currentNsbtx.PaletteNames)
                     {
@@ -279,19 +281,19 @@ public class NsbtxEditorView : IView
         ImGui.Spacing();
 
         // Action buttons
-        if (ImGui.Button($"{FontAwesomeIcons.FileImport} Import NSBTX", new Vector2(-1, 0)))
+        if (ImGui.Button($"{FontAwesomeIcons.Download} Import NSBTX", new Vector2(-1, 0)))
         {
             ImportNsbtx();
         }
 
-        if (ImGui.Button($"{FontAwesomeIcons.FileExport} Export NSBTX", new Vector2(-1, 0)))
+        if (ImGui.Button($"{FontAwesomeIcons.Upload} Export NSBTX", new Vector2(-1, 0)))
         {
             ExportNsbtx();
         }
 
         ImGui.Spacing();
 
-        if (ImGui.Button($"{FontAwesomeIcons.TrashCan} Remove", new Vector2(-1, 0)))
+        if (ImGui.Button($"{FontAwesomeIcons.Trash} Remove", new Vector2(-1, 0)))
         {
             _showRemoveConfirm = true;
             _nsbtxToRemove = _selectedNsbtxId;

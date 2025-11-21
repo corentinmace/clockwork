@@ -79,7 +79,7 @@ public class NsbtxService : IApplicationService
         }
 
         // Find all .nsbtx files in the directory
-        var files = Directory.GetFiles(texturesPath, "*.nsbtx")
+        var files = Directory.GetFiles(texturesPath)
             .Select(Path.GetFileNameWithoutExtension)
             .Where(name => int.TryParse(name, out _))
             .Select(int.Parse)
@@ -291,7 +291,7 @@ public class NsbtxService : IApplicationService
     private string GetTexturesPath()
     {
         string romPath = _romService!.CurrentRom!.RomPath;
-        string subDir = CurrentPackType == TexturePackType.Map ? "map_textures" : "building_textures";
+        string subDir = CurrentPackType == TexturePackType.Map ? "mapTextures" : "buildingTextures";
         return Path.Combine(romPath, "unpacked", subDir);
     }
 
@@ -301,7 +301,7 @@ public class NsbtxService : IApplicationService
     private string GetNsbtxPath(int nsbtxId)
     {
         string texturesPath = GetTexturesPath();
-        string filename = nsbtxId.ToString("D4") + ".nsbtx";
+        string filename = nsbtxId.ToString("D4");
         return Path.Combine(texturesPath, filename);
     }
 }

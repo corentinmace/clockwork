@@ -50,7 +50,7 @@ public class HeaderEditorView : IView
     /// <summary>
     /// Set references to other editor windows for navigation
     /// </summary>
-    public void SetEditorReferences(TextEditorWindow textEditor, ScriptEditorWindow? scriptEditor, LevelScriptEditorView levelScriptEditor, MatrixEditorView matrixEditor, WildEditorView wildEditor)
+    public void SetEditorReferences(TextEditorWindow textEditor, LevelScriptEditorView levelScriptEditor, MatrixEditorView matrixEditor, WildEditorView wildEditor)
     {
         _textEditorWindow = textEditor;
         // ScriptEditorWindow removed - parameter kept for compatibility
