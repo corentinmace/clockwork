@@ -188,8 +188,13 @@ public class ScriptCommandConfigService : IApplicationService
                                     ? parameterTypes[paramIndex]
                                     : "Integer";
 
-                                // Map size + type to our ScriptParameterType
-                                var paramType = MapParameterType(size, typeStr);
+                                // Get parameter name for heuristic detection
+                                string paramName = paramIndex < parameterNames.Count
+                                    ? parameterNames[paramIndex]
+                                    : "";
+
+                                // Map size + type + name to our ScriptParameterType
+                                var paramType = MapParameterType(size, typeStr, paramName, name);
                                 parameters.Add(paramType);
                                 paramIndex++;
                             }
@@ -273,9 +278,10 @@ public class ScriptCommandConfigService : IApplicationService
     }
 
     /// <summary>
-    /// Maps parameter size and type string to ScriptParameterType
+    /// Maps parameter size, type string, parameter name, and command name to ScriptParameterType
+    /// Uses heuristics to detect offsets when not explicitly marked
     /// </summary>
-    private Formats.NDS.Scripts.ScriptParameterType MapParameterType(int sizeInBytes, string typeStr)
+    private Formats.NDS.Scripts.ScriptParameterType MapParameterType(int sizeInBytes, string typeStr, string paramName, string commandName)
     {
         // Handle Variable type - in LiTRE, "Variable" means a variable ID (like 0x800C)
         // which is a 2-byte word, NOT a variable-length sequence
@@ -288,6 +294,37 @@ public class ScriptCommandConfigService : IApplicationService
         if (typeStr.Equals("Offset", StringComparison.OrdinalIgnoreCase))
         {
             return Formats.NDS.Scripts.ScriptParameterType.Offset;
+        }
+
+        // Heuristic: Detect offsets by parameter name or command name
+        // 4-byte parameters that are likely offsets
+        if (sizeInBytes == 4)
+        {
+            string paramLower = paramName.ToLower();
+            string cmdLower = commandName.ToLower();
+
+            // Common offset parameter names
+            if (paramLower.Contains("offset") ||
+                paramLower.Contains("jump") ||
+                paramLower.Contains("call") ||
+                paramLower.Contains("function") ||
+                paramLower.Contains("script") ||
+                paramLower.Contains("action") ||
+                paramLower.Contains("pointer") ||
+                paramLower.Contains("address"))
+            {
+                return Formats.NDS.Scripts.ScriptParameterType.Offset;
+            }
+
+            // Common jump/call commands
+            if (cmdLower.StartsWith("jump") ||
+                cmdLower.StartsWith("call") ||
+                cmdLower.Contains("goto") ||
+                cmdLower == "if" ||
+                cmdLower == "while")
+            {
+                return Formats.NDS.Scripts.ScriptParameterType.Offset;
+            }
         }
 
         // Map by size for Integer types
