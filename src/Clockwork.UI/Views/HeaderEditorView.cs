@@ -22,7 +22,6 @@ public class HeaderEditorView : IView
 
     // References to other editors for navigation
     private TextEditorWindow? _textEditorWindow;
-    private ScriptEditorWindow? _scriptEditorWindow;
     private LevelScriptEditorView? _levelScriptEditorView;
     private MatrixEditorView? _matrixEditorView;
     private WildEditorView? _wildEditorView;
@@ -51,10 +50,10 @@ public class HeaderEditorView : IView
     /// <summary>
     /// Set references to other editor windows for navigation
     /// </summary>
-    public void SetEditorReferences(TextEditorWindow textEditor, ScriptEditorWindow scriptEditor, LevelScriptEditorView levelScriptEditor, MatrixEditorView matrixEditor, WildEditorView wildEditor)
+    public void SetEditorReferences(TextEditorWindow textEditor, ScriptEditorWindow? scriptEditor, LevelScriptEditorView levelScriptEditor, MatrixEditorView matrixEditor, WildEditorView wildEditor)
     {
         _textEditorWindow = textEditor;
-        _scriptEditorWindow = scriptEditor;
+        // ScriptEditorWindow removed - parameter kept for compatibility
         _levelScriptEditorView = levelScriptEditor;
         _matrixEditorView = matrixEditor;
         _wildEditorView = wildEditor;
@@ -456,15 +455,6 @@ public class HeaderEditorView : IView
             if (ImGui.InputInt("##scriptid", ref scriptID, 1, 10))
             {
                 _currentHeader.ScriptFileID = (ushort)Math.Clamp(scriptID, 0, ushort.MaxValue);
-            }
-
-            // Button to open Script Editor
-            if (_scriptEditorWindow != null)
-            {
-                DrawOpenEditorButton("openScript", "Ouvrir dans l'éditeur de scripts", "Script Editor", () =>
-                {
-                    _scriptEditorWindow.OpenWithScriptID(_currentHeader.ScriptFileID);
-                });
             }
 
             ImGui.Text("Level Script ID:");

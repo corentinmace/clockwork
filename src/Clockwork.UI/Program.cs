@@ -37,7 +37,6 @@ internal class Program
             var wildEncounterService = new WildEncounterService(appContext);
             var textArchiveService = new TextArchiveService(appContext);
             var scriptCommandConfigService = new ScriptCommandConfigService();
-            var scriptService = new ScriptService(appContext);
             var romPackingService = new RomPackingService(appContext);
 
             appContext.AddService(romService);
@@ -50,7 +49,6 @@ internal class Program
             appContext.AddService(wildEncounterService);
             appContext.AddService(textArchiveService);
             appContext.AddService(scriptCommandConfigService);
-            appContext.AddService(scriptService);
             appContext.AddService(romPackingService);
 
             // Initialize context

@@ -30,7 +30,6 @@ public class MainWindow
     private readonly HeaderEditorView _headerEditorView;
     private readonly MapEditorView _mapEditorView;
     private readonly TextEditorWindow _textEditorWindow;
-    private readonly ScriptEditorWindow _scriptEditorWindow;
     private readonly LevelScriptEditorView _levelScriptEditorView;
     private readonly LogViewerWindow _logViewerWindow;
     private readonly SettingsWindow _settingsWindow;
@@ -67,7 +66,6 @@ public class MainWindow
         _headerEditorView = new HeaderEditorView(_appContext);
         _mapEditorView = new MapEditorView(_appContext);
         _textEditorWindow = new TextEditorWindow(_appContext);
-        _scriptEditorWindow = new ScriptEditorWindow(_appContext);
         _levelScriptEditorView = new LevelScriptEditorView(_appContext);
         _logViewerWindow = new LogViewerWindow(_appContext);
         _settingsWindow = new SettingsWindow(_appContext);
@@ -85,7 +83,7 @@ public class MainWindow
         _settingsWindow.SetThemeEditorView(_themeEditorView);
 
         // Connect editors to header editor for navigation
-        _headerEditorView.SetEditorReferences(_textEditorWindow, _scriptEditorWindow, _levelScriptEditorView, _matrixEditorView, _wildEditorView);
+        _headerEditorView.SetEditorReferences(_textEditorWindow, null, _levelScriptEditorView, _matrixEditorView, _wildEditorView);
 
         // Connect tools (ScrcmdTableHelper -> AddressHelper integration)
         _scrcmdTableHelperWindow.SetAddressHelperWindow(_addressHelperWindow);
@@ -355,10 +353,6 @@ public class MainWindow
                 {
                     _textEditorWindow.IsVisible = true;
                 }
-                if (ImGui.MenuItem("Script Editor"))
-                {
-                    _scriptEditorWindow.IsVisible = true;
-                }
                 ImGui.EndMenu();
             }
 
@@ -433,7 +427,6 @@ public class MainWindow
         _matrixEditorView.Draw();
         _wildEditorView.Draw();
         _textEditorWindow.Draw();
-        _scriptEditorWindow.Draw();
         _levelScriptEditorView.Draw();
         _logViewerWindow.Draw();
         _settingsWindow.Draw();
@@ -487,7 +480,6 @@ public class MainWindow
             _matrixEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
             _wildEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Paw, "Wild Editor", _wildEditorView.IsVisible);
             _textEditorWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
-            _scriptEditorWindow.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Code, "Script Editor", _scriptEditorWindow.IsVisible);
             _levelScriptEditorView.IsVisible = DrawSidebarIconButton(FontAwesomeIcons.Database, "Level Script Editor", _levelScriptEditorView.IsVisible);
 
             ImGui.Spacing();
@@ -513,7 +505,6 @@ public class MainWindow
                 _matrixEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Grid, "Matrix Editor", _matrixEditorView.IsVisible);
                 _wildEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Paw, "Wild Editor", _wildEditorView.IsVisible);
                 _textEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Font, "Text Editor", _textEditorWindow.IsVisible);
-                _scriptEditorWindow.IsVisible = DrawSidebarItem(FontAwesomeIcons.Code, "Script Editor", _scriptEditorWindow.IsVisible);
                 _levelScriptEditorView.IsVisible = DrawSidebarItem(FontAwesomeIcons.Database, "Level Script Editor", _levelScriptEditorView.IsVisible);
             }
 
