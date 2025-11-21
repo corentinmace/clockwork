@@ -141,16 +141,41 @@ public class ScriptCommandConfigService : IApplicationService
             var root = jsonDoc.RootElement;
 
             // Load movements
-            // Format in JSON: "0x0000": "MovementName"
+            // Format in JSON: "0x0000": "MovementName" OR "0x0000": {"name": "MovementName", ...}
             if (root.TryGetProperty("movements", out var movementsElement))
             {
                 foreach (var prop in movementsElement.EnumerateObject())
                 {
                     try
                     {
-                        // Key is hex value like "0x0000", value is name like "WalkUp"
+                        // Key is hex value like "0x0000"
                         string hexKey = prop.Name;
-                        string constantName = prop.Value.GetString() ?? "";
+                        string constantName;
+
+                        // Handle both string and object formats
+                        if (prop.Value.ValueKind == JsonValueKind.String)
+                        {
+                            // Simple format: "0x0000": "WalkUp"
+                            constantName = prop.Value.GetString() ?? "";
+                        }
+                        else if (prop.Value.ValueKind == JsonValueKind.Object)
+                        {
+                            // Object format: "0x0000": {"name": "WalkUp", ...}
+                            if (prop.Value.TryGetProperty("name", out var nameProp))
+                            {
+                                constantName = nameProp.GetString() ?? "";
+                            }
+                            else
+                            {
+                                AppLogger.Warn($"Failed to parse movement '{prop.Name}': Object has no 'name' property");
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            AppLogger.Warn($"Failed to parse movement '{prop.Name}': Unexpected value type {prop.Value.ValueKind}");
+                            continue;
+                        }
 
                         if (string.IsNullOrEmpty(constantName))
                             continue;
@@ -166,16 +191,39 @@ public class ScriptCommandConfigService : IApplicationService
             }
 
             // Load comparison operators
-            // Format in JSON: "0x0001": "EQUAL"
+            // Format in JSON: "0x0001": "EQUAL" OR "0x0001": {"name": "EQUAL", ...}
             if (root.TryGetProperty("comparisonOperators", out var compOperatorsElement))
             {
                 foreach (var prop in compOperatorsElement.EnumerateObject())
                 {
                     try
                     {
-                        // Key is hex value like "0x0001", value is name like "EQUAL"
+                        // Key is hex value like "0x0001"
                         string hexKey = prop.Name;
-                        string constantName = prop.Value.GetString() ?? "";
+                        string constantName;
+
+                        // Handle both string and object formats
+                        if (prop.Value.ValueKind == JsonValueKind.String)
+                        {
+                            constantName = prop.Value.GetString() ?? "";
+                        }
+                        else if (prop.Value.ValueKind == JsonValueKind.Object)
+                        {
+                            if (prop.Value.TryGetProperty("name", out var nameProp))
+                            {
+                                constantName = nameProp.GetString() ?? "";
+                            }
+                            else
+                            {
+                                AppLogger.Warn($"Failed to parse comparison operator '{prop.Name}': Object has no 'name' property");
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            AppLogger.Warn($"Failed to parse comparison operator '{prop.Name}': Unexpected value type {prop.Value.ValueKind}");
+                            continue;
+                        }
 
                         if (string.IsNullOrEmpty(constantName))
                             continue;
@@ -191,16 +239,39 @@ public class ScriptCommandConfigService : IApplicationService
             }
 
             // Load special overworlds
-            // Format in JSON: "0x00FF": "Player"
+            // Format in JSON: "0x00FF": "Player" OR "0x00FF": {"name": "Player", ...}
             if (root.TryGetProperty("specialOverworlds", out var specialOwElement))
             {
                 foreach (var prop in specialOwElement.EnumerateObject())
                 {
                     try
                     {
-                        // Key is hex value like "0x00FF", value is name like "Player"
+                        // Key is hex value like "0x00FF"
                         string hexKey = prop.Name;
-                        string constantName = prop.Value.GetString() ?? "";
+                        string constantName;
+
+                        // Handle both string and object formats
+                        if (prop.Value.ValueKind == JsonValueKind.String)
+                        {
+                            constantName = prop.Value.GetString() ?? "";
+                        }
+                        else if (prop.Value.ValueKind == JsonValueKind.Object)
+                        {
+                            if (prop.Value.TryGetProperty("name", out var nameProp))
+                            {
+                                constantName = nameProp.GetString() ?? "";
+                            }
+                            else
+                            {
+                                AppLogger.Warn($"Failed to parse special overworld '{prop.Name}': Object has no 'name' property");
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            AppLogger.Warn($"Failed to parse special overworld '{prop.Name}': Unexpected value type {prop.Value.ValueKind}");
+                            continue;
+                        }
 
                         if (string.IsNullOrEmpty(constantName))
                             continue;
@@ -216,16 +287,39 @@ public class ScriptCommandConfigService : IApplicationService
             }
 
             // Load overworld directions
-            // Format in JSON: "0x0000": "Up"
+            // Format in JSON: "0x0000": "Up" OR "0x0000": {"name": "Up", ...}
             if (root.TryGetProperty("overworldDirections", out var owDirectionsElement))
             {
                 foreach (var prop in owDirectionsElement.EnumerateObject())
                 {
                     try
                     {
-                        // Key is hex value like "0x0000", value is name like "Up"
+                        // Key is hex value like "0x0000"
                         string hexKey = prop.Name;
-                        string constantName = prop.Value.GetString() ?? "";
+                        string constantName;
+
+                        // Handle both string and object formats
+                        if (prop.Value.ValueKind == JsonValueKind.String)
+                        {
+                            constantName = prop.Value.GetString() ?? "";
+                        }
+                        else if (prop.Value.ValueKind == JsonValueKind.Object)
+                        {
+                            if (prop.Value.TryGetProperty("name", out var nameProp))
+                            {
+                                constantName = nameProp.GetString() ?? "";
+                            }
+                            else
+                            {
+                                AppLogger.Warn($"Failed to parse overworld direction '{prop.Name}': Object has no 'name' property");
+                                continue;
+                            }
+                        }
+                        else
+                        {
+                            AppLogger.Warn($"Failed to parse overworld direction '{prop.Name}': Unexpected value type {prop.Value.ValueKind}");
+                            continue;
+                        }
 
                         if (string.IsNullOrEmpty(constantName))
                             continue;
