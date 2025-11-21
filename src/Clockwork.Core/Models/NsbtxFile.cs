@@ -579,10 +579,10 @@ public class NsbtxFile
         // Apply tiling if requested
         switch (texInfo.Format)
         {
-            case 1: // A3I5 (Translucent) - 1 byte per pixel
+            case 1: // A3I5 (Translucent) - 1 byte per pixel with palette
                 if (useTiledFormat)
                     textureData = UntileTiledData(textureData, width, height, 1);
-                return DecodeA3I5(textureData, width, height);
+                return DecodeA3I5(textureData, width, height, paletteIndex);
 
             case 2: // 4-Color Palette - 2 bits per pixel (4 pixels per byte)
                 if (useTiledFormat)
@@ -601,10 +601,10 @@ public class NsbtxFile
                     textureData = UntileTiledData(textureData, width, height, 1);
                 return Decode256ColorPalette(textureData, width, height, paletteIndex);
 
-            case 6: // A5I3 (Translucent) - 1 byte per pixel
+            case 6: // A5I3 (Translucent) - 1 byte per pixel with palette
                 if (useTiledFormat)
                     textureData = UntileTiledData(textureData, width, height, 1);
-                return DecodeA5I3(textureData, width, height);
+                return DecodeA5I3(textureData, width, height, paletteIndex);
 
             case 7: // Direct Color (RGB555) - 2 bytes per pixel
                 if (useTiledFormat)
@@ -857,62 +857,76 @@ public class NsbtxFile
     }
 
     /// <summary>
-    /// Decodes an A3I5 (3-bit alpha, 5-bit intensity) texture to RGBA8888
-    /// Format: 1 byte per pixel, lower 5 bits = intensity, upper 3 bits = alpha
+    /// Decodes an A3I5 (3-bit alpha, 5-bit palette index) texture to RGBA8888
+    /// Format: 1 byte per pixel, lower 5 bits = palette index (0-31), upper 3 bits = alpha (0-7)
+    /// This is a paletted format with transparency, not grayscale!
     /// </summary>
-    private byte[] DecodeA3I5(byte[] textureData, int width, int height)
+    private byte[]? DecodeA3I5(byte[] textureData, int width, int height, int paletteIndex)
     {
+        var palette = GetPaletteData(paletteIndex);
+        if (palette == null)
+            return null;
+
         byte[] rgba = new byte[width * height * 4];
 
         for (int i = 0; i < textureData.Length && i < width * height; i++)
         {
             byte pixel = textureData[i];
 
-            // Extract intensity (lower 5 bits) and alpha (upper 3 bits)
-            int intensity = pixel & 0x1F;       // 0-31
-            int alpha = (pixel >> 5) & 0x07;    // 0-7
+            // Extract palette index (lower 5 bits) and alpha (upper 3 bits)
+            byte palIdx = (byte)(pixel & 0x1F);       // 0-31 (5 bits = 32 colors max)
+            byte alpha = (byte)((pixel >> 5) & 0x07); // 0-7 (3 bits)
 
-            // Scale to 0-255 range
-            byte intensityScaled = (byte)((intensity * 255) / 31);
+            // Get color from palette
+            ushort color = palette[palIdx];
+
+            // Scale alpha to 0-255 range
             byte alphaScaled = (byte)((alpha * 255) / 7);
 
-            // Use intensity for RGB (grayscale)
+            // Convert RGB555 to RGB888 and apply alpha
             int rgbaIdx = i * 4;
-            rgba[rgbaIdx + 0] = intensityScaled; // R
-            rgba[rgbaIdx + 1] = intensityScaled; // G
-            rgba[rgbaIdx + 2] = intensityScaled; // B
-            rgba[rgbaIdx + 3] = alphaScaled;     // A
+            rgba[rgbaIdx + 0] = (byte)(((color >> 0) & 0x1F) * 255 / 31);  // R
+            rgba[rgbaIdx + 1] = (byte)(((color >> 5) & 0x1F) * 255 / 31);  // G
+            rgba[rgbaIdx + 2] = (byte)(((color >> 10) & 0x1F) * 255 / 31); // B
+            rgba[rgbaIdx + 3] = alphaScaled;                                 // A
         }
 
         return rgba;
     }
 
     /// <summary>
-    /// Decodes an A5I3 (5-bit alpha, 3-bit intensity) texture to RGBA8888
-    /// Format: 1 byte per pixel, lower 3 bits = intensity, upper 5 bits = alpha
+    /// Decodes an A5I3 (5-bit alpha, 3-bit palette index) texture to RGBA8888
+    /// Format: 1 byte per pixel, lower 3 bits = palette index (0-7), upper 5 bits = alpha (0-31)
+    /// This is a paletted format with transparency, not grayscale!
     /// </summary>
-    private byte[] DecodeA5I3(byte[] textureData, int width, int height)
+    private byte[]? DecodeA5I3(byte[] textureData, int width, int height, int paletteIndex)
     {
+        var palette = GetPaletteData(paletteIndex);
+        if (palette == null)
+            return null;
+
         byte[] rgba = new byte[width * height * 4];
 
         for (int i = 0; i < textureData.Length && i < width * height; i++)
         {
             byte pixel = textureData[i];
 
-            // Extract intensity (lower 3 bits) and alpha (upper 5 bits)
-            int intensity = pixel & 0x07;       // 0-7
-            int alpha = (pixel >> 3) & 0x1F;    // 0-31
+            // Extract palette index (lower 3 bits) and alpha (upper 5 bits)
+            byte palIdx = (byte)(pixel & 0x07);       // 0-7 (3 bits = 8 colors max)
+            byte alpha = (byte)((pixel >> 3) & 0x1F); // 0-31 (5 bits)
 
-            // Scale to 0-255 range
-            byte intensityScaled = (byte)((intensity * 255) / 7);
+            // Get color from palette
+            ushort color = palette[palIdx];
+
+            // Scale alpha to 0-255 range
             byte alphaScaled = (byte)((alpha * 255) / 31);
 
-            // Use intensity for RGB (grayscale)
+            // Convert RGB555 to RGB888 and apply alpha
             int rgbaIdx = i * 4;
-            rgba[rgbaIdx + 0] = intensityScaled; // R
-            rgba[rgbaIdx + 1] = intensityScaled; // G
-            rgba[rgbaIdx + 2] = intensityScaled; // B
-            rgba[rgbaIdx + 3] = alphaScaled;     // A
+            rgba[rgbaIdx + 0] = (byte)(((color >> 0) & 0x1F) * 255 / 31);  // R
+            rgba[rgbaIdx + 1] = (byte)(((color >> 5) & 0x1F) * 255 / 31);  // G
+            rgba[rgbaIdx + 2] = (byte)(((color >> 10) & 0x1F) * 255 / 31); // B
+            rgba[rgbaIdx + 3] = alphaScaled;                                 // A
         }
 
         return rgba;

@@ -31,6 +31,11 @@ public class NsbtxEditorView : IView
     private float _statusTimer = 0.0f;
     private string _searchFilter = string.Empty;
 
+    // Scroll fix: track if we just selected something to avoid calling SetItemDefaultFocus every frame
+    private bool _justSelectedNsbtx = false;
+    private bool _justSelectedTexture = false;
+    private bool _justSelectedPalette = false;
+
     // Texture display
     private IntPtr _currentTextureHandle = IntPtr.Zero;
     private int _currentTextureWidth = 0;
@@ -198,12 +203,14 @@ public class NsbtxEditorView : IView
                     if (ImGui.Selectable(label, isSelected))
                     {
                         _selectedNsbtxId = nsbtxId;
+                        _justSelectedNsbtx = true;
                         LoadNsbtx(nsbtxId);
                     }
 
-                    if (isSelected)
+                    if (isSelected && _justSelectedNsbtx)
                     {
                         ImGui.SetItemDefaultFocus();
+                        _justSelectedNsbtx = false;
                     }
                 }
             }
@@ -266,12 +273,14 @@ public class NsbtxEditorView : IView
                             _selectedTextureIndex = i;
                             _selectedPaletteIndex = -1; // Deselect palette when selecting texture
                             _currentPaletteIndex = 0; // Reset to first palette
+                            _justSelectedTexture = true;
                             LoadTexturePreview(i, _currentPaletteIndex);
                         }
 
-                        if (isSelected)
+                        if (isSelected && _justSelectedTexture)
                         {
                             ImGui.SetItemDefaultFocus();
+                            _justSelectedTexture = false;
                         }
                     }
                     ImGui.EndChild();
@@ -304,11 +313,13 @@ public class NsbtxEditorView : IView
                         {
                             _selectedPaletteIndex = i;
                             _selectedTextureIndex = -1; // Deselect texture when selecting palette
+                            _justSelectedPalette = true;
                         }
 
-                        if (isSelected)
+                        if (isSelected && _justSelectedPalette)
                         {
                             ImGui.SetItemDefaultFocus();
+                            _justSelectedPalette = false;
                         }
                     }
                     ImGui.EndChild();
@@ -344,8 +355,8 @@ public class NsbtxEditorView : IView
                     ImGui.Text($"Offset: 0x{texInfo.TextureOffset:X}");
                     ImGui.Text($"Color0 Transparent: {texInfo.Color0Transparent}");
 
-                    // Palette selector for palette-based formats
-                    if (texInfo.Format >= 2 && texInfo.Format <= 4 && currentNsbtx.PaletteNames.Count > 0)
+                    // Palette selector for palette-based formats (1=A3I5, 2=4-color, 3=16-color, 4=256-color, 6=A5I3)
+                    if ((texInfo.Format >= 1 && texInfo.Format <= 4 || texInfo.Format == 6) && currentNsbtx.PaletteNames.Count > 0)
                     {
                         ImGui.Spacing();
                         ImGui.Text("Palette:");
@@ -491,8 +502,8 @@ public class NsbtxEditorView : IView
                                 ImGui.Separator();
                                 ImGui.Spacing();
 
-                                // Palette info for paletted textures
-                                if (texInfo.Format >= 2 && texInfo.Format <= 4)
+                                // Palette info for paletted textures (1=A3I5, 2=4-color, 3=16-color, 4=256-color, 6=A5I3)
+                                if (texInfo.Format >= 1 && texInfo.Format <= 4 || texInfo.Format == 6)
                                 {
                                     ImGui.Text("=== Palette Info ===");
                                     var palette = currentNsbtx.GetPaletteData(_currentPaletteIndex);
