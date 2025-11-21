@@ -360,4 +360,93 @@ public class TextArchiveService : IApplicationService
             return new List<int>();
         }
     }
+
+    /// <summary>
+    /// Build required binary files from expanded text archives.
+    /// This method scans the expanded/textArchives/ folder and rebuilds any .bin files
+    /// in unpacked/textArchives/ that are older than their corresponding .txt files.
+    /// Called before ROM repacking to ensure all text modifications are included.
+    /// </summary>
+    /// <returns>True if successful, false if an error occurred</returns>
+    public bool BuildRequiredBins()
+    {
+        if (_romService?.CurrentRom?.IsLoaded != true)
+        {
+            AppLogger.Warn("Cannot build text archive bins: ROM not loaded");
+            return true; // Not an error if no ROM is loaded
+        }
+
+        string romPath = _romService.CurrentRom.RomPath;
+        string expandedDir = Path.Combine(romPath, "expanded", "textArchives");
+        string unpackedDir = Path.Combine(romPath, "unpacked", "textArchives");
+
+        // If expanded directory doesn't exist, nothing to do
+        if (!Directory.Exists(expandedDir))
+        {
+            AppLogger.Info("Text Archive: No expanded text archive directory found, skipping .bin rebuild.");
+            return true;
+        }
+
+        // Ensure unpacked directory exists
+        if (!Directory.Exists(unpackedDir))
+        {
+            Directory.CreateDirectory(unpackedDir);
+        }
+
+        try
+        {
+            var expandedTextFiles = Directory.GetFiles(expandedDir, "*.txt", SearchOption.AllDirectories);
+            int rebuiltCount = 0;
+            int skippedCount = 0;
+
+            foreach (string expandedTextFile in expandedTextFiles)
+            {
+                string fileName = Path.GetFileNameWithoutExtension(expandedTextFile);
+
+                // Parse archive ID from filename
+                if (!int.TryParse(fileName, out int archiveID))
+                {
+                    AppLogger.Error($"Skipping invalid text archive file name: {fileName}");
+                    continue;
+                }
+
+                // Get corresponding .bin path in unpacked/
+                string binPath = Path.Combine(unpackedDir, archiveID.ToString("D4"));
+
+                // Skip if .bin exists and is newer than .txt
+                if (File.Exists(binPath) &&
+                    File.GetLastWriteTimeUtc(binPath) > File.GetLastWriteTimeUtc(expandedTextFile))
+                {
+                    skippedCount++;
+                    continue;
+                }
+
+                // Rebuild the .bin file from .txt
+                try
+                {
+                    var textArchive = TextArchive.ImportFromTextFile(expandedTextFile, archiveID);
+                    textArchive.SaveToFile(binPath);
+
+                    // Update .txt last write time to prevent it being overwritten when reopening the ROM
+                    File.SetLastWriteTimeUtc(expandedTextFile, DateTime.UtcNow);
+
+                    rebuiltCount++;
+                    AppLogger.Debug($"Rebuilt text archive {archiveID} from expanded .txt");
+                }
+                catch (Exception ex)
+                {
+                    AppLogger.Error($"Failed to rebuild text archive {archiveID}: {ex.Message}");
+                    return false;
+                }
+            }
+
+            AppLogger.Info($"Text Archive: {rebuiltCount} .bin files built from .txt, {skippedCount} .bin files skipped because they were newer than the .txt");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"Error during text archive .bin rebuild: {ex.Message}");
+            return false;
+        }
+    }
 }

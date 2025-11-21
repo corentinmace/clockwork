@@ -699,9 +699,24 @@ public class MainWindow
         {
             var ndsToolService = _appContext.GetService<NdsToolService>();
             var romPackingService = _appContext.GetService<RomPackingService>();
+            var textArchiveService = _appContext.GetService<TextArchiveService>();
+
+            // Step 0: Rebuild text archives from expanded/ folder
+            _saveRomLog += "=== Step 0: Repacking Expanded Files ===\n";
+            bool textArchiveSuccess = textArchiveService?.BuildRequiredBins() ?? false;
+
+            if (!textArchiveSuccess)
+            {
+                AppLogger.Error("Text archive rebuilding failed");
+                _saveRomLog += "\n=== Text archive rebuilding failed! Save aborted. ===\n";
+                _isSavingRom = false;
+                return;
+            }
+
+            _saveRomLog += "Text archives rebuilt successfully.\n";
 
             // Step 1: Pack all NARC archives
-            _saveRomLog += "=== Step 1: Packing NARC Archives ===\n";
+            _saveRomLog += "\n=== Step 1: Packing NARC Archives ===\n";
             bool narcPackingSuccess = romPackingService?.PackAllNarcs(
                 (msg) => { _saveRomLog += msg + "\n"; }
             ) ?? false;
