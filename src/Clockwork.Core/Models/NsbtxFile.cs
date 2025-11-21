@@ -560,7 +560,10 @@ public class NsbtxFile
     /// Decodes a texture to RGBA8888 format (ready for OpenGL)
     /// Returns null if texture cannot be decoded
     /// </summary>
-    public byte[]? DecodeTextureToRGBA(int textureIndex, int paletteIndex = 0)
+    /// <param name="textureIndex">Index of the texture to decode</param>
+    /// <param name="paletteIndex">Index of the palette to use (for paletted formats)</param>
+    /// <param name="useTiledFormat">If true, treat texture as 8x8 tiled. If false, treat as linear.</param>
+    public byte[]? DecodeTextureToRGBA(int textureIndex, int paletteIndex = 0, bool useTiledFormat = false)
     {
         if (textureIndex < 0 || textureIndex >= Textures.Count)
             return null;
@@ -573,32 +576,39 @@ public class NsbtxFile
         int width = texInfo.ActualWidth;
         int height = texInfo.ActualHeight;
 
-        // Nintendo DS textures are stored in 8x8 tiled format
-        // We need to untile them first for certain formats
+        // Apply tiling if requested
         switch (texInfo.Format)
         {
             case 1: // A3I5 (Translucent) - 1 byte per pixel
-                textureData = UntileTiledData(textureData, width, height, 1);
+                if (useTiledFormat)
+                    textureData = UntileTiledData(textureData, width, height, 1);
                 return DecodeA3I5(textureData, width, height);
 
             case 2: // 4-Color Palette - 2 bits per pixel (4 pixels per byte)
-                // For 4-color, we need to untile at the 4-pixel group level
-                return Decode4ColorPalette(textureData, width, height, paletteIndex);
+                if (useTiledFormat)
+                    return Decode4ColorPaletteTiled(textureData, width, height, paletteIndex);
+                else
+                    return Decode4ColorPaletteLinear(textureData, width, height, paletteIndex);
 
             case 3: // 16-Color Palette - 4 bits per pixel (2 pixels per byte)
-                // For 16-color, we need to untile at the 2-pixel pair level
-                return Decode16ColorPalette(textureData, width, height, paletteIndex);
+                if (useTiledFormat)
+                    return Decode16ColorPaletteTiled(textureData, width, height, paletteIndex);
+                else
+                    return Decode16ColorPaletteLinear(textureData, width, height, paletteIndex);
 
             case 4: // 256-Color Palette - 1 byte per pixel
-                textureData = UntileTiledData(textureData, width, height, 1);
+                if (useTiledFormat)
+                    textureData = UntileTiledData(textureData, width, height, 1);
                 return Decode256ColorPalette(textureData, width, height, paletteIndex);
 
             case 6: // A5I3 (Translucent) - 1 byte per pixel
-                textureData = UntileTiledData(textureData, width, height, 1);
+                if (useTiledFormat)
+                    textureData = UntileTiledData(textureData, width, height, 1);
                 return DecodeA5I3(textureData, width, height);
 
             case 7: // Direct Color (RGB555) - 2 bytes per pixel
-                textureData = UntileTiledData(textureData, width, height, 2);
+                if (useTiledFormat)
+                    textureData = UntileTiledData(textureData, width, height, 2);
                 return DecodeDirectColor(textureData, width, height);
 
             default:
@@ -639,9 +649,51 @@ public class NsbtxFile
     }
 
     /// <summary>
-    /// Decodes a 16-color palette texture to RGBA8888
+    /// Decodes a 16-color palette texture to RGBA8888 (linear format)
     /// </summary>
-    private byte[]? Decode16ColorPalette(byte[] textureData, int width, int height, int paletteIndex)
+    private byte[]? Decode16ColorPaletteLinear(byte[] textureData, int width, int height, int paletteIndex)
+    {
+        var palette = GetPaletteData(paletteIndex);
+        if (palette == null)
+            return null;
+
+        byte[] rgba = new byte[width * height * 4];
+        int pixelIdx = 0;
+
+        // 2 pixels per byte (4 bits each), stored linearly
+        for (int i = 0; i < textureData.Length && pixelIdx < width * height; i++)
+        {
+            byte packed = textureData[i];
+
+            // First pixel (lower 4 bits)
+            byte paletteIdx1 = (byte)(packed & 0x0F);
+            ushort color1 = palette[paletteIdx1];
+            rgba[pixelIdx * 4 + 0] = (byte)(((color1 >> 0) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 1] = (byte)(((color1 >> 5) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 2] = (byte)(((color1 >> 10) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 3] = 255;
+            pixelIdx++;
+
+            if (pixelIdx >= width * height)
+                break;
+
+            // Second pixel (upper 4 bits)
+            byte paletteIdx2 = (byte)((packed >> 4) & 0x0F);
+            ushort color2 = palette[paletteIdx2];
+            rgba[pixelIdx * 4 + 0] = (byte)(((color2 >> 0) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 1] = (byte)(((color2 >> 5) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 2] = (byte)(((color2 >> 10) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 3] = 255;
+            pixelIdx++;
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
+    /// Decodes a 16-color palette texture to RGBA8888 (tiled format)
+    /// </summary>
+    private byte[]? Decode16ColorPaletteTiled(byte[] textureData, int width, int height, int paletteIndex)
     {
         var palette = GetPaletteData(paletteIndex);
         if (palette == null)
@@ -692,9 +744,45 @@ public class NsbtxFile
     }
 
     /// <summary>
-    /// Decodes a 4-color palette texture to RGBA8888
+    /// Decodes a 4-color palette texture to RGBA8888 (linear format)
     /// </summary>
-    private byte[]? Decode4ColorPalette(byte[] textureData, int width, int height, int paletteIndex)
+    private byte[]? Decode4ColorPaletteLinear(byte[] textureData, int width, int height, int paletteIndex)
+    {
+        var palette = GetPaletteData(paletteIndex);
+        if (palette == null)
+            return null;
+
+        byte[] rgba = new byte[width * height * 4];
+        int pixelIdx = 0;
+
+        // 4 pixels per byte (2 bits each), stored linearly
+        for (int i = 0; i < textureData.Length && pixelIdx < width * height; i++)
+        {
+            byte packed = textureData[i];
+
+            for (int bit = 0; bit < 8; bit += 2)
+            {
+                byte paletteIdx = (byte)((packed >> bit) & 0x03);
+                ushort color = palette[paletteIdx];
+
+                rgba[pixelIdx * 4 + 0] = (byte)(((color >> 0) & 0x1F) * 255 / 31);
+                rgba[pixelIdx * 4 + 1] = (byte)(((color >> 5) & 0x1F) * 255 / 31);
+                rgba[pixelIdx * 4 + 2] = (byte)(((color >> 10) & 0x1F) * 255 / 31);
+                rgba[pixelIdx * 4 + 3] = 255;
+                pixelIdx++;
+
+                if (pixelIdx >= width * height)
+                    break;
+            }
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
+    /// Decodes a 4-color palette texture to RGBA8888 (tiled format)
+    /// </summary>
+    private byte[]? Decode4ColorPaletteTiled(byte[] textureData, int width, int height, int paletteIndex)
     {
         var palette = GetPaletteData(paletteIndex);
         if (palette == null)

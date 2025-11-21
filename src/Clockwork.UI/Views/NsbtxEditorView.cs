@@ -37,6 +37,7 @@ public class NsbtxEditorView : IView
     private int _currentTextureHeight = 0;
     private int _currentPaletteIndex = 0;
     private int _zoomLevel = 4; // Default 4x zoom
+    private bool _useTiledFormat = false; // Toggle between tiled and linear format
 
     // Add/Remove dialogs
     private bool _showAddDialog = false;
@@ -364,6 +365,18 @@ public class NsbtxEditorView : IView
                             LoadTexturePreview(_selectedTextureIndex, _currentPaletteIndex);
                         }
                     }
+
+                    // Tiling mode toggle
+                    ImGui.Spacing();
+                    if (ImGui.Checkbox("8x8 Tiled Format", ref _useTiledFormat))
+                    {
+                        // Tiling mode changed, reload texture
+                        LoadTexturePreview(_selectedTextureIndex, _currentPaletteIndex);
+                    }
+                    if (ImGui.IsItemHovered())
+                    {
+                        ImGui.SetTooltip("Toggle between linear (line-by-line) and tiled (8x8 blocks) texture format.\nMost 3D textures use linear format.");
+                    }
                 }
 
                 ImGui.Spacing();
@@ -434,7 +447,7 @@ public class NsbtxEditorView : IView
                                 ImGui.TextWrapped(hexStr);
 
                                 // Decode and show first 4 pixels
-                                var decoded = currentNsbtx.DecodeTextureToRGBA(_selectedTextureIndex, _currentPaletteIndex);
+                                var decoded = currentNsbtx.DecodeTextureToRGBA(_selectedTextureIndex, _currentPaletteIndex, _useTiledFormat);
                                 if (decoded != null && decoded.Length >= 16)
                                 {
                                     ImGui.Spacing();
@@ -703,7 +716,7 @@ public class NsbtxEditorView : IView
             Core.Logging.AppLogger.Debug($"[NsbtxEditor] Palette index: {paletteIndex}, Palette count: {currentNsbtx.Palettes.Count}");
 
             // Decode texture to RGBA
-            var rgbaData = currentNsbtx.DecodeTextureToRGBA(textureIndex, paletteIndex);
+            var rgbaData = currentNsbtx.DecodeTextureToRGBA(textureIndex, paletteIndex, _useTiledFormat);
             if (rgbaData == null)
             {
                 Core.Logging.AppLogger.Error($"[NsbtxEditor] Failed to decode texture {textureIndex}");
