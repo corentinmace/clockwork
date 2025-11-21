@@ -409,7 +409,7 @@ public class ScriptEditorWindow : IView
             File.WriteAllText(actionPath, _actionTabText);
 
             // Compile the script to binary immediately
-            bool compiled = _scriptService?.CompileScriptToBinary(_currentFileID) ?? false;
+            bool compiled = _scriptService?.CompileScriptToBinary(_currentFileID, out string errorMessage) ?? false;
             if (compiled)
             {
                 _isDirty = false;
@@ -418,7 +418,11 @@ public class ScriptEditorWindow : IView
             else
             {
                 _isDirty = false;
-                SetStatus($"Saved Script File {_currentFileID} (compilation warning - check logs)", new Vector4(1.0f, 0.8f, 0.3f, 1.0f));
+                string displayMsg = string.IsNullOrEmpty(errorMessage)
+                    ? "Compilation failed - check logs"
+                    : errorMessage;
+                SetStatus($"Compilation Error: {displayMsg}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f), 15f);
+                AppLogger.Error($"Script {_currentFileID} compilation errors:\n{errorMessage}");
             }
         }
         catch (Exception ex)
@@ -529,10 +533,10 @@ public class ScriptEditorWindow : IView
         ImGui.End();
     }
 
-    private void SetStatus(string message, Vector4 color)
+    private void SetStatus(string message, Vector4 color, float duration = 5f)
     {
         _statusMessage = message;
         _statusColor = color;
-        _statusTimer = 5f;
+        _statusTimer = duration;
     }
 }

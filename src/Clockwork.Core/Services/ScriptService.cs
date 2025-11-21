@@ -105,8 +105,8 @@ public class ScriptService : IApplicationService
             }
             else
             {
-                // Load from text files
-                script = ImportScriptFromTextFiles(scriptID, textPaths);
+                // Load from text files (ignore compilation errors - we want to load for editing)
+                script = ImportScriptFromTextFiles(scriptID, textPaths, out _);
                 AppLogger.Debug($"Loaded script {scriptID} from script_export/");
             }
 
@@ -178,11 +178,15 @@ public class ScriptService : IApplicationService
     /// This is called when saving a script in the editor to update the .bin file.
     /// </summary>
     /// <param name="scriptID">The script ID to compile</param>
+    /// <param name="errorMessage">Output parameter containing error details if compilation fails</param>
     /// <returns>True if compilation succeeded, false otherwise</returns>
-    public bool CompileScriptToBinary(int scriptID)
+    public bool CompileScriptToBinary(int scriptID, out string errorMessage)
     {
+        errorMessage = string.Empty;
+
         if (_romService?.CurrentRom?.IsLoaded != true)
         {
+            errorMessage = "ROM not loaded";
             AppLogger.Warn($"Cannot compile script {scriptID}: ROM not loaded");
             return false;
         }
@@ -196,6 +200,7 @@ public class ScriptService : IApplicationService
             bool hasTextFiles = textPaths.Any(File.Exists);
             if (!hasTextFiles)
             {
+                errorMessage = "No text files found for this script";
                 AppLogger.Warn($"No text files found for script {scriptID}, cannot compile");
                 return false;
             }
@@ -208,9 +213,17 @@ public class ScriptService : IApplicationService
             }
 
             // Import from text files and save to binary
-            var script = ImportScriptFromTextFiles(scriptID, textPaths);
+            var script = ImportScriptFromTextFiles(scriptID, textPaths, out var compilationErrors);
             if (script != null)
             {
+                if (compilationErrors.Count > 0)
+                {
+                    // Compilation had errors but still produced a partial script
+                    errorMessage = string.Join("\n", compilationErrors);
+                    AppLogger.Error($"Script {scriptID} compiled with errors:\n{errorMessage}");
+                    return false;
+                }
+
                 script.SaveToFile(binPath);
 
                 // Update text file timestamps to prevent re-extraction
@@ -227,12 +240,16 @@ public class ScriptService : IApplicationService
             }
             else
             {
+                errorMessage = compilationErrors.Count > 0
+                    ? string.Join("\n", compilationErrors)
+                    : "Failed to import script from text files";
                 AppLogger.Error($"Failed to import script {scriptID} from text files");
                 return false;
             }
         }
         catch (Exception ex)
         {
+            errorMessage = ex.Message;
             AppLogger.Error($"Failed to compile script {scriptID}: {ex.Message}");
             return false;
         }
@@ -311,9 +328,19 @@ public class ScriptService : IApplicationService
                 // Rebuild the .bin file from text files
                 try
                 {
-                    var script = ImportScriptFromTextFiles(scriptID, textPaths);
+                    var script = ImportScriptFromTextFiles(scriptID, textPaths, out var errors);
                     if (script != null)
                     {
+                        if (errors.Count > 0)
+                        {
+                            AppLogger.Error($"Script {scriptID} has compilation errors:");
+                            foreach (var error in errors)
+                            {
+                                AppLogger.Error($"  {error}");
+                            }
+                            return false;
+                        }
+
                         script.SaveToFile(binPath);
 
                         // Update text file timestamps to prevent overwriting
@@ -405,29 +432,30 @@ public class ScriptService : IApplicationService
     /// <summary>
     /// Import a script file from text files
     /// </summary>
-    private ScriptFile? ImportScriptFromTextFiles(int scriptID, string[] textPaths)
+    private ScriptFile? ImportScriptFromTextFiles(int scriptID, string[] textPaths, out List<string> errors)
     {
+        errors = new List<string>();
         var script = new ScriptFile(scriptID);
 
         // Import scripts
         if (File.Exists(textPaths[0]))
         {
             var scriptText = File.ReadAllText(textPaths[0]);
-            script.Scripts = ParseContainersFromText(scriptText, ContainerType.Script);
+            script.Scripts = ParseContainersFromText(scriptText, ContainerType.Script, errors);
         }
 
         // Import functions
         if (File.Exists(textPaths[1]))
         {
             var functionText = File.ReadAllText(textPaths[1]);
-            script.Functions = ParseContainersFromText(functionText, ContainerType.Function);
+            script.Functions = ParseContainersFromText(functionText, ContainerType.Function, errors);
         }
 
         // Import actions
         if (File.Exists(textPaths[2]))
         {
             var actionText = File.ReadAllText(textPaths[2]);
-            script.Actions = ParseContainersFromText(actionText, ContainerType.Action);
+            script.Actions = ParseContainersFromText(actionText, ContainerType.Action, errors);
         }
 
         return script;
@@ -436,7 +464,7 @@ public class ScriptService : IApplicationService
     /// <summary>
     /// Parse containers from text (separated by blank lines)
     /// </summary>
-    private List<ScriptContainer> ParseContainersFromText(string text, ContainerType type)
+    private List<ScriptContainer> ParseContainersFromText(string text, ContainerType type, List<string> errors)
     {
         var containers = new List<ScriptContainer>();
         var lines = text.Split('\n');
@@ -458,8 +486,16 @@ public class ScriptService : IApplicationService
                         var container = ScriptCompiler.CompileContainer(containerText, type, currentID);
                         containers.Add(container);
                     }
+                    catch (Formats.NDS.Scripts.ScriptCompilationException ex)
+                    {
+                        string errorMsg = $"[{type} {currentID}] {ex.Message}";
+                        errors.Add(errorMsg);
+                        AppLogger.Error($"Failed to compile {type} {currentID}: {ex.Message}");
+                    }
                     catch (Exception ex)
                     {
+                        string errorMsg = $"[{type} {currentID}] Unexpected error: {ex.Message}";
+                        errors.Add(errorMsg);
                         AppLogger.Error($"Failed to compile {type} {currentID}: {ex.Message}");
                     }
                     currentText.Clear();
@@ -487,8 +523,16 @@ public class ScriptService : IApplicationService
                 var container = ScriptCompiler.CompileContainer(containerText, type, currentID);
                 containers.Add(container);
             }
+            catch (Formats.NDS.Scripts.ScriptCompilationException ex)
+            {
+                string errorMsg = $"[{type} {currentID}] {ex.Message}";
+                errors.Add(errorMsg);
+                AppLogger.Error($"Failed to compile {type} {currentID}: {ex.Message}");
+            }
             catch (Exception ex)
             {
+                string errorMsg = $"[{type} {currentID}] Unexpected error: {ex.Message}";
+                errors.Add(errorMsg);
                 AppLogger.Error($"Failed to compile {type} {currentID}: {ex.Message}");
             }
         }
