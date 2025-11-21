@@ -89,6 +89,8 @@ public class ScriptFile
     /// </summary>
     public byte[] ToBytes()
     {
+        AppLogger.Info($"Compiling ScriptFile: {Scripts.Count} scripts, {Functions.Count} functions, {Actions.Count} actions");
+
         using var ms = new MemoryStream();
         using var writer = new BinaryWriter(ms);
 
@@ -123,10 +125,12 @@ public class ScriptFile
         }
 
         // Phase 3: Write Functions
+        AppLogger.Debug($"Writing {Functions.Count} functions");
         foreach (var function in Functions)
         {
             long offset = writer.BaseStream.Position;
             containerOffsets[(ContainerType.Function, function.ID)] = offset;
+            AppLogger.Debug($"  Function #{function.ID} at offset 0x{offset:X}");
 
             // Write function commands
             foreach (var command in function.Commands)
@@ -274,11 +278,14 @@ public class ScriptFile
                             };
 
                             // Look up the target offset
+                            AppLogger.Debug($"Resolving reference: {refType} #{refId} at position 0x{position:X}");
                             if (containerOffsets.TryGetValue((refType, refId), out long targetOffset))
                             {
                                 // Calculate relative offset: target - (current position + 4)
                                 // The +4 accounts for the size of the offset field itself
                                 int relativeOffset = (int)(targetOffset - position - 4);
+
+                                AppLogger.Debug($"  -> Target at 0x{targetOffset:X}, relative offset: 0x{relativeOffset:X}");
 
                                 // Write the relative offset back to the data array
                                 byte[] relativeBytes = BitConverter.GetBytes(relativeOffset);
@@ -289,7 +296,12 @@ public class ScriptFile
                             }
                             else
                             {
-                                AppLogger.Warn($"Cannot resolve reference to {refType} #{refId} at position {position}");
+                                AppLogger.Warn($"Cannot resolve reference to {refType} #{refId} at position 0x{position:X}");
+                                AppLogger.Debug($"  Available keys in containerOffsets:");
+                                foreach (var key in containerOffsets.Keys)
+                                {
+                                    AppLogger.Debug($"    - {key.type} #{key.id}");
+                                }
                             }
                         }
                     }
