@@ -409,7 +409,8 @@ public class ScriptEditorWindow : IView
             File.WriteAllText(actionPath, _actionTabText);
 
             // Compile the script to binary immediately
-            bool compiled = _scriptService?.CompileScriptToBinary(_currentFileID, out string errorMessage) ?? false;
+            string errorMessage = string.Empty;
+            bool compiled = _scriptService?.CompileScriptToBinary(_currentFileID, out errorMessage) ?? false;
             if (compiled)
             {
                 _isDirty = false;
