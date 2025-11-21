@@ -4,6 +4,30 @@ using Clockwork.Core.Logging;
 namespace Clockwork.Core.Models;
 
 /// <summary>
+/// Texture information extracted from NSBTX
+/// </summary>
+public class TextureInfo
+{
+    public int TextureOffset { get; set; }
+    public ushort Parameters { get; set; }
+    public byte Width { get; set; }
+    public byte Height { get; set; }
+    public int Format { get; set; }
+    public bool Color0Transparent { get; set; }
+    public int ActualWidth => 8 << (Width & 0x07);
+    public int ActualHeight => 8 << (Height & 0x07);
+}
+
+/// <summary>
+/// Palette information extracted from NSBTX
+/// </summary>
+public class PaletteInfo
+{
+    public int PaletteOffset { get; set; }
+    public ushort Color0 { get; set; }
+}
+
+/// <summary>
 /// Represents an NSBTX (Nintendo DS Texture) file
 /// NSBTX files contain texture and palette data for 3D models
 /// </summary>
@@ -40,6 +64,16 @@ public class NsbtxFile
     public List<string> PaletteNames { get; set; } = new();
 
     /// <summary>
+    /// List of texture information
+    /// </summary>
+    public List<TextureInfo> Textures { get; set; } = new();
+
+    /// <summary>
+    /// List of palette information
+    /// </summary>
+    public List<PaletteInfo> Palettes { get; set; } = new();
+
+    /// <summary>
     /// Raw file data (for re-export without modification)
     /// </summary>
     public byte[] RawData { get; set; } = Array.Empty<byte>();
@@ -48,6 +82,16 @@ public class NsbtxFile
     /// File path this NSBTX was loaded from
     /// </summary>
     public string FilePath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Offset to TEX0 block in file
+    /// </summary>
+    public int Tex0Offset { get; set; }
+
+    /// <summary>
+    /// Offset to texture data within TEX0 block
+    /// </summary>
+    public uint TextureDataOffset { get; set; }
 
     /// <summary>
     /// Loads an NSBTX file from a byte array
@@ -148,6 +192,10 @@ public class NsbtxFile
 
         AppLogger.Debug($"[NSBTX] Texture info: dictOffset={texDictOffset}, dataSize={texDataSize}, dataOffset={texDataOffset}");
 
+        // Store offsets for later use
+        file.Tex0Offset = tex0Offset;
+        file.TextureDataOffset = texDataOffset;
+
         // Compressed Texture Information block
         uint compTexUnk = reader.ReadUInt32();
         ushort compTexDataSize = (ushort)(reader.ReadUInt16() << 3);
@@ -172,7 +220,7 @@ public class NsbtxFile
         if (texDictOffset > 0 && texDictOffset < data.Length - tex0Offset)
         {
             AppLogger.Debug($"[NSBTX] Parsing textures at offset {tex0Offset + texDictOffset}");
-            file.TextureNames = ParseTextureNameList(data, tex0Offset + texDictOffset);
+            (file.TextureNames, file.Textures) = ParseTextureList(data, tex0Offset + texDictOffset);
             AppLogger.Info($"[NSBTX] Found {file.TextureNames.Count} textures");
         }
         else
@@ -194,18 +242,19 @@ public class NsbtxFile
     }
 
     /// <summary>
-    /// Parses texture name list (texture entries are 8 bytes each)
+    /// Parses texture list with names and info (texture entries are 8 bytes each)
     /// </summary>
-    private static List<string> ParseTextureNameList(byte[] data, int offset)
+    private static (List<string>, List<TextureInfo>) ParseTextureList(byte[] data, int offset)
     {
         var names = new List<string>();
+        var textures = new List<TextureInfo>();
 
-        AppLogger.Debug($"[NSBTX] ParseTextureNameList: offset={offset}");
+        AppLogger.Debug($"[NSBTX] ParseTextureList: offset={offset}");
 
         if (offset + 4 > data.Length)
         {
-            AppLogger.Warn($"[NSBTX] Texture name list offset out of bounds");
-            return names;
+            AppLogger.Warn($"[NSBTX] Texture list offset out of bounds");
+            return (names, textures);
         }
 
         using var ms = new MemoryStream(data, offset, data.Length - offset);
@@ -220,7 +269,7 @@ public class NsbtxFile
 
         if (numObjs == 0)
         {
-            return names;
+            return (names, textures);
         }
 
         // Read unknown block header
@@ -240,11 +289,27 @@ public class NsbtxFile
         ushort infoDataSize = reader.ReadUInt16();
         AppLogger.Debug($"[NSBTX] Info block: headerSize={infoHeaderSize}, dataSize={infoDataSize}");
 
-        // Skip texture info entries (8 bytes each: offset, params, width, unk1, height, unk2)
-        int textureInfoSize = numObjs * 8;
-        reader.ReadBytes(textureInfoSize);
+        // Read texture info entries (8 bytes each: offset, params, width, unk1, height, unk2)
+        for (int i = 0; i < numObjs; i++)
+        {
+            var texInfo = new TextureInfo
+            {
+                TextureOffset = reader.ReadUInt16() << 3,
+                Parameters = reader.ReadUInt16(),
+                Width = reader.ReadByte()
+            };
+            reader.ReadByte(); // Unknown1
+            texInfo.Height = reader.ReadByte();
+            reader.ReadByte(); // Unknown2
 
-        AppLogger.Debug($"[NSBTX] Skipped {textureInfoSize} bytes of texture info, now at position {ms.Position}");
+            // Extract format from parameters (bits 26-28)
+            texInfo.Format = (texInfo.Parameters >> 10) & 0x07;
+            texInfo.Color0Transparent = (texInfo.Parameters & 0x20) != 0;
+
+            textures.Add(texInfo);
+        }
+
+        AppLogger.Debug($"[NSBTX] Parsed {textures.Count} texture info entries, now at position {ms.Position}");
 
         // Read texture names (16 bytes each, ASCII)
         for (int i = 0; i < numObjs; i++)
@@ -279,8 +344,8 @@ public class NsbtxFile
             }
         }
 
-        AppLogger.Info($"[NSBTX] Parsed {names.Count} texture names");
-        return names;
+        AppLogger.Info($"[NSBTX] Parsed {names.Count} texture names and {textures.Count} texture info entries");
+        return (names, textures);
     }
 
     /// <summary>
@@ -394,8 +459,12 @@ public class NsbtxFile
             BlockCount = BlockCount,
             TextureNames = new List<string>(TextureNames),
             PaletteNames = new List<string>(PaletteNames),
+            Textures = new List<TextureInfo>(Textures),
+            Palettes = new List<PaletteInfo>(Palettes),
             RawData = (byte[])RawData.Clone(),
-            FilePath = FilePath
+            FilePath = FilePath,
+            Tex0Offset = Tex0Offset,
+            TextureDataOffset = TextureDataOffset
         };
     }
 }

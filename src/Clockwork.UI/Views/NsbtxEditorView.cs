@@ -317,6 +317,16 @@ public class NsbtxEditorView : IView
                 ImGui.Text($"Name: {texName}");
                 ImGui.Text($"Index: {_selectedTextureIndex}");
 
+                if (_selectedTextureIndex < currentNsbtx.Textures.Count)
+                {
+                    var texInfo = currentNsbtx.Textures[_selectedTextureIndex];
+                    ImGui.Spacing();
+                    ImGui.Text($"Dimensions: {texInfo.ActualWidth}x{texInfo.ActualHeight}");
+                    ImGui.Text($"Format: {GetFormatName(texInfo.Format)}");
+                    ImGui.Text($"Offset: 0x{texInfo.TextureOffset:X}");
+                    ImGui.Text($"Color0 Transparent: {texInfo.Color0Transparent}");
+                }
+
                 ImGui.Spacing();
                 ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
                     "Texture decoding and rendering not yet implemented.");
@@ -522,6 +532,22 @@ public class NsbtxEditorView : IView
         {
             SetStatus("Failed to export NSBTX", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
         }
+    }
+
+    private string GetFormatName(int format)
+    {
+        return format switch
+        {
+            0 => "None",
+            1 => "A3I5 (Translucent)",
+            2 => "4-Color Palette",
+            3 => "16-Color Palette",
+            4 => "256-Color Palette",
+            5 => "4x4 Compressed",
+            6 => "A5I3 (Translucent)",
+            7 => "Direct Color",
+            _ => $"Unknown ({format})"
+        };
     }
 
     private void SetStatus(string message, Vector4 color)
