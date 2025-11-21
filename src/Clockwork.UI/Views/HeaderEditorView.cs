@@ -17,6 +17,7 @@ public class HeaderEditorView : IView
     private readonly ApplicationContext _appContext;
     private RomService? _romService;
     private HeaderService? _headerService;
+    private TextArchiveService? _textArchiveService;
     private TextureManager? _textureManager;
 
     // References to other editors for navigation
@@ -44,6 +45,7 @@ public class HeaderEditorView : IView
         _appContext = appContext;
         _romService = _appContext.GetService<RomService>();
         _headerService = _appContext.GetService<HeaderService>();
+        _textArchiveService = _appContext.GetService<TextArchiveService>();
     }
 
     /// <summary>
@@ -175,43 +177,36 @@ public class HeaderEditorView : IView
 
     private void LoadLocationNames()
     {
-        if (_romService?.CurrentRom?.GameDirectories == null)
+        if (_textArchiveService == null || _romService?.CurrentRom?.IsLoaded != true)
+        {
+            _locationNames = new List<string>();
+            _locationNamesLoaded = false;
             return;
+        }
 
         try
         {
-            // Get expanded text archives path
-            if (!_romService.CurrentRom.GameDirectories.TryGetValue("expandedTextArchives", out var textArchivesPath))
-                return;
+            // Use TextArchiveService to load location names (handles auto-extraction)
+            var locationNames = _textArchiveService.GetLocationNames();
 
-            // Default to Platinum location names (433) - could be made configurable based on game detection
-            int locationArchiveId = GameConstants.LocationNamesTextArchive.Platinum;
-            string archivePath = Path.Combine(textArchivesPath, $"{locationArchiveId:D4}.txt");
-
-            if (File.Exists(archivePath))
+            if (locationNames != null && locationNames.Length > 0)
             {
-                var lines = File.ReadAllLines(archivePath).ToList();
-
-                // Skip key header line if present
-                if (lines.Count > 0 && lines[0].StartsWith("# Key:"))
-                {
-                    lines.RemoveAt(0);
-                }
-
-                _locationNames = lines;
+                _locationNames = locationNames.ToList();
                 _locationNamesLoaded = true;
 
                 _statusMessage += $" | Loaded {_locationNames.Count} location names";
+                AppLogger.Debug($"HeaderEditorView: Loaded {_locationNames.Count} location names via TextArchiveService");
             }
             else
             {
                 _locationNames = new List<string>();
                 _locationNamesLoaded = false;
+                AppLogger.Warn("HeaderEditorView: Failed to load location names - array is null or empty");
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading location names: {ex.Message}");
+            AppLogger.Error($"Error loading location names: {ex.Message}");
             _locationNames = new List<string>();
             _locationNamesLoaded = false;
         }
