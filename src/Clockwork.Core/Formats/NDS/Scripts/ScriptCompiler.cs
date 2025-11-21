@@ -15,6 +15,12 @@ public static class ScriptCompiler
         RegexOptions.Compiled
     );
 
+    // Regex to detect lines that look like commands but have invalid syntax
+    private static readonly Regex PotentialCommandRegex = new Regex(
+        @"^\s*([a-zA-Z_]\w*)",
+        RegexOptions.Compiled
+    );
+
     /// <summary>
     /// Compiles script text to a ScriptContainer
     /// </summary>
@@ -28,9 +34,11 @@ public static class ScriptCompiler
         };
 
         var lines = text.Split('\n');
+        int lineNumber = 0;
 
         foreach (var line in lines)
         {
+            lineNumber++;
             var trimmed = line.Trim();
 
             // Skip empty lines and comments
@@ -39,7 +47,18 @@ public static class ScriptCompiler
 
             var match = CommandRegex.Match(line);
             if (!match.Success)
+            {
+                // Check if this looks like a command but has invalid syntax
+                var potentialMatch = PotentialCommandRegex.Match(trimmed);
+                if (potentialMatch.Success)
+                {
+                    string potentialCommand = potentialMatch.Groups[1].Value;
+                    throw new ScriptCompilationException(
+                        $"Line {lineNumber}: Invalid command syntax '{trimmed}'. " +
+                        $"Did you mean '{potentialCommand}()'? Commands must use the format: CommandName(param1, param2, ...)");
+                }
                 continue;
+            }
 
             string commandName = match.Groups[1].Value;
             string paramsStr = match.Groups[2].Value;
@@ -49,12 +68,25 @@ public static class ScriptCompiler
             if (commandInfo == null)
             {
                 throw new ScriptCompilationException(
-                    $"Unknown command '{commandName}'. This command is not defined in the script command database. " +
+                    $"Line {lineNumber}: Unknown command '{commandName}'. This command is not defined in the script command database. " +
                     $"Check the command name or update ScriptCommands.json in %appdata%/Clockwork/Scrcmd/");
             }
 
             // Parse parameters
-            var paramValues = ParseParameters(paramsStr, commandInfo);
+            List<byte[]> paramValues;
+            try
+            {
+                paramValues = ParseParameters(paramsStr, commandInfo);
+            }
+            catch (ScriptCompilationException ex)
+            {
+                // Add line number to error message if not already present
+                if (!ex.Message.Contains("Line "))
+                {
+                    throw new ScriptCompilationException($"Line {lineNumber}: {ex.Message}", ex);
+                }
+                throw;
+            }
 
             // Create command
             var command = new ScriptCommand
