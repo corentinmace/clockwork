@@ -535,6 +535,9 @@ public class NsbtxFile
 
         switch (texInfo.Format)
         {
+            case 1: // A3I5 (Translucent)
+                return DecodeA3I5(textureData, width, height);
+
             case 2: // 4-Color Palette
                 return Decode4ColorPalette(textureData, width, height, paletteIndex);
 
@@ -543,6 +546,9 @@ public class NsbtxFile
 
             case 4: // 256-Color Palette
                 return Decode256ColorPalette(textureData, width, height, paletteIndex);
+
+            case 6: // A5I3 (Translucent)
+                return DecodeA5I3(textureData, width, height);
 
             case 7: // Direct Color (RGB555)
                 return DecodeDirectColor(textureData, width, height);
@@ -677,6 +683,68 @@ public class NsbtxFile
             rgba[pixelIdx * 4 + 2] = (byte)(((color555 >> 10) & 0x1F) * 255 / 31);
             rgba[pixelIdx * 4 + 3] = 255;
             pixelIdx++;
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
+    /// Decodes an A3I5 (3-bit alpha, 5-bit intensity) texture to RGBA8888
+    /// Format: 1 byte per pixel, lower 5 bits = intensity, upper 3 bits = alpha
+    /// </summary>
+    private byte[] DecodeA3I5(byte[] textureData, int width, int height)
+    {
+        byte[] rgba = new byte[width * height * 4];
+
+        for (int i = 0; i < textureData.Length && i < width * height; i++)
+        {
+            byte pixel = textureData[i];
+
+            // Extract intensity (lower 5 bits) and alpha (upper 3 bits)
+            int intensity = pixel & 0x1F;       // 0-31
+            int alpha = (pixel >> 5) & 0x07;    // 0-7
+
+            // Scale to 0-255 range
+            byte intensityScaled = (byte)((intensity * 255) / 31);
+            byte alphaScaled = (byte)((alpha * 255) / 7);
+
+            // Use intensity for RGB (grayscale)
+            int rgbaIdx = i * 4;
+            rgba[rgbaIdx + 0] = intensityScaled; // R
+            rgba[rgbaIdx + 1] = intensityScaled; // G
+            rgba[rgbaIdx + 2] = intensityScaled; // B
+            rgba[rgbaIdx + 3] = alphaScaled;     // A
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
+    /// Decodes an A5I3 (5-bit alpha, 3-bit intensity) texture to RGBA8888
+    /// Format: 1 byte per pixel, lower 3 bits = intensity, upper 5 bits = alpha
+    /// </summary>
+    private byte[] DecodeA5I3(byte[] textureData, int width, int height)
+    {
+        byte[] rgba = new byte[width * height * 4];
+
+        for (int i = 0; i < textureData.Length && i < width * height; i++)
+        {
+            byte pixel = textureData[i];
+
+            // Extract intensity (lower 3 bits) and alpha (upper 5 bits)
+            int intensity = pixel & 0x07;       // 0-7
+            int alpha = (pixel >> 3) & 0x1F;    // 0-31
+
+            // Scale to 0-255 range
+            byte intensityScaled = (byte)((intensity * 255) / 7);
+            byte alphaScaled = (byte)((alpha * 255) / 31);
+
+            // Use intensity for RGB (grayscale)
+            int rgbaIdx = i * 4;
+            rgba[rgbaIdx + 0] = intensityScaled; // R
+            rgba[rgbaIdx + 1] = intensityScaled; // G
+            rgba[rgbaIdx + 2] = intensityScaled; // B
+            rgba[rgbaIdx + 3] = alphaScaled;     // A
         }
 
         return rgba;
