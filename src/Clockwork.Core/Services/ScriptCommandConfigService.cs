@@ -128,7 +128,94 @@ public class ScriptCommandConfigService : IApplicationService
             var jsonDoc = JsonDocument.Parse(jsonContent);
             var root = jsonDoc.RootElement;
 
-            if (root.TryGetProperty("platinum", out var platinumElement) &&
+            // Try the real scrcmd format first (from LiTRE)
+            if (root.TryGetProperty("scrcmd", out var scrcmdElement))
+            {
+                foreach (var cmdProp in scrcmdElement.EnumerateObject())
+                {
+                    try
+                    {
+                        // Parse hex ID from key (e.g., "0x0002" -> 2)
+                        string hexKey = cmdProp.Name;
+                        if (!hexKey.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                        {
+                            AppLogger.Warn($"Skipping invalid scrcmd key: {hexKey}");
+                            continue;
+                        }
+
+                        ushort id = Convert.ToUInt16(hexKey.Substring(2), 16);
+                        var cmdElement = cmdProp.Value;
+
+                        var name = cmdElement.TryGetProperty("name", out var nameProp)
+                            ? nameProp.GetString() ?? "Unknown"
+                            : "Unknown";
+
+                        var description = cmdElement.TryGetProperty("description", out var descProp)
+                            ? descProp.GetString() ?? ""
+                            : "";
+
+                        var parameters = new List<Formats.NDS.Scripts.ScriptParameterType>();
+                        var parameterNames = new List<string>();
+
+                        // Get parameter sizes (in bytes) from "parameters" field
+                        if (cmdElement.TryGetProperty("parameters", out var paramSizesElement))
+                        {
+                            var parameterTypes = new List<string>();
+
+                            // Get parameter types from "parameter_types" field
+                            if (cmdElement.TryGetProperty("parameter_types", out var paramTypesElement))
+                            {
+                                foreach (var typeElement in paramTypesElement.EnumerateArray())
+                                {
+                                    parameterTypes.Add(typeElement.GetString() ?? "Integer");
+                                }
+                            }
+
+                            // Get parameter value descriptions from "parameter_values" field
+                            if (cmdElement.TryGetProperty("parameter_values", out var paramValuesElement))
+                            {
+                                foreach (var valueElement in paramValuesElement.EnumerateArray())
+                                {
+                                    parameterNames.Add(valueElement.GetString() ?? "");
+                                }
+                            }
+
+                            int paramIndex = 0;
+                            foreach (var sizeElement in paramSizesElement.EnumerateArray())
+                            {
+                                int size = sizeElement.GetInt32();
+                                string typeStr = paramIndex < parameterTypes.Count
+                                    ? parameterTypes[paramIndex]
+                                    : "Integer";
+
+                                // Map size + type to our ScriptParameterType
+                                var paramType = MapParameterType(size, typeStr);
+                                parameters.Add(paramType);
+                                paramIndex++;
+                            }
+                        }
+
+                        var info = new Formats.NDS.Scripts.ScriptCommandInfo
+                        {
+                            ID = id,
+                            Name = name,
+                            Parameters = parameters,
+                            ParameterNames = parameterNames,
+                            Description = description
+                        };
+
+                        commands[id] = info;
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLogger.Error($"Failed to parse scrcmd entry '{cmdProp.Name}': {ex.Message}");
+                    }
+                }
+
+                AppLogger.Info($"Loaded {commands.Count} script commands from scrcmd format");
+            }
+            // Fallback to simple format for backwards compatibility
+            else if (root.TryGetProperty("platinum", out var platinumElement) &&
                 platinumElement.TryGetProperty("commands", out var commandsElement))
             {
                 foreach (var cmdElement in commandsElement.EnumerateArray())
@@ -173,9 +260,9 @@ public class ScriptCommandConfigService : IApplicationService
                         AppLogger.Error($"Failed to parse command in JSON: {ex.Message}");
                     }
                 }
-            }
 
-            AppLogger.Info($"Loaded {commands.Count} script commands from config file");
+                AppLogger.Info($"Loaded {commands.Count} script commands from platinum format");
+            }
         }
         catch (Exception ex)
         {
@@ -183,6 +270,33 @@ public class ScriptCommandConfigService : IApplicationService
         }
 
         return commands;
+    }
+
+    /// <summary>
+    /// Maps parameter size and type string to ScriptParameterType
+    /// </summary>
+    private Formats.NDS.Scripts.ScriptParameterType MapParameterType(int sizeInBytes, string typeStr)
+    {
+        // Handle Variable type
+        if (typeStr.Equals("Variable", StringComparison.OrdinalIgnoreCase))
+        {
+            return Formats.NDS.Scripts.ScriptParameterType.Variable;
+        }
+
+        // Handle Offset type (usually 4 bytes)
+        if (typeStr.Equals("Offset", StringComparison.OrdinalIgnoreCase))
+        {
+            return Formats.NDS.Scripts.ScriptParameterType.Offset;
+        }
+
+        // Map by size for Integer types
+        return sizeInBytes switch
+        {
+            1 => Formats.NDS.Scripts.ScriptParameterType.Byte,
+            2 => Formats.NDS.Scripts.ScriptParameterType.Word,
+            4 => Formats.NDS.Scripts.ScriptParameterType.DWord,
+            _ => Formats.NDS.Scripts.ScriptParameterType.Word // Default to Word
+        };
     }
 
     /// <summary>

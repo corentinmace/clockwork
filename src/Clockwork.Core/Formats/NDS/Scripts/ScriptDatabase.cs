@@ -121,7 +121,91 @@ public static class ScriptDatabase
 
             _platinumCommands = new Dictionary<ushort, ScriptCommandInfo>();
 
-            if (root.TryGetProperty("platinum", out var platinumElement) &&
+            // Try the real scrcmd format first (from LiTRE)
+            if (root.TryGetProperty("scrcmd", out var scrcmdElement))
+            {
+                foreach (var cmdProp in scrcmdElement.EnumerateObject())
+                {
+                    try
+                    {
+                        // Parse hex ID from key (e.g., "0x0002" -> 2)
+                        string hexKey = cmdProp.Name;
+                        if (!hexKey.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+                        {
+                            continue;
+                        }
+
+                        ushort id = Convert.ToUInt16(hexKey.Substring(2), 16);
+                        var cmdElement = cmdProp.Value;
+
+                        var name = cmdElement.TryGetProperty("name", out var nameProp)
+                            ? nameProp.GetString() ?? "Unknown"
+                            : "Unknown";
+
+                        var description = cmdElement.TryGetProperty("description", out var descProp)
+                            ? descProp.GetString() ?? ""
+                            : "";
+
+                        var parameters = new List<ScriptParameterType>();
+                        var parameterNames = new List<string>();
+
+                        // Get parameter sizes (in bytes) from "parameters" field
+                        if (cmdElement.TryGetProperty("parameters", out var paramSizesElement))
+                        {
+                            var parameterTypes = new List<string>();
+
+                            // Get parameter types from "parameter_types" field
+                            if (cmdElement.TryGetProperty("parameter_types", out var paramTypesElement))
+                            {
+                                foreach (var typeElement in paramTypesElement.EnumerateArray())
+                                {
+                                    parameterTypes.Add(typeElement.GetString() ?? "Integer");
+                                }
+                            }
+
+                            // Get parameter value descriptions from "parameter_values" field
+                            if (cmdElement.TryGetProperty("parameter_values", out var paramValuesElement))
+                            {
+                                foreach (var valueElement in paramValuesElement.EnumerateArray())
+                                {
+                                    parameterNames.Add(valueElement.GetString() ?? "");
+                                }
+                            }
+
+                            int paramIndex = 0;
+                            foreach (var sizeElement in paramSizesElement.EnumerateArray())
+                            {
+                                int size = sizeElement.GetInt32();
+                                string typeStr = paramIndex < parameterTypes.Count
+                                    ? parameterTypes[paramIndex]
+                                    : "Integer";
+
+                                // Map size + type to our ScriptParameterType
+                                var paramType = MapParameterTypeFromEmbedded(size, typeStr);
+                                parameters.Add(paramType);
+                                paramIndex++;
+                            }
+                        }
+
+                        var info = new ScriptCommandInfo
+                        {
+                            ID = id,
+                            Name = name,
+                            Parameters = parameters,
+                            ParameterNames = parameterNames,
+                            Description = description
+                        };
+
+                        _platinumCommands[id] = info;
+                    }
+                    catch
+                    {
+                        // Skip invalid entries
+                    }
+                }
+            }
+            // Fallback to simple format for backwards compatibility
+            else if (root.TryGetProperty("platinum", out var platinumElement) &&
                 platinumElement.TryGetProperty("commands", out var commandsElement))
             {
                 foreach (var cmdElement in commandsElement.EnumerateArray())
@@ -166,5 +250,32 @@ public static class ScriptDatabase
             _platinumCommands = new Dictionary<ushort, ScriptCommandInfo>();
             _isInitialized = true;
         }
+    }
+
+    /// <summary>
+    /// Maps parameter size and type string to ScriptParameterType (for embedded resources)
+    /// </summary>
+    private static ScriptParameterType MapParameterTypeFromEmbedded(int sizeInBytes, string typeStr)
+    {
+        // Handle Variable type
+        if (typeStr.Equals("Variable", StringComparison.OrdinalIgnoreCase))
+        {
+            return ScriptParameterType.Variable;
+        }
+
+        // Handle Offset type (usually 4 bytes)
+        if (typeStr.Equals("Offset", StringComparison.OrdinalIgnoreCase))
+        {
+            return ScriptParameterType.Offset;
+        }
+
+        // Map by size for Integer types
+        return sizeInBytes switch
+        {
+            1 => ScriptParameterType.Byte,
+            2 => ScriptParameterType.Word,
+            4 => ScriptParameterType.DWord,
+            _ => ScriptParameterType.Word // Default to Word
+        };
     }
 }
