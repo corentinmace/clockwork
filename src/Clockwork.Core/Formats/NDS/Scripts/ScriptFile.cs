@@ -77,81 +77,134 @@ public class ScriptFile
     }
 
     /// <summary>
-    /// Converts the script file to binary format
+    /// Converts the script file to binary format (LiTRE-compatible format)
+    /// Format:
+    /// - Script offsets (4 bytes each)
+    /// - Magic 0xFD13 (2 bytes) - marks end of header
+    /// - Script data
+    /// - Function data
+    /// - Action data (with halfword alignment)
     /// </summary>
     public byte[] ToBytes()
     {
         using var ms = new MemoryStream();
         using var writer = new BinaryWriter(ms);
 
-        // Simple format: Write header with counts, then all container data
-        // Header structure:
-        // - ushort: Script count
-        // - ushort: Function count
-        // - ushort: Action count
-        // - ushort: Reserved (padding)
+        // Phase 1: Reserve space for script offset table
+        long headerStartPos = writer.BaseStream.Position;
+        for (int i = 0; i < Scripts.Count; i++)
+        {
+            writer.Write((uint)0); // Placeholder offsets
+        }
 
-        writer.Write((ushort)Scripts.Count);
-        writer.Write((ushort)Functions.Count);
-        writer.Write((ushort)Actions.Count);
-        writer.Write((ushort)0); // Reserved
+        // Write magic number 0xFD13 to mark end of header
+        writer.Write((ushort)0xFD13);
 
-        // Calculate and write offset tables
-        List<uint> scriptOffsets = new();
-        List<uint> functionOffsets = new();
-        List<uint> actionOffsets = new();
+        // Track actual offsets for each container
+        Dictionary<(ContainerType type, uint id), long> containerOffsets = new();
 
-        uint currentOffset = (uint)(8 + (Scripts.Count + Functions.Count + Actions.Count) * 4);
-
-        // Calculate script offsets
+        // Phase 2: Write Scripts
         foreach (var script in Scripts)
         {
-            scriptOffsets.Add(currentOffset);
-            currentOffset += (uint)script.GetTotalSize();
+            long offset = writer.BaseStream.Position;
+            containerOffsets[(ContainerType.Script, script.ID)] = offset;
+
+            // Write script commands
+            foreach (var command in script.Commands)
+            {
+                writer.Write(command.CommandID);
+                foreach (var param in command.Parameters)
+                {
+                    writer.Write(param);
+                }
+            }
         }
 
-        // Calculate function offsets
+        // Phase 3: Write Functions
         foreach (var function in Functions)
         {
-            functionOffsets.Add(currentOffset);
-            currentOffset += (uint)function.GetTotalSize();
+            long offset = writer.BaseStream.Position;
+            containerOffsets[(ContainerType.Function, function.ID)] = offset;
+
+            // Write function commands
+            foreach (var command in function.Commands)
+            {
+                writer.Write(command.CommandID);
+                foreach (var param in command.Parameters)
+                {
+                    writer.Write(param);
+                }
+            }
         }
 
-        // Calculate action offsets
-        foreach (var action in Actions)
+        // Phase 4: Write Actions (with halfword alignment)
+        // Ensure position is aligned to 2-byte boundary
+        if (writer.BaseStream.Position % 2 != 0)
         {
-            actionOffsets.Add(currentOffset);
-            currentOffset += (uint)action.GetTotalSize();
-        }
-
-        // Write offset tables
-        foreach (var offset in scriptOffsets)
-            writer.Write(offset);
-        foreach (var offset in functionOffsets)
-            writer.Write(offset);
-        foreach (var offset in actionOffsets)
-            writer.Write(offset);
-
-        // Write container data
-        foreach (var script in Scripts)
-        {
-            var data = script.ToBytes();
-            writer.Write(data);
-        }
-
-        foreach (var function in Functions)
-        {
-            var data = function.ToBytes();
-            writer.Write(data);
+            writer.Write((byte)0); // Padding byte
         }
 
         foreach (var action in Actions)
         {
-            var data = action.ToBytes();
-            writer.Write(data);
+            long offset = writer.BaseStream.Position;
+            containerOffsets[(ContainerType.Action, action.ID)] = offset;
+
+            // Write action commands
+            foreach (var command in action.Commands)
+            {
+                writer.Write(command.CommandID);
+                foreach (var param in command.Parameters)
+                {
+                    writer.Write(param);
+                }
+            }
         }
 
-        return ms.ToArray();
+        // Phase 5: Back-patch script offsets in header
+        long endPos = writer.BaseStream.Position;
+        writer.BaseStream.Position = headerStartPos;
+
+        for (int i = 0; i < Scripts.Count; i++)
+        {
+            var script = Scripts[i];
+            if (containerOffsets.TryGetValue((ContainerType.Script, script.ID), out long offset))
+            {
+                writer.Write((uint)offset);
+            }
+            else
+            {
+                writer.Write((uint)0); // No offset found
+            }
+        }
+
+        // Restore position to end
+        writer.BaseStream.Position = endPos;
+
+        // Phase 6: Convert offset parameters to relative offsets
+        // Get the complete data
+        byte[] data = ms.ToArray();
+
+        // Fix up relative offsets in commands
+        FixRelativeOffsets(data, containerOffsets);
+
+        return data;
+    }
+
+    /// <summary>
+    /// Fixes relative offset parameters in script commands
+    /// Offset parameters must be relative to the current position + 4
+    /// </summary>
+    private void FixRelativeOffsets(byte[] data, Dictionary<(ContainerType type, uint id), long> containerOffsets)
+    {
+        // TODO: Implement offset fixup
+        // This requires:
+        // 1. Re-parse commands from data to find their positions
+        // 2. For each command with Offset parameters, calculate relative offset
+        // 3. Replace the offset bytes in data
+
+        // For now, this is left as a placeholder
+        // Offsets written during compilation will be used as-is
+        // This means Function#1, Script#2 references will have raw ID values instead of proper offsets
     }
 
     /// <summary>
