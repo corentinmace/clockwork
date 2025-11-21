@@ -174,6 +174,71 @@ public class ScriptService : IApplicationService
     }
 
     /// <summary>
+    /// Compile a specific script from text files to binary format immediately.
+    /// This is called when saving a script in the editor to update the .bin file.
+    /// </summary>
+    /// <param name="scriptID">The script ID to compile</param>
+    /// <returns>True if compilation succeeded, false otherwise</returns>
+    public bool CompileScriptToBinary(int scriptID)
+    {
+        if (_romService?.CurrentRom?.IsLoaded != true)
+        {
+            AppLogger.Warn($"Cannot compile script {scriptID}: ROM not loaded");
+            return false;
+        }
+
+        try
+        {
+            string[] textPaths = GetScriptExportPaths(scriptID);
+            string binPath = GetScriptBinaryPath(scriptID);
+
+            // Check if at least one text file exists
+            bool hasTextFiles = textPaths.Any(File.Exists);
+            if (!hasTextFiles)
+            {
+                AppLogger.Warn($"No text files found for script {scriptID}, cannot compile");
+                return false;
+            }
+
+            // Ensure binary directory exists
+            string binDir = Path.GetDirectoryName(binPath)!;
+            if (!Directory.Exists(binDir))
+            {
+                Directory.CreateDirectory(binDir);
+            }
+
+            // Import from text files and save to binary
+            var script = ImportScriptFromTextFiles(scriptID, textPaths);
+            if (script != null)
+            {
+                script.SaveToFile(binPath);
+
+                // Update text file timestamps to prevent re-extraction
+                foreach (var txtPath in textPaths)
+                {
+                    if (File.Exists(txtPath))
+                    {
+                        File.SetLastWriteTimeUtc(txtPath, DateTime.UtcNow);
+                    }
+                }
+
+                AppLogger.Info($"Compiled script {scriptID} from text files to binary");
+                return true;
+            }
+            else
+            {
+                AppLogger.Error($"Failed to import script {scriptID} from text files");
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLogger.Error($"Failed to compile script {scriptID}: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Build required binary files from script_export folder.
     /// Compiles .script and .action text files back to .bin format.
     /// Called before ROM repacking to ensure all script modifications are included.

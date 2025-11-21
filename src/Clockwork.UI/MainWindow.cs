@@ -700,7 +700,6 @@ public class MainWindow
             var ndsToolService = _appContext.GetService<NdsToolService>();
             var romPackingService = _appContext.GetService<RomPackingService>();
             var textArchiveService = _appContext.GetService<TextArchiveService>();
-            var scriptService = _appContext.GetService<ScriptService>();
 
             // Step 0: Rebuild text archives from expanded/ folder
             _saveRomLog += "=== Step 0: Repacking Expanded Files ===\n";
@@ -715,20 +714,7 @@ public class MainWindow
             }
 
             _saveRomLog += "Text archives rebuilt successfully.\n";
-
-            // Step 0b: Rebuild scripts from script_export/ folder
-            _saveRomLog += "Rebuilding scripts from script_export/...\n";
-            bool scriptSuccess = scriptService?.BuildRequiredBins() ?? false;
-
-            if (!scriptSuccess)
-            {
-                AppLogger.Error("Script rebuilding failed");
-                _saveRomLog += "\n=== Script rebuilding failed! Save aborted. ===\n";
-                _isSavingRom = false;
-                return;
-            }
-
-            _saveRomLog += "Scripts rebuilt successfully.\n";
+            _saveRomLog += "Note: Scripts are compiled individually when saved in editor.\n";
 
             // Step 1: Pack all NARC archives
             _saveRomLog += "\n=== Step 1: Packing NARC Archives ===\n";

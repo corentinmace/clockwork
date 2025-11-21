@@ -16,6 +16,7 @@ public class ScriptEditorWindow : IView
 {
     private readonly ApplicationContext _appContext;
     private readonly RomService? _romService;
+    private readonly ScriptService? _scriptService;
 
     public bool IsVisible { get; set; } = false;
 
@@ -60,6 +61,7 @@ public class ScriptEditorWindow : IView
     {
         _appContext = appContext;
         _romService = appContext.GetService<RomService>();
+        _scriptService = appContext.GetService<ScriptService>();
     }
 
     public void Draw()
@@ -406,8 +408,18 @@ public class ScriptEditorWindow : IView
             File.WriteAllText(functionPath, _functionTabText);
             File.WriteAllText(actionPath, _actionTabText);
 
-            _isDirty = false;
-            SetStatus($"Saved Script File {_currentFileID} to export directory", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
+            // Compile the script to binary immediately
+            bool compiled = _scriptService?.CompileScriptToBinary(_currentFileID) ?? false;
+            if (compiled)
+            {
+                _isDirty = false;
+                SetStatus($"Saved and compiled Script File {_currentFileID}", new Vector4(0.5f, 0.8f, 0.5f, 1.0f));
+            }
+            else
+            {
+                _isDirty = false;
+                SetStatus($"Saved Script File {_currentFileID} (compilation warning - check logs)", new Vector4(1.0f, 0.8f, 0.3f, 1.0f));
+            }
         }
         catch (Exception ex)
         {
