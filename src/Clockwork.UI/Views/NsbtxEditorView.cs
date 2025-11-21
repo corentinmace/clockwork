@@ -136,24 +136,47 @@ public class NsbtxEditorView : IView
 
             ImGui.Separator();
 
-            // Main layout: List on left, details on right
-            if (ImGui.BeginChild("MainContent", new Vector2(0, -30)))
+            // Tab bar to switch between NSBTX and Area Data
+            if (ImGui.BeginTabBar("MainTabs"))
             {
-                if (ImGui.BeginChild("LeftPanel", new Vector2(250, 0), ImGuiChildFlags.None))
+                // NSBTX Tab
+                if (ImGui.BeginTabItem($"{FontAwesomeIcons.Image} NSBTX Files"))
                 {
-                    DrawNsbtxList();
-                    ImGui.EndChild();
+                    if (ImGui.BeginChild("NsbtxContent", new Vector2(0, -30)))
+                    {
+                        if (ImGui.BeginChild("LeftPanel", new Vector2(250, 0), ImGuiChildFlags.None))
+                        {
+                            DrawNsbtxList();
+                            ImGui.EndChild();
+                        }
+
+                        ImGui.SameLine();
+
+                        if (ImGui.BeginChild("RightPanel", new Vector2(0, 0), ImGuiChildFlags.None))
+                        {
+                            DrawNsbtxDetails();
+                            ImGui.EndChild();
+                        }
+
+                        ImGui.EndChild();
+                    }
+
+                    ImGui.EndTabItem();
                 }
 
-                ImGui.SameLine();
-
-                if (ImGui.BeginChild("RightPanel", new Vector2(0, 0), ImGuiChildFlags.None))
+                // Area Data Tab
+                if (ImGui.BeginTabItem($"{FontAwesomeIcons.Map} Area Data"))
                 {
-                    DrawNsbtxDetails();
-                    ImGui.EndChild();
+                    if (ImGui.BeginChild("AreaDataContent", new Vector2(0, -30)))
+                    {
+                        DrawAreaDataSection();
+                        ImGui.EndChild();
+                    }
+
+                    ImGui.EndTabItem();
                 }
 
-                ImGui.EndChild();
+                ImGui.EndTabBar();
             }
 
             // Status bar
@@ -612,9 +635,6 @@ public class NsbtxEditorView : IView
             _showRemoveConfirm = true;
             _nsbtxToRemove = _selectedNsbtxId;
         }
-
-        // Area Data section
-        DrawAreaDataSection();
     }
 
     private void DrawStatusBar()
@@ -874,167 +894,180 @@ public class NsbtxEditorView : IView
     private void DrawAreaDataSection()
     {
         if (_areaDataService == null || _romService == null)
+        {
+            ImGui.TextColored(new Vector4(1.0f, 0.7f, 0.4f, 1.0f),
+                "Area Data service not available");
             return;
+        }
+
+        // Toolbar
+        if (ImGui.Button($"{FontAwesomeIcons.Refresh} Reload"))
+        {
+            _areaDataService.LoadAvailableAreaData();
+            SetStatus("Area data list reloaded", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
+        }
+
+        ImGui.SameLine();
+
+        if (ImGui.Button($"{FontAwesomeIcons.Plus} Add"))
+        {
+            _showAreaDataAddDialog = true;
+            _newAreaDataId = 0;
+            _sourceAreaDataId = _selectedAreaDataId >= 0 ? _selectedAreaDataId : 0;
+        }
 
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Spacing();
 
-        if (ImGui.CollapsingHeader("Area Data", ImGuiTreeNodeFlags.DefaultOpen))
+        // Main layout: List on left, editor on right
+        // Left: Area list
+        if (ImGui.BeginChild("AreaDataList", new Vector2(200, 0), ImGuiChildFlags.Border))
         {
-            ImGui.Text("Area Configuration (links areas to tilesets)");
-            ImGui.Spacing();
+            ImGui.Text("Areas");
+            ImGui.Separator();
 
-            // Reload button
-            if (ImGui.Button($"{FontAwesomeIcons.Refresh} Reload Areas"))
-            {
-                _areaDataService.LoadAvailableAreaData();
-                SetStatus("Area data list reloaded", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
-            }
-
-            ImGui.SameLine();
-
-            // Add button
-            if (ImGui.Button($"{FontAwesomeIcons.Plus} Add Area"))
-            {
-                _showAreaDataAddDialog = true;
-                _newAreaDataId = 0;
-                _sourceAreaDataId = _selectedAreaDataId >= 0 ? _selectedAreaDataId : 0;
-            }
+            // Search filter
+            ImGui.SetNextItemWidth(-1);
+            ImGui.InputTextWithHint("##areasearch", "Search...", ref _areaDataSearchFilter, 256);
 
             ImGui.Spacing();
 
-            // Area data list and editor side by side
-            if (ImGui.BeginChild("AreaDataContent", new Vector2(0, 300)))
+            // List
+            var areaIds = _areaDataService.AvailableAreaDataIds;
+            var filteredIds = string.IsNullOrWhiteSpace(_areaDataSearchFilter)
+                ? areaIds
+                : areaIds.Where(id => id.ToString().Contains(_areaDataSearchFilter)).ToList();
+
+            if (filteredIds.Count == 0)
             {
-                // Left: Area list
-                if (ImGui.BeginChild("AreaDataList", new Vector2(150, 0), ImGuiChildFlags.Border))
+                ImGui.TextDisabled("No areas found");
+            }
+            else
+            {
+                foreach (var id in filteredIds)
                 {
-                    ImGui.Text("Areas");
-                    ImGui.Separator();
+                    bool isSelected = (_selectedAreaDataId == id);
+                    if (ImGui.Selectable($"{id:D4}", isSelected))
+                    {
+                        _selectedAreaDataId = id;
+                        _areaDataService.LoadAreaData(id);
+                    }
+                }
+            }
 
-                    // Search filter
-                    ImGui.SetNextItemWidth(-1);
-                    ImGui.InputTextWithHint("##areasearch", "Search...", ref _areaDataSearchFilter, 256);
+            ImGui.EndChild();
+        }
 
+        ImGui.SameLine();
+
+        // Right: Area editor
+        if (ImGui.BeginChild("AreaDataEditor", new Vector2(0, 0), ImGuiChildFlags.Border))
+        {
+            var currentArea = _areaDataService.CurrentAreaData;
+            if (currentArea != null && _selectedAreaDataId >= 0)
+            {
+                ImGui.Text($"Area Configuration: {_selectedAreaDataId:D4}");
+                ImGui.Separator();
+                ImGui.Spacing();
+
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 1.0f, 1.0f), "Tileset References");
+                ImGui.Spacing();
+
+                int buildingsTileset = currentArea.BuildingsTileset;
+                if (ImGui.InputInt("Buildings Tileset ID", ref buildingsTileset))
+                {
+                    currentArea.BuildingsTileset = (ushort)Math.Clamp(buildingsTileset, 0, ushort.MaxValue);
+                }
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("NSBTX ID for building textures");
+
+                int mapBaseTileset = currentArea.MapBaseTileset;
+                if (ImGui.InputInt("Map Base Tileset ID", ref mapBaseTileset))
+                {
+                    currentArea.MapBaseTileset = (ushort)Math.Clamp(mapBaseTileset, 0, ushort.MaxValue);
+                }
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip("NSBTX ID for map terrain textures");
+
+                ImGui.Spacing();
+                ImGui.Separator();
+                ImGui.Spacing();
+
+                // Seasonal variants (only if not 2-byte format)
+                if (!currentArea.UsesTwoByteFormat)
+                {
+                    ImGui.TextColored(new Vector4(0.7f, 1.0f, 0.7f, 1.0f), "Seasonal Variants");
                     ImGui.Spacing();
 
-                    // List
-                    var areaIds = _areaDataService.AvailableAreaDataIds;
-                    var filteredIds = string.IsNullOrWhiteSpace(_areaDataSearchFilter)
-                        ? areaIds
-                        : areaIds.Where(id => id.ToString().Contains(_areaDataSearchFilter)).ToList();
-
-                    foreach (var id in filteredIds)
+                    int spring = currentArea.MapTilesetSpring;
+                    if (ImGui.InputInt("Spring Tileset", ref spring))
                     {
-                        bool isSelected = (_selectedAreaDataId == id);
-                        if (ImGui.Selectable($"{id:D4}", isSelected))
-                        {
-                            _selectedAreaDataId = id;
-                            _areaDataService.LoadAreaData(id);
-                        }
+                        currentArea.MapTilesetSpring = (byte)Math.Clamp(spring, 0, 255);
                     }
 
-                    ImGui.EndChild();
+                    int summer = currentArea.MapTilesetSummer;
+                    if (ImGui.InputInt("Summer Tileset", ref summer))
+                    {
+                        currentArea.MapTilesetSummer = (byte)Math.Clamp(summer, 0, 255);
+                    }
+
+                    int fall = currentArea.MapTilesetFall;
+                    if (ImGui.InputInt("Fall Tileset", ref fall))
+                    {
+                        currentArea.MapTilesetFall = (byte)Math.Clamp(fall, 0, 255);
+                    }
+
+                    int winter = currentArea.MapTilesetWinter;
+                    if (ImGui.InputInt("Winter Tileset", ref winter))
+                    {
+                        currentArea.MapTilesetWinter = (byte)Math.Clamp(winter, 0, 254); // Max 254, 255 is special
+                    }
+
+                    ImGui.Spacing();
+                    ImGui.Separator();
+                    ImGui.Spacing();
                 }
 
-                ImGui.SameLine();
+                ImGui.TextColored(new Vector4(1.0f, 1.0f, 0.7f, 1.0f), "Lighting");
+                ImGui.Spacing();
 
-                // Right: Area editor
-                if (ImGui.BeginChild("AreaDataEditor", new Vector2(0, 0), ImGuiChildFlags.Border))
+                int lightType = currentArea.LightType;
+                if (ImGui.InputInt("Light Type", ref lightType))
                 {
-                    var currentArea = _areaDataService.CurrentAreaData;
-                    if (currentArea != null && _selectedAreaDataId >= 0)
+                    currentArea.LightType = (ushort)Math.Clamp(lightType, 0, ushort.MaxValue);
+                }
+
+                ImGui.Spacing();
+                ImGui.Separator();
+                ImGui.Spacing();
+
+                // Action buttons
+                if (ImGui.Button($"{FontAwesomeIcons.Save} Save Area Data", new Vector2(-1, 0)))
+                {
+                    if (_areaDataService.SaveCurrentAreaData())
                     {
-                        ImGui.Text($"Area {_selectedAreaDataId:D4}");
-                        ImGui.Separator();
-                        ImGui.Spacing();
-
-                        int buildingsTileset = currentArea.BuildingsTileset;
-                        if (ImGui.InputInt("Buildings Tileset", ref buildingsTileset))
-                        {
-                            currentArea.BuildingsTileset = (ushort)Math.Clamp(buildingsTileset, 0, ushort.MaxValue);
-                        }
-
-                        int mapBaseTileset = currentArea.MapBaseTileset;
-                        if (ImGui.InputInt("Map Base Tileset", ref mapBaseTileset))
-                        {
-                            currentArea.MapBaseTileset = (ushort)Math.Clamp(mapBaseTileset, 0, ushort.MaxValue);
-                        }
-
-                        // Seasonal variants (only if not 2-byte format)
-                        if (!currentArea.UsesTwoByteFormat)
-                        {
-                            ImGui.Spacing();
-                            ImGui.Text("Seasonal Map Tilesets:");
-
-                            int spring = currentArea.MapTilesetSpring;
-                            if (ImGui.InputInt("Spring", ref spring))
-                            {
-                                currentArea.MapTilesetSpring = (byte)Math.Clamp(spring, 0, 255);
-                            }
-
-                            int summer = currentArea.MapTilesetSummer;
-                            if (ImGui.InputInt("Summer", ref summer))
-                            {
-                                currentArea.MapTilesetSummer = (byte)Math.Clamp(summer, 0, 255);
-                            }
-
-                            int fall = currentArea.MapTilesetFall;
-                            if (ImGui.InputInt("Fall", ref fall))
-                            {
-                                currentArea.MapTilesetFall = (byte)Math.Clamp(fall, 0, 255);
-                            }
-
-                            int winter = currentArea.MapTilesetWinter;
-                            if (ImGui.InputInt("Winter", ref winter))
-                            {
-                                currentArea.MapTilesetWinter = (byte)Math.Clamp(winter, 0, 254); // Max 254, 255 is special
-                            }
-                        }
-
-                        ImGui.Spacing();
-
-                        int lightType = currentArea.LightType;
-                        if (ImGui.InputInt("Light Type", ref lightType))
-                        {
-                            currentArea.LightType = (ushort)Math.Clamp(lightType, 0, ushort.MaxValue);
-                        }
-
-                        ImGui.Spacing();
-                        ImGui.Separator();
-                        ImGui.Spacing();
-
-                        // Save button
-                        if (ImGui.Button($"{FontAwesomeIcons.Save} Save Area Data", new Vector2(-1, 0)))
-                        {
-                            if (_areaDataService.SaveCurrentAreaData())
-                            {
-                                SetStatus($"Saved area data {_selectedAreaDataId:D4}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
-                            }
-                            else
-                            {
-                                SetStatus("Failed to save area data", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
-                            }
-                        }
-
-                        if (ImGui.Button($"{FontAwesomeIcons.Trash} Remove Area", new Vector2(-1, 0)))
-                        {
-                            _showAreaDataRemoveConfirm = true;
-                            _areaDataToRemove = _selectedAreaDataId;
-                        }
+                        SetStatus($"Saved area data {_selectedAreaDataId:D4}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
                     }
                     else
                     {
-                        ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
-                            "Select an area from the list");
+                        SetStatus("Failed to save area data", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
                     }
-
-                    ImGui.EndChild();
                 }
 
-                ImGui.EndChild();
+                if (ImGui.Button($"{FontAwesomeIcons.Trash} Remove Area", new Vector2(-1, 0)))
+                {
+                    _showAreaDataRemoveConfirm = true;
+                    _areaDataToRemove = _selectedAreaDataId;
+                }
             }
+            else
+            {
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                    "Select an area from the list to edit its configuration");
+            }
+
+            ImGui.EndChild();
         }
 
         // Dialogs
