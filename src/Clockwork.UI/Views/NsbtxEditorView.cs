@@ -971,7 +971,7 @@ public class NsbtxEditorView : IView
                 ImGui.Separator();
                 ImGui.Spacing();
 
-                ImGui.TextColored(new Vector4(0.7f, 0.7f, 1.0f, 1.0f), "Tileset References");
+                ImGui.TextColored(new Vector4(0.7f, 0.7f, 1.0f, 1.0f), "Building Tileset");
                 ImGui.Spacing();
 
                 int buildingsTileset = currentArea.BuildingsTileset;
@@ -982,52 +982,40 @@ public class NsbtxEditorView : IView
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip("NSBTX ID for building textures");
 
-                int mapBaseTileset = currentArea.MapBaseTileset;
-                if (ImGui.InputInt("Map Base Tileset ID", ref mapBaseTileset))
-                {
-                    currentArea.MapBaseTileset = (ushort)Math.Clamp(mapBaseTileset, 0, ushort.MaxValue);
-                }
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip("NSBTX ID for map terrain textures");
-
                 ImGui.Spacing();
                 ImGui.Separator();
                 ImGui.Spacing();
 
-                // Seasonal variants (only if not 2-byte format)
-                if (!currentArea.UsesTwoByteFormat)
+                ImGui.TextColored(new Vector4(0.7f, 1.0f, 0.7f, 1.0f), "Seasonal Map Tilesets");
+                ImGui.Spacing();
+
+                int spring = currentArea.MapTilesetSpring;
+                if (ImGui.InputInt("Spring Tileset ID", ref spring))
                 {
-                    ImGui.TextColored(new Vector4(0.7f, 1.0f, 0.7f, 1.0f), "Seasonal Variants");
-                    ImGui.Spacing();
-
-                    int spring = currentArea.MapTilesetSpring;
-                    if (ImGui.InputInt("Spring Tileset", ref spring))
-                    {
-                        currentArea.MapTilesetSpring = (byte)Math.Clamp(spring, 0, 255);
-                    }
-
-                    int summer = currentArea.MapTilesetSummer;
-                    if (ImGui.InputInt("Summer Tileset", ref summer))
-                    {
-                        currentArea.MapTilesetSummer = (byte)Math.Clamp(summer, 0, 255);
-                    }
-
-                    int fall = currentArea.MapTilesetFall;
-                    if (ImGui.InputInt("Fall Tileset", ref fall))
-                    {
-                        currentArea.MapTilesetFall = (byte)Math.Clamp(fall, 0, 255);
-                    }
-
-                    int winter = currentArea.MapTilesetWinter;
-                    if (ImGui.InputInt("Winter Tileset", ref winter))
-                    {
-                        currentArea.MapTilesetWinter = (byte)Math.Clamp(winter, 0, 254); // Max 254, 255 is special
-                    }
-
-                    ImGui.Spacing();
-                    ImGui.Separator();
-                    ImGui.Spacing();
+                    currentArea.MapTilesetSpring = (byte)Math.Clamp(spring, 0, 255);
                 }
+
+                int summer = currentArea.MapTilesetSummer;
+                if (ImGui.InputInt("Summer Tileset ID", ref summer))
+                {
+                    currentArea.MapTilesetSummer = (byte)Math.Clamp(summer, 0, 255);
+                }
+
+                int fall = currentArea.MapTilesetFall;
+                if (ImGui.InputInt("Fall Tileset ID", ref fall))
+                {
+                    currentArea.MapTilesetFall = (byte)Math.Clamp(fall, 0, 255);
+                }
+
+                int winter = currentArea.MapTilesetWinter;
+                if (ImGui.InputInt("Winter Tileset ID", ref winter))
+                {
+                    currentArea.MapTilesetWinter = (byte)Math.Clamp(winter, 0, 255);
+                }
+
+                ImGui.Spacing();
+                ImGui.Separator();
+                ImGui.Spacing();
 
                 ImGui.TextColored(new Vector4(1.0f, 1.0f, 0.7f, 1.0f), "Lighting");
                 ImGui.Spacing();

@@ -4,115 +4,73 @@ namespace Clockwork.Core.Models;
 
 /// <summary>
 /// Represents area configuration data that links game areas to NSBTX tilesets
-/// Format for DP/Pt only
+/// Format for DP/Pt: 8 bytes total
 /// </summary>
 public class AreaData
 {
-    // Tileset IDs
+    // Building tileset ID (2 bytes)
     public ushort BuildingsTileset { get; set; }
-    public ushort MapBaseTileset { get; set; }
 
-    // Seasonal map tileset variants
+    // Seasonal map tileset IDs (4 bytes, 1 byte each)
     public byte MapTilesetSpring { get; set; }
     public byte MapTilesetSummer { get; set; }
     public byte MapTilesetFall { get; set; }
     public byte MapTilesetWinter { get; set; }
 
-    // Light type
+    // Light type (2 bytes)
     public ushort LightType { get; set; }
 
-    // Indicates if this uses 2-byte tileset format (when winter == 255)
-    public bool UsesTwoByteFormat { get; set; }
-
     /// <summary>
-    /// Reads area data from bytes (DP/Pt format)
+    /// Reads area data from bytes (DP/Pt format: 8 bytes total)
     /// </summary>
     public static AreaData ReadFromBytes(byte[] data)
     {
         var area = new AreaData();
 
-        // Validate minimum size (at least 8 bytes: 2 buildings + 2 map + 4 seasonal/padding)
-        if (data.Length < 8)
+        // Validate size (must be exactly 8 bytes)
+        if (data.Length != 8)
         {
-            throw new InvalidDataException($"Area data file is too short: {data.Length} bytes (minimum 8 required)");
+            throw new InvalidDataException($"Area data file has invalid size: {data.Length} bytes (expected 8)");
         }
 
         using var ms = new MemoryStream(data);
         using var reader = new BinaryReader(ms);
 
-        // DP/Pt format: 8 or 10 bytes depending on winter tileset value
+        // Read in order:
+        // 1. Building tileset ID (2 bytes)
         area.BuildingsTileset = reader.ReadUInt16();
 
-        // Read potential 2-byte base tileset OR 1-byte + seasonal variants
-        ushort tempMapBaseTileset = reader.ReadUInt16();
-        byte tempMapTilesetSpring = reader.ReadByte();
-        byte tempMapTilesetSummer = reader.ReadByte();
-        byte tempMapTilesetFall = reader.ReadByte();
-        byte tempMapTilesetWinter = reader.ReadByte();
+        // 2-5. Seasonal map tileset IDs (4 bytes, 1 each)
+        area.MapTilesetSpring = reader.ReadByte();
+        area.MapTilesetSummer = reader.ReadByte();
+        area.MapTilesetFall = reader.ReadByte();
+        area.MapTilesetWinter = reader.ReadByte();
 
-        // Check if this is 2-byte format (winter == 255 means base tileset is 2 bytes)
-        if (tempMapTilesetWinter == 255)
-        {
-            area.MapBaseTileset = tempMapBaseTileset;
-            area.UsesTwoByteFormat = true;
-        }
-        else
-        {
-            // 1-byte format with seasonal variants
-            area.MapBaseTileset = (byte)tempMapBaseTileset; // Only lower byte is valid
-            area.MapTilesetSpring = tempMapTilesetSpring;
-            area.MapTilesetSummer = tempMapTilesetSummer;
-            area.MapTilesetFall = tempMapTilesetFall;
-            area.MapTilesetWinter = tempMapTilesetWinter;
-            area.UsesTwoByteFormat = false;
-        }
-
-        // Read light type if available (some files may be 8 bytes only)
-        if (data.Length >= 10)
-        {
-            area.LightType = reader.ReadUInt16();
-        }
-        else
-        {
-            // Default light type for short files
-            area.LightType = 0;
-            Logging.AppLogger.Warn($"[AreaData] File is only {data.Length} bytes, missing light type field");
-        }
+        // 6. Light type (2 bytes)
+        area.LightType = reader.ReadUInt16();
 
         return area;
     }
 
     /// <summary>
-    /// Converts area data to bytes for saving (DP/Pt format)
+    /// Converts area data to bytes for saving (DP/Pt format: 8 bytes total)
     /// </summary>
     public byte[] ToBytes()
     {
         using var ms = new MemoryStream();
         using var writer = new BinaryWriter(ms);
 
-        // DP/Pt format
+        // Write in order:
+        // 1. Building tileset ID (2 bytes)
         writer.Write(BuildingsTileset);
 
-        if (UsesTwoByteFormat)
-        {
-            // 2-byte format (winter == 255)
-            writer.Write(MapBaseTileset);
-            writer.Write((byte)0);
-            writer.Write((byte)0);
-            writer.Write((byte)0);
-            writer.Write((byte)255); // Marker for 2-byte format
-        }
-        else
-        {
-            // 1-byte format with seasonal variants
-            writer.Write((byte)MapBaseTileset);
-            writer.Write((byte)0); // Upper byte of base tileset
-            writer.Write(MapTilesetSpring);
-            writer.Write(MapTilesetSummer);
-            writer.Write(MapTilesetFall);
-            writer.Write(MapTilesetWinter);
-        }
+        // 2-5. Seasonal map tileset IDs (4 bytes, 1 each)
+        writer.Write(MapTilesetSpring);
+        writer.Write(MapTilesetSummer);
+        writer.Write(MapTilesetFall);
+        writer.Write(MapTilesetWinter);
 
+        // 6. Light type (2 bytes)
         writer.Write(LightType);
 
         return ms.ToArray();
