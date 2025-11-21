@@ -77,8 +77,8 @@ namespace Clockwork.UI
             IntPtr context = ImGui.CreateContext();
             ImGui.SetCurrentContext(context);
 
-            // Load default font
-            ImGui.GetIO().Fonts.AddFontDefault();
+            // Load default font with extended character support
+            LoadDefaultFontWithExtendedCharacters();
 
             // Load and merge Font Awesome icons
             LoadFontAwesome();
@@ -91,6 +91,81 @@ namespace Clockwork.UI
 
             ImGui.NewFrame();
             _frameBegun = true;
+        }
+
+        /// <summary>
+        /// Load default font with extended Unicode character support
+        /// </summary>
+        private unsafe void LoadDefaultFontWithExtendedCharacters()
+        {
+            // Try to load a system font that supports extended Unicode characters
+            string[] fontPaths = new string[]
+            {
+                "C:\\Windows\\Fonts\\segoeui.ttf",  // Windows - Segoe UI
+                "C:\\Windows\\Fonts\\arial.ttf",     // Windows - Arial
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",  // Linux - DejaVu Sans
+                "/System/Library/Fonts/Helvetica.ttc",  // macOS - Helvetica
+            };
+
+            ImFontConfigPtr config = ImGuiNative.ImFontConfig_ImFontConfig();
+            config.OversampleH = 2;
+            config.OversampleV = 2;
+            config.PixelSnapH = true;
+
+            // Build custom glyph ranges including typographic punctuation
+            ImFontGlyphRangesBuilderPtr builder = new ImFontGlyphRangesBuilderPtr(ImGuiNative.ImFontGlyphRangesBuilder_ImFontGlyphRangesBuilder());
+
+            // Add basic Latin ranges (ASCII + Latin-1 Supplement)
+            builder.AddRanges(ImGui.GetIO().Fonts.GetGlyphRangesDefault());
+
+            // Add typographic punctuation (includes ' " " ' — etc.)
+            builder.AddChar((ushort)0x2018); // ' Left single quotation mark
+            builder.AddChar((ushort)0x2019); // ' Right single quotation mark (apostrophe)
+            builder.AddChar((ushort)0x201A); // ‚ Single low-9 quotation mark
+            builder.AddChar((ushort)0x201C); // " Left double quotation mark
+            builder.AddChar((ushort)0x201D); // " Right double quotation mark
+            builder.AddChar((ushort)0x201E); // „ Double low-9 quotation mark
+            builder.AddChar((ushort)0x2013); // – En dash
+            builder.AddChar((ushort)0x2014); // — Em dash
+            builder.AddChar((ushort)0x2026); // … Horizontal ellipsis
+
+            // Build the final ranges
+            ImVector ranges = new ImVector();
+            builder.BuildRanges(out ranges);
+
+            // Try to load a system font with extended character support
+            bool fontLoaded = false;
+            foreach (string fontPath in fontPaths)
+            {
+                if (File.Exists(fontPath))
+                {
+                    try
+                    {
+                        // Get the glyph ranges as a pointer
+                        IntPtr rangesPtr = ranges.Data;
+
+                        // Load font with custom ranges
+                        ImGui.GetIO().Fonts.AddFontFromFileTTF(fontPath, 15.0f, config, rangesPtr);
+                        fontLoaded = true;
+                        Console.WriteLine($"Loaded font with extended Unicode support from: {fontPath}");
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Failed to load font from {fontPath}: {ex.Message}");
+                    }
+                }
+            }
+
+            // Fallback to default font if no system font was found
+            if (!fontLoaded)
+            {
+                Console.WriteLine("Warning: Could not load system font with Unicode support. Using default font (limited character set).");
+                ImGui.GetIO().Fonts.AddFontDefault();
+            }
+
+            ImGuiNative.ImFontGlyphRangesBuilder_destroy(builder.NativePtr);
+            ImGuiNative.ImFontConfig_destroy(config);
         }
 
         /// <summary>
