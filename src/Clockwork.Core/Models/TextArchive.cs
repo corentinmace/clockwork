@@ -63,12 +63,12 @@ public class TextArchive
     /// </summary>
     public byte[] ToBytes()
     {
-        using var ms = new MemoryStream();
-        if (!TextConverter.WriteMessagesToStream(ref ms, Messages, Key))
+        Stream stream = new MemoryStream();
+        if (!TextConverter.WriteMessagesToStream(ref stream, Messages, Key))
         {
             AppLogger.Error($"Failed to convert Text Archive ID {ID} to byte array.");
         }
-        return ms.ToArray();
+        return ((MemoryStream)stream).ToArray();
     }
 
     /// <summary>
