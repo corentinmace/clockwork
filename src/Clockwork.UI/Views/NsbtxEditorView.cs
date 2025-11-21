@@ -1,7 +1,9 @@
 using Clockwork.Core;
+using Clockwork.Core.Models;
 using Clockwork.Core.Services;
 using Clockwork.UI.Icons;
 using ImGuiNET;
+using OpenTK.Graphics.OpenGL4;
 using System.Numerics;
 
 namespace Clockwork.UI.Views;
@@ -27,6 +29,11 @@ public class NsbtxEditorView : IView
     private Vector4 _statusColor = new(1.0f, 1.0f, 1.0f, 1.0f);
     private float _statusTimer = 0.0f;
     private string _searchFilter = string.Empty;
+
+    // Texture display
+    private int _currentGLTexture = 0;
+    private int _currentTextureWidth = 0;
+    private int _currentTextureHeight = 0;
 
     // Add/Remove dialogs
     private bool _showAddDialog = false;
@@ -249,6 +256,7 @@ public class NsbtxEditorView : IView
                         {
                             _selectedTextureIndex = i;
                             _selectedPaletteIndex = -1; // Deselect palette when selecting texture
+                            LoadTexturePreview(i, 0); // Load texture with first palette
                         }
 
                         if (isSelected)
@@ -328,8 +336,25 @@ public class NsbtxEditorView : IView
                 }
 
                 ImGui.Spacing();
-                ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
-                    "Texture decoding and rendering not yet implemented.");
+                ImGui.Separator();
+                ImGui.Spacing();
+
+                // Display texture if loaded
+                if (_currentGLTexture != 0)
+                {
+                    // Calculate display size (max 512x512 while maintaining aspect ratio)
+                    float maxSize = 512f;
+                    float scale = Math.Min(maxSize / _currentTextureWidth, maxSize / _currentTextureHeight);
+                    int displayWidth = (int)(_currentTextureWidth * scale);
+                    int displayHeight = (int)(_currentTextureHeight * scale);
+
+                    ImGui.Image((IntPtr)_currentGLTexture, new Vector2(displayWidth, displayHeight));
+                }
+                else
+                {
+                    ImGui.TextColored(new Vector4(0.7f, 0.7f, 0.7f, 1.0f),
+                        "Texture preview not available (unsupported format or loading failed)");
+                }
             }
             else if (_selectedPaletteIndex >= 0 && _selectedPaletteIndex < currentNsbtx.PaletteNames.Count)
             {
@@ -481,9 +506,14 @@ public class NsbtxEditorView : IView
         if (_nsbtxService?.LoadNsbtx(nsbtxId) != null)
         {
             SetStatus($"Loaded texture pack {nsbtxId:D4}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
-            // Reset selection when loading new NSBTX
+            // Reset selection and texture when loading new NSBTX
             _selectedTextureIndex = -1;
             _selectedPaletteIndex = -1;
+            if (_currentGLTexture != 0)
+            {
+                GL.DeleteTexture(_currentGLTexture);
+                _currentGLTexture = 0;
+            }
         }
         else
         {
@@ -548,6 +578,57 @@ public class NsbtxEditorView : IView
             7 => "Direct Color",
             _ => $"Unknown ({format})"
         };
+    }
+
+    private void LoadTexturePreview(int textureIndex, int paletteIndex = 0)
+    {
+        // Clean up previous texture
+        if (_currentGLTexture != 0)
+        {
+            GL.DeleteTexture(_currentGLTexture);
+            _currentGLTexture = 0;
+        }
+
+        var currentNsbtx = _nsbtxService?.CurrentNsbtx;
+        if (currentNsbtx == null || textureIndex < 0 || textureIndex >= currentNsbtx.Textures.Count)
+            return;
+
+        // Decode texture to RGBA
+        var rgbaData = currentNsbtx.DecodeTextureToRGBA(textureIndex, paletteIndex);
+        if (rgbaData == null)
+        {
+            SetStatus("Failed to decode texture", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+            return;
+        }
+
+        var texInfo = currentNsbtx.Textures[textureIndex];
+        _currentTextureWidth = texInfo.ActualWidth;
+        _currentTextureHeight = texInfo.ActualHeight;
+
+        // Create OpenGL texture
+        _currentGLTexture = GL.GenTexture();
+        GL.BindTexture(TextureTarget.Texture2D, _currentGLTexture);
+
+        // Upload texture data
+        GL.TexImage2D(
+            TextureTarget.Texture2D,
+            0,
+            PixelInternalFormat.Rgba,
+            _currentTextureWidth,
+            _currentTextureHeight,
+            0,
+            PixelFormat.Rgba,
+            PixelType.UnsignedByte,
+            rgbaData
+        );
+
+        // Set texture parameters
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+        GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+
+        GL.BindTexture(TextureTarget.Texture2D, 0);
     }
 
     private void SetStatus(string message, Vector4 color)
