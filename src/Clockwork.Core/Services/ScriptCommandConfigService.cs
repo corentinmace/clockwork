@@ -145,9 +145,14 @@ public class ScriptCommandConfigService : IApplicationService
             {
                 foreach (var prop in movementsElement.EnumerateObject())
                 {
-                    if (uint.TryParse(prop.Value.ToString(), out uint value))
+                    try
                     {
+                        uint value = prop.Value.GetUInt32();
                         movements[prop.Name] = value;
+                    }
+                    catch
+                    {
+                        AppLogger.Warn($"Failed to parse movement '{prop.Name}': {prop.Value}");
                     }
                 }
             }
@@ -157,9 +162,14 @@ public class ScriptCommandConfigService : IApplicationService
             {
                 foreach (var prop in compOperatorsElement.EnumerateObject())
                 {
-                    if (uint.TryParse(prop.Value.ToString(), out uint value))
+                    try
                     {
+                        uint value = prop.Value.GetUInt32();
                         comparisonOperators[prop.Name] = value;
+                    }
+                    catch
+                    {
+                        AppLogger.Warn($"Failed to parse comparison operator '{prop.Name}': {prop.Value}");
                     }
                 }
             }
@@ -169,9 +179,14 @@ public class ScriptCommandConfigService : IApplicationService
             {
                 foreach (var prop in specialOwElement.EnumerateObject())
                 {
-                    if (uint.TryParse(prop.Value.ToString(), out uint value))
+                    try
                     {
+                        uint value = prop.Value.GetUInt32();
                         specialOverworlds[prop.Name] = value;
+                    }
+                    catch
+                    {
+                        AppLogger.Warn($"Failed to parse special overworld '{prop.Name}': {prop.Value}");
                     }
                 }
             }
@@ -181,9 +196,14 @@ public class ScriptCommandConfigService : IApplicationService
             {
                 foreach (var prop in owDirectionsElement.EnumerateObject())
                 {
-                    if (uint.TryParse(prop.Value.ToString(), out uint value))
+                    try
                     {
+                        uint value = prop.Value.GetUInt32();
                         overworldDirections[prop.Name] = value;
+                    }
+                    catch
+                    {
+                        AppLogger.Warn($"Failed to parse overworld direction '{prop.Name}': {prop.Value}");
                     }
                 }
             }
