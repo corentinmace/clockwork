@@ -2,8 +2,8 @@ using Clockwork.Core;
 using Clockwork.Core.Models;
 using Clockwork.Core.Services;
 using Clockwork.UI.Icons;
+using Clockwork.UI.Graphics;
 using ImGuiNET;
-using OpenTK.Graphics.OpenGL4;
 using System.Numerics;
 
 namespace Clockwork.UI.Views;
@@ -18,6 +18,7 @@ public class NsbtxEditorView : IView
     private NsbtxService? _nsbtxService;
     private DialogService? _dialogService;
     private RomService? _romService;
+    private TextureManager? _textureManager;
 
     public bool IsVisible { get; set; } = false;
 
@@ -31,7 +32,7 @@ public class NsbtxEditorView : IView
     private string _searchFilter = string.Empty;
 
     // Texture display
-    private int _currentGLTexture = 0;
+    private IntPtr _currentTextureHandle = IntPtr.Zero;
     private int _currentTextureWidth = 0;
     private int _currentTextureHeight = 0;
 
@@ -58,6 +59,11 @@ public class NsbtxEditorView : IView
         {
             _nsbtxService.LoadAvailableNsbtx();
         }
+    }
+
+    public void SetTextureManager(TextureManager textureManager)
+    {
+        _textureManager = textureManager;
     }
 
     public void Draw()
@@ -340,7 +346,7 @@ public class NsbtxEditorView : IView
                 ImGui.Spacing();
 
                 // Display texture if loaded
-                if (_currentGLTexture != 0)
+                if (_currentTextureHandle != IntPtr.Zero)
                 {
                     // Calculate display size (max 512x512 while maintaining aspect ratio)
                     float maxSize = 512f;
@@ -348,7 +354,7 @@ public class NsbtxEditorView : IView
                     int displayWidth = (int)(_currentTextureWidth * scale);
                     int displayHeight = (int)(_currentTextureHeight * scale);
 
-                    ImGui.Image((IntPtr)_currentGLTexture, new Vector2(displayWidth, displayHeight));
+                    ImGui.Image(_currentTextureHandle, new Vector2(displayWidth, displayHeight));
                 }
                 else
                 {
@@ -509,11 +515,7 @@ public class NsbtxEditorView : IView
             // Reset selection and texture when loading new NSBTX
             _selectedTextureIndex = -1;
             _selectedPaletteIndex = -1;
-            if (_currentGLTexture != 0)
-            {
-                GL.DeleteTexture(_currentGLTexture);
-                _currentGLTexture = 0;
-            }
+            _currentTextureHandle = IntPtr.Zero;
         }
         else
         {
@@ -584,11 +586,14 @@ public class NsbtxEditorView : IView
     {
         try
         {
-            // Clean up previous texture
-            if (_currentGLTexture != 0)
+            // Reset previous texture
+            _currentTextureHandle = IntPtr.Zero;
+
+            if (_textureManager == null)
             {
-                GL.DeleteTexture(_currentGLTexture);
-                _currentGLTexture = 0;
+                Core.Logging.AppLogger.Error("[NsbtxEditor] TextureManager not initialized");
+                SetStatus("TextureManager not initialized", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
+                return;
             }
 
             var currentNsbtx = _nsbtxService?.CurrentNsbtx;
@@ -624,32 +629,14 @@ public class NsbtxEditorView : IView
                 return;
             }
 
-            // Create OpenGL texture
-            _currentGLTexture = GL.GenTexture();
-            GL.BindTexture(TextureTarget.Texture2D, _currentGLTexture);
-
-            Core.Logging.AppLogger.Debug($"[NsbtxEditor] Created GL texture {_currentGLTexture}");
-
-            // Upload texture data
-            GL.TexImage2D(
-                TextureTarget.Texture2D,
-                0,
-                PixelInternalFormat.Rgba,
+            // Create texture using TextureManager (Veldrid-based)
+            string textureName = $"nsbtx_{_selectedNsbtxId:D4}_tex{textureIndex}_{currentNsbtx.TextureNames[textureIndex]}";
+            _currentTextureHandle = _textureManager.CreateTextureFromRGBA(
+                rgbaData,
                 _currentTextureWidth,
                 _currentTextureHeight,
-                0,
-                PixelFormat.Rgba,
-                PixelType.UnsignedByte,
-                rgbaData
+                textureName
             );
-
-            // Set texture parameters
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Nearest);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Nearest);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
-            GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
-
-            GL.BindTexture(TextureTarget.Texture2D, 0);
 
             Core.Logging.AppLogger.Info($"[NsbtxEditor] Successfully loaded texture {textureIndex}");
             SetStatus($"Loaded texture: {currentNsbtx.TextureNames[textureIndex]}", new Vector4(0.4f, 1.0f, 0.4f, 1.0f));
@@ -660,11 +647,7 @@ public class NsbtxEditorView : IView
             Core.Logging.AppLogger.Error($"[NsbtxEditor] Stack trace: {ex.StackTrace}");
             SetStatus($"Error loading texture: {ex.Message}", new Vector4(1.0f, 0.4f, 0.4f, 1.0f));
 
-            if (_currentGLTexture != 0)
-            {
-                GL.DeleteTexture(_currentGLTexture);
-                _currentGLTexture = 0;
-            }
+            _currentTextureHandle = IntPtr.Zero;
         }
     }
 

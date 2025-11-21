@@ -144,6 +144,10 @@ public class MainWindow
         _headerEditorView.SetTextureManager(_textureManager);
         AppLogger.Debug("TextureManager set for HeaderEditorView");
 
+        // Set texture manager for NSBTX editor texture display
+        _nsbtxEditorView.SetTextureManager(_textureManager);
+        AppLogger.Debug("TextureManager set for NsbtxEditorView");
+
         // Configure ImGui
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.NavEnableKeyboard;

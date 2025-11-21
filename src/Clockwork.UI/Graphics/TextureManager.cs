@@ -248,6 +248,37 @@ public class TextureManager : IDisposable
         return texture;
     }
 
+    /// <summary>
+    /// Creates a texture from raw RGBA8888 byte data
+    /// Returns an ImGui binding handle that can be used with ImGui.Image()
+    /// </summary>
+    public IntPtr CreateTextureFromRGBA(byte[] rgbaData, int width, int height, string name)
+    {
+        if (rgbaData.Length != width * height * 4)
+        {
+            throw new ArgumentException($"RGBA data size mismatch: expected {width * height * 4}, got {rgbaData.Length}");
+        }
+
+        // Create Veldrid texture
+        var texture = _graphicsDevice.ResourceFactory.CreateTexture(new TextureDescription(
+            (uint)width, (uint)height,
+            1, 1, 1,
+            PixelFormat.R8_G8_B8_A8_UNorm,
+            TextureUsage.Sampled,
+            TextureType.Texture2D
+        ));
+        texture.Name = name;
+
+        // Upload pixel data
+        _graphicsDevice.UpdateTexture(texture, rgbaData, 0, 0, 0, (uint)width, (uint)height, 1, 0, 0);
+
+        // Get ImGui binding
+        var handle = _imguiRenderer.GetOrCreateImGuiBinding(_graphicsDevice.ResourceFactory, texture);
+
+        AppLogger.Debug($"[TextureManager] Created texture from RGBA: {name} ({width}x{height})");
+        return handle;
+    }
+
     public void Dispose()
     {
         foreach (var animTexture in _animatedTextures.Values)
