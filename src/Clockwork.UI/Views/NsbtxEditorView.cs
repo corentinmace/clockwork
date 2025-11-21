@@ -35,6 +35,7 @@ public class NsbtxEditorView : IView
     private IntPtr _currentTextureHandle = IntPtr.Zero;
     private int _currentTextureWidth = 0;
     private int _currentTextureHeight = 0;
+    private int _currentPaletteIndex = 0;
 
     // Add/Remove dialogs
     private bool _showAddDialog = false;
@@ -262,7 +263,8 @@ public class NsbtxEditorView : IView
                         {
                             _selectedTextureIndex = i;
                             _selectedPaletteIndex = -1; // Deselect palette when selecting texture
-                            LoadTexturePreview(i, 0); // Load texture with first palette
+                            _currentPaletteIndex = 0; // Reset to first palette
+                            LoadTexturePreview(i, _currentPaletteIndex);
                         }
 
                         if (isSelected)
@@ -339,6 +341,28 @@ public class NsbtxEditorView : IView
                     ImGui.Text($"Format: {GetFormatName(texInfo.Format)}");
                     ImGui.Text($"Offset: 0x{texInfo.TextureOffset:X}");
                     ImGui.Text($"Color0 Transparent: {texInfo.Color0Transparent}");
+
+                    // Palette selector for palette-based formats
+                    if (texInfo.Format >= 2 && texInfo.Format <= 4 && currentNsbtx.PaletteNames.Count > 0)
+                    {
+                        ImGui.Spacing();
+                        ImGui.Text("Palette:");
+                        ImGui.SameLine();
+
+                        // Create combo items
+                        string[] paletteItems = new string[currentNsbtx.PaletteNames.Count];
+                        for (int i = 0; i < currentNsbtx.PaletteNames.Count; i++)
+                        {
+                            paletteItems[i] = $"{i}: {currentNsbtx.PaletteNames[i]}";
+                        }
+
+                        ImGui.SetNextItemWidth(200);
+                        if (ImGui.Combo("##palette", ref _currentPaletteIndex, paletteItems, paletteItems.Length))
+                        {
+                            // Palette changed, reload texture
+                            LoadTexturePreview(_selectedTextureIndex, _currentPaletteIndex);
+                        }
+                    }
                 }
 
                 ImGui.Spacing();
@@ -348,12 +372,18 @@ public class NsbtxEditorView : IView
                 // Display texture if loaded
                 if (_currentTextureHandle != IntPtr.Zero)
                 {
-                    // Calculate display size (max 512x512 while maintaining aspect ratio)
+                    // Calculate display size with integer scaling for pixel-perfect rendering
                     float maxSize = 512f;
-                    float scale = Math.Min(maxSize / _currentTextureWidth, maxSize / _currentTextureHeight);
-                    int displayWidth = (int)(_currentTextureWidth * scale);
-                    int displayHeight = (int)(_currentTextureHeight * scale);
+                    float scaleX = maxSize / _currentTextureWidth;
+                    float scaleY = maxSize / _currentTextureHeight;
+                    float scale = Math.Min(scaleX, scaleY);
 
+                    // Round down to nearest integer scale for pixel-perfect display
+                    int integerScale = Math.Max(1, (int)Math.Floor(scale));
+                    int displayWidth = _currentTextureWidth * integerScale;
+                    int displayHeight = _currentTextureHeight * integerScale;
+
+                    ImGui.Text($"Zoom: {integerScale}x");
                     ImGui.Image(_currentTextureHandle, new Vector2(displayWidth, displayHeight));
                 }
                 else
@@ -516,6 +546,7 @@ public class NsbtxEditorView : IView
             _selectedTextureIndex = -1;
             _selectedPaletteIndex = -1;
             _currentTextureHandle = IntPtr.Zero;
+            _currentPaletteIndex = 0;
         }
         else
         {
