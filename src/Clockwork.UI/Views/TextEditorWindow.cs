@@ -6,7 +6,6 @@ using System.Linq;
 using ImGuiNET;
 using Clockwork.Core;
 using Clockwork.Core.Services;
-using Clockwork.Core.Formats.NDS.MessageEnc;
 using Clockwork.Core.Logging;
 using Clockwork.UI.Icons;
 
