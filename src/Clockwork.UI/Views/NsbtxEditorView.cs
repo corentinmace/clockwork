@@ -31,11 +31,6 @@ public class NsbtxEditorView : IView
     private float _statusTimer = 0.0f;
     private string _searchFilter = string.Empty;
 
-    // Scroll fix: track if we just selected something to avoid calling SetItemDefaultFocus every frame
-    private bool _justSelectedNsbtx = false;
-    private bool _justSelectedTexture = false;
-    private bool _justSelectedPalette = false;
-
     // Texture display
     private IntPtr _currentTextureHandle = IntPtr.Zero;
     private int _currentTextureWidth = 0;
@@ -203,14 +198,7 @@ public class NsbtxEditorView : IView
                     if (ImGui.Selectable(label, isSelected))
                     {
                         _selectedNsbtxId = nsbtxId;
-                        _justSelectedNsbtx = true;
                         LoadNsbtx(nsbtxId);
-                    }
-
-                    if (isSelected && _justSelectedNsbtx)
-                    {
-                        ImGui.SetItemDefaultFocus();
-                        _justSelectedNsbtx = false;
                     }
                 }
             }
@@ -273,14 +261,7 @@ public class NsbtxEditorView : IView
                             _selectedTextureIndex = i;
                             _selectedPaletteIndex = -1; // Deselect palette when selecting texture
                             _currentPaletteIndex = 0; // Reset to first palette
-                            _justSelectedTexture = true;
                             LoadTexturePreview(i, _currentPaletteIndex);
-                        }
-
-                        if (isSelected && _justSelectedTexture)
-                        {
-                            ImGui.SetItemDefaultFocus();
-                            _justSelectedTexture = false;
                         }
                     }
                     ImGui.EndChild();
@@ -313,13 +294,6 @@ public class NsbtxEditorView : IView
                         {
                             _selectedPaletteIndex = i;
                             _selectedTextureIndex = -1; // Deselect texture when selecting palette
-                            _justSelectedPalette = true;
-                        }
-
-                        if (isSelected && _justSelectedPalette)
-                        {
-                            ImGui.SetItemDefaultFocus();
-                            _justSelectedPalette = false;
                         }
                     }
                     ImGui.EndChild();

@@ -25,6 +25,7 @@ public class PaletteInfo
 {
     public int PaletteOffset { get; set; }
     public ushort Color0 { get; set; }
+    public int PaletteSize { get; set; } // Size in bytes (number of colors * 2)
 }
 
 /// <summary>
@@ -240,7 +241,7 @@ public class NsbtxFile
         if (palDictOffset > 0 && palDictOffset < data.Length - tex0Offset)
         {
             AppLogger.Debug($"[NSBTX] Parsing palettes at offset {tex0Offset + palDictOffset}");
-            (file.PaletteNames, file.Palettes) = ParsePaletteList(data, tex0Offset + palDictOffset);
+            (file.PaletteNames, file.Palettes) = ParsePaletteList(data, tex0Offset + palDictOffset, palDataSize);
             AppLogger.Info($"[NSBTX] Found {file.PaletteNames.Count} palettes");
         }
         else
@@ -359,12 +360,12 @@ public class NsbtxFile
     /// <summary>
     /// Parses palette list with names and info (palette entries are 4 bytes each)
     /// </summary>
-    private static (List<string>, List<PaletteInfo>) ParsePaletteList(byte[] data, int offset)
+    private static (List<string>, List<PaletteInfo>) ParsePaletteList(byte[] data, int offset, int paletteDataSize)
     {
         var names = new List<string>();
         var palettes = new List<PaletteInfo>();
 
-        AppLogger.Debug($"[NSBTX] ParsePaletteList: offset={offset}");
+        AppLogger.Debug($"[NSBTX] ParsePaletteList: offset={offset}, paletteDataSize={paletteDataSize}");
 
         if (offset + 4 > data.Length)
         {
@@ -416,6 +417,29 @@ public class NsbtxFile
         }
 
         AppLogger.Debug($"[NSBTX] Parsed {palettes.Count} palette info entries, now at position {ms.Position}");
+
+        // Calculate palette sizes (distance between offsets)
+        // This is how LiTRE does it: next_offset - current_offset
+        var uniqueOffsets = palettes.Select(p => p.PaletteOffset).Distinct().OrderBy(o => o).ToList();
+        uniqueOffsets.Add(paletteDataSize); // Add the end of palette data as final limit
+
+        for (int i = 0; i < palettes.Count; i++)
+        {
+            int currentOffset = palettes[i].PaletteOffset;
+            int nextOffsetIndex = uniqueOffsets.IndexOf(currentOffset) + 1;
+            if (nextOffsetIndex < uniqueOffsets.Count)
+            {
+                int nextOffset = uniqueOffsets[nextOffsetIndex];
+                palettes[i].PaletteSize = nextOffset - currentOffset;
+                AppLogger.Debug($"[NSBTX] Palette {i} size: {palettes[i].PaletteSize} bytes ({palettes[i].PaletteSize / 2} colors)");
+            }
+            else
+            {
+                // Last palette, use remaining space
+                palettes[i].PaletteSize = paletteDataSize - currentOffset;
+                AppLogger.Debug($"[NSBTX] Palette {i} size (last): {palettes[i].PaletteSize} bytes ({palettes[i].PaletteSize / 2} colors)");
+            }
+        }
 
         // Read palette names (16 bytes each, ASCII)
         for (int i = 0; i < numObjs; i++)
@@ -489,7 +513,8 @@ public class NsbtxFile
     }
 
     /// <summary>
-    /// Gets the palette data for a specific palette index (256 colors, RGB555 format)
+    /// Gets the palette data for a specific palette index (variable size, RGB555 format)
+    /// Palette size is calculated based on offset differences (can be 4, 16, 256 colors, etc.)
     /// </summary>
     public ushort[]? GetPaletteData(int paletteIndex)
     {
@@ -498,20 +523,24 @@ public class NsbtxFile
 
         var palInfo = Palettes[paletteIndex];
         int absoluteOffset = Tex0Offset + (int)PaletteDataOffset + palInfo.PaletteOffset;
-
-        // Palette is 256 colors * 2 bytes each (RGB555 format)
-        int paletteSize = 256 * 2;
+        int paletteSize = palInfo.PaletteSize; // Size in bytes
+        int numColors = paletteSize / 2; // Each color is 2 bytes (RGB555)
 
         if (absoluteOffset + paletteSize > RawData.Length)
+        {
+            AppLogger.Warn($"[NSBTX] Palette {paletteIndex} offset out of bounds");
             return null;
+        }
 
-        ushort[] palette = new ushort[256];
-        for (int i = 0; i < 256; i++)
+        // Read the actual number of colors in this palette (not always 256!)
+        ushort[] palette = new ushort[numColors];
+        for (int i = 0; i < numColors; i++)
         {
             int offset = absoluteOffset + i * 2;
             palette[i] = (ushort)(RawData[offset] | (RawData[offset + 1] << 8));
         }
 
+        AppLogger.Debug($"[NSBTX] Loaded palette {paletteIndex}: {numColors} colors");
         return palette;
     }
 
@@ -631,6 +660,7 @@ public class NsbtxFile
         for (int i = 0; i < textureData.Length; i++)
         {
             byte paletteIdx = textureData[i];
+            if (paletteIdx >= palette.Length) paletteIdx = 0;
             ushort color555 = palette[paletteIdx];
 
             // Convert RGB555 to RGB888
@@ -667,6 +697,7 @@ public class NsbtxFile
 
             // First pixel (lower 4 bits)
             byte paletteIdx1 = (byte)(packed & 0x0F);
+            if (paletteIdx1 >= palette.Length) paletteIdx1 = 0;
             ushort color1 = palette[paletteIdx1];
             rgba[pixelIdx * 4 + 0] = (byte)(((color1 >> 0) & 0x1F) * 255 / 31);
             rgba[pixelIdx * 4 + 1] = (byte)(((color1 >> 5) & 0x1F) * 255 / 31);
@@ -679,6 +710,7 @@ public class NsbtxFile
 
             // Second pixel (upper 4 bits)
             byte paletteIdx2 = (byte)((packed >> 4) & 0x0F);
+            if (paletteIdx2 >= palette.Length) paletteIdx2 = 0;
             ushort color2 = palette[paletteIdx2];
             rgba[pixelIdx * 4 + 0] = (byte)(((color2 >> 0) & 0x1F) * 255 / 31);
             rgba[pixelIdx * 4 + 1] = (byte)(((color2 >> 5) & 0x1F) * 255 / 31);
@@ -724,6 +756,7 @@ public class NsbtxFile
                         {
                             byte packed = textureData[srcIdx];
                             byte palIdx = (px % 2 == 0) ? (byte)(packed & 0x0F) : (byte)((packed >> 4) & 0x0F);
+                            if (palIdx >= palette.Length) palIdx = 0;
 
                             ushort color = palette[palIdx];
                             int dstX = tx * 8 + px;
@@ -763,6 +796,7 @@ public class NsbtxFile
             for (int bit = 0; bit < 8; bit += 2)
             {
                 byte paletteIdx = (byte)((packed >> bit) & 0x03);
+                if (paletteIdx >= palette.Length) paletteIdx = 0;
                 ushort color = palette[paletteIdx];
 
                 rgba[pixelIdx * 4 + 0] = (byte)(((color >> 0) & 0x1F) * 255 / 31);
@@ -814,6 +848,7 @@ public class NsbtxFile
                         {
                             byte packed = textureData[srcIdx];
                             byte palIdx = (byte)((packed >> bitInByte) & 0x03);
+                            if (palIdx >= palette.Length) palIdx = 0;
 
                             ushort color = palette[palIdx];
                             int dstX = tx * 8 + px;
@@ -877,7 +912,9 @@ public class NsbtxFile
             byte palIdx = (byte)(pixel & 0x1F);       // 0-31 (5 bits = 32 colors max)
             byte alpha = (byte)((pixel >> 5) & 0x07); // 0-7 (3 bits)
 
-            // Get color from palette
+            // Get color from palette (with bounds check)
+            if (palIdx >= palette.Length)
+                palIdx = 0; // Use first color if out of bounds
             ushort color = palette[palIdx];
 
             // Scale alpha to 0-255 range
@@ -915,7 +952,9 @@ public class NsbtxFile
             byte palIdx = (byte)(pixel & 0x07);       // 0-7 (3 bits = 8 colors max)
             byte alpha = (byte)((pixel >> 3) & 0x1F); // 0-31 (5 bits)
 
-            // Get color from palette
+            // Get color from palette (with bounds check)
+            if (palIdx >= palette.Length)
+                palIdx = 0; // Use first color if out of bounds
             ushort color = palette[palIdx];
 
             // Scale alpha to 0-255 range
