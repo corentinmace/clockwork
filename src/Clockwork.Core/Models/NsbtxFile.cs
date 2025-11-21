@@ -94,6 +94,11 @@ public class NsbtxFile
     public uint TextureDataOffset { get; set; }
 
     /// <summary>
+    /// Offset to palette data within TEX0 block
+    /// </summary>
+    public uint PaletteDataOffset { get; set; }
+
+    /// <summary>
     /// Loads an NSBTX file from a byte array
     /// </summary>
     public static NsbtxFile FromBytes(byte[] data, string filePath = "")
@@ -216,6 +221,9 @@ public class NsbtxFile
         AppLogger.Debug($"[NSBTX] Palette info: dictOffset={palDictOffset}, dataSize={palDataSize}, dataOffset={palDataOffset}");
         AppLogger.Debug($"[NSBTX] Current position after header: 0x{ms.Position:X}");
 
+        // Store palette data offset
+        file.PaletteDataOffset = palDataOffset;
+
         // Parse texture names using dictionary offset
         if (texDictOffset > 0 && texDictOffset < data.Length - tex0Offset)
         {
@@ -232,7 +240,7 @@ public class NsbtxFile
         if (palDictOffset > 0 && palDictOffset < data.Length - tex0Offset)
         {
             AppLogger.Debug($"[NSBTX] Parsing palettes at offset {tex0Offset + palDictOffset}");
-            file.PaletteNames = ParsePaletteNameList(data, tex0Offset + palDictOffset);
+            (file.PaletteNames, file.Palettes) = ParsePaletteList(data, tex0Offset + palDictOffset);
             AppLogger.Info($"[NSBTX] Found {file.PaletteNames.Count} palettes");
         }
         else
@@ -349,18 +357,19 @@ public class NsbtxFile
     }
 
     /// <summary>
-    /// Parses palette name list (palette entries are 4 bytes each)
+    /// Parses palette list with names and info (palette entries are 4 bytes each)
     /// </summary>
-    private static List<string> ParsePaletteNameList(byte[] data, int offset)
+    private static (List<string>, List<PaletteInfo>) ParsePaletteList(byte[] data, int offset)
     {
         var names = new List<string>();
+        var palettes = new List<PaletteInfo>();
 
-        AppLogger.Debug($"[NSBTX] ParsePaletteNameList: offset={offset}");
+        AppLogger.Debug($"[NSBTX] ParsePaletteList: offset={offset}");
 
         if (offset + 4 > data.Length)
         {
-            AppLogger.Warn($"[NSBTX] Palette name list offset out of bounds");
-            return names;
+            AppLogger.Warn($"[NSBTX] Palette list offset out of bounds");
+            return (names, palettes);
         }
 
         using var ms = new MemoryStream(data, offset, data.Length - offset);
@@ -375,7 +384,7 @@ public class NsbtxFile
 
         if (numObjs == 0)
         {
-            return names;
+            return (names, palettes);
         }
 
         // Read unknown block header
@@ -395,11 +404,18 @@ public class NsbtxFile
         ushort infoDataSize = reader.ReadUInt16();
         AppLogger.Debug($"[NSBTX] Info block: headerSize={infoHeaderSize}, dataSize={infoDataSize}");
 
-        // Skip palette info entries (4 bytes each: offset + color0)
-        int paletteInfoSize = numObjs * 4;
-        reader.ReadBytes(paletteInfoSize);
+        // Read palette info entries (4 bytes each: offset + color0)
+        for (int i = 0; i < numObjs; i++)
+        {
+            var palInfo = new PaletteInfo
+            {
+                PaletteOffset = reader.ReadUInt16() << 3,
+                Color0 = reader.ReadUInt16()
+            };
+            palettes.Add(palInfo);
+        }
 
-        AppLogger.Debug($"[NSBTX] Skipped {paletteInfoSize} bytes of palette info, now at position {ms.Position}");
+        AppLogger.Debug($"[NSBTX] Parsed {palettes.Count} palette info entries, now at position {ms.Position}");
 
         // Read palette names (16 bytes each, ASCII)
         for (int i = 0; i < numObjs; i++)
@@ -434,8 +450,8 @@ public class NsbtxFile
             }
         }
 
-        AppLogger.Info($"[NSBTX] Parsed {names.Count} palette names");
-        return names;
+        AppLogger.Info($"[NSBTX] Parsed {names.Count} palette names and {palettes.Count} palette info entries");
+        return (names, palettes);
     }
 
     /// <summary>
@@ -473,6 +489,200 @@ public class NsbtxFile
     }
 
     /// <summary>
+    /// Gets the palette data for a specific palette index (256 colors, RGB555 format)
+    /// </summary>
+    public ushort[]? GetPaletteData(int paletteIndex)
+    {
+        if (paletteIndex < 0 || paletteIndex >= Palettes.Count)
+            return null;
+
+        var palInfo = Palettes[paletteIndex];
+        int absoluteOffset = Tex0Offset + (int)PaletteDataOffset + palInfo.PaletteOffset;
+
+        // Palette is 256 colors * 2 bytes each (RGB555 format)
+        int paletteSize = 256 * 2;
+
+        if (absoluteOffset + paletteSize > RawData.Length)
+            return null;
+
+        ushort[] palette = new ushort[256];
+        for (int i = 0; i < 256; i++)
+        {
+            int offset = absoluteOffset + i * 2;
+            palette[i] = (ushort)(RawData[offset] | (RawData[offset + 1] << 8));
+        }
+
+        return palette;
+    }
+
+    /// <summary>
+    /// Decodes a texture to RGBA8888 format (ready for OpenGL)
+    /// Returns null if texture cannot be decoded
+    /// </summary>
+    public byte[]? DecodeTextureToRGBA(int textureIndex, int paletteIndex = 0)
+    {
+        if (textureIndex < 0 || textureIndex >= Textures.Count)
+            return null;
+
+        var texInfo = Textures[textureIndex];
+        var textureData = GetTextureData(textureIndex);
+        if (textureData == null)
+            return null;
+
+        int width = texInfo.ActualWidth;
+        int height = texInfo.ActualHeight;
+        byte[] rgba = new byte[width * height * 4];
+
+        switch (texInfo.Format)
+        {
+            case 2: // 4-Color Palette
+                return Decode4ColorPalette(textureData, width, height, paletteIndex);
+
+            case 3: // 16-Color Palette
+                return Decode16ColorPalette(textureData, width, height, paletteIndex);
+
+            case 4: // 256-Color Palette
+                return Decode256ColorPalette(textureData, width, height, paletteIndex);
+
+            case 7: // Direct Color (RGB555)
+                return DecodeDirectColor(textureData, width, height);
+
+            default:
+                AppLogger.Warn($"[NSBTX] Unsupported texture format: {texInfo.Format}");
+                return null;
+        }
+    }
+
+    /// <summary>
+    /// Decodes a 256-color palette texture to RGBA8888
+    /// </summary>
+    private byte[]? Decode256ColorPalette(byte[] textureData, int width, int height, int paletteIndex)
+    {
+        var palette = GetPaletteData(paletteIndex);
+        if (palette == null)
+            return null;
+
+        byte[] rgba = new byte[width * height * 4];
+
+        for (int i = 0; i < textureData.Length; i++)
+        {
+            byte paletteIdx = textureData[i];
+            ushort color555 = palette[paletteIdx];
+
+            // Convert RGB555 to RGB888
+            int r = ((color555 >> 0) & 0x1F) * 255 / 31;
+            int g = ((color555 >> 5) & 0x1F) * 255 / 31;
+            int b = ((color555 >> 10) & 0x1F) * 255 / 31;
+
+            int rgbaIdx = i * 4;
+            rgba[rgbaIdx + 0] = (byte)r;
+            rgba[rgbaIdx + 1] = (byte)g;
+            rgba[rgbaIdx + 2] = (byte)b;
+            rgba[rgbaIdx + 3] = 255; // Full alpha
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
+    /// Decodes a 16-color palette texture to RGBA8888
+    /// </summary>
+    private byte[]? Decode16ColorPalette(byte[] textureData, int width, int height, int paletteIndex)
+    {
+        var palette = GetPaletteData(paletteIndex);
+        if (palette == null)
+            return null;
+
+        byte[] rgba = new byte[width * height * 4];
+        int pixelIdx = 0;
+
+        // 2 pixels per byte (4 bits each)
+        for (int i = 0; i < textureData.Length; i++)
+        {
+            byte packed = textureData[i];
+
+            // First pixel (lower 4 bits)
+            byte paletteIdx1 = (byte)(packed & 0x0F);
+            ushort color1 = palette[paletteIdx1];
+            rgba[pixelIdx * 4 + 0] = (byte)(((color1 >> 0) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 1] = (byte)(((color1 >> 5) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 2] = (byte)(((color1 >> 10) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 3] = 255;
+            pixelIdx++;
+
+            // Second pixel (upper 4 bits)
+            byte paletteIdx2 = (byte)((packed >> 4) & 0x0F);
+            ushort color2 = palette[paletteIdx2];
+            rgba[pixelIdx * 4 + 0] = (byte)(((color2 >> 0) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 1] = (byte)(((color2 >> 5) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 2] = (byte)(((color2 >> 10) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 3] = 255;
+            pixelIdx++;
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
+    /// Decodes a 4-color palette texture to RGBA8888
+    /// </summary>
+    private byte[]? Decode4ColorPalette(byte[] textureData, int width, int height, int paletteIndex)
+    {
+        var palette = GetPaletteData(paletteIndex);
+        if (palette == null)
+            return null;
+
+        byte[] rgba = new byte[width * height * 4];
+        int pixelIdx = 0;
+
+        // 4 pixels per byte (2 bits each)
+        for (int i = 0; i < textureData.Length; i++)
+        {
+            byte packed = textureData[i];
+
+            for (int bit = 0; bit < 8; bit += 2)
+            {
+                byte paletteIdx = (byte)((packed >> bit) & 0x03);
+                ushort color = palette[paletteIdx];
+
+                rgba[pixelIdx * 4 + 0] = (byte)(((color >> 0) & 0x1F) * 255 / 31);
+                rgba[pixelIdx * 4 + 1] = (byte)(((color >> 5) & 0x1F) * 255 / 31);
+                rgba[pixelIdx * 4 + 2] = (byte)(((color >> 10) & 0x1F) * 255 / 31);
+                rgba[pixelIdx * 4 + 3] = 255;
+                pixelIdx++;
+
+                if (pixelIdx >= width * height)
+                    break;
+            }
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
+    /// Decodes a direct color (RGB555) texture to RGBA8888
+    /// </summary>
+    private byte[]? DecodeDirectColor(byte[] textureData, int width, int height)
+    {
+        byte[] rgba = new byte[width * height * 4];
+        int pixelIdx = 0;
+
+        // 2 bytes per pixel (RGB555)
+        for (int i = 0; i < textureData.Length; i += 2)
+        {
+            ushort color555 = (ushort)(textureData[i] | (textureData[i + 1] << 8));
+
+            rgba[pixelIdx * 4 + 0] = (byte)(((color555 >> 0) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 1] = (byte)(((color555 >> 5) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 2] = (byte)(((color555 >> 10) & 0x1F) * 255 / 31);
+            rgba[pixelIdx * 4 + 3] = 255;
+            pixelIdx++;
+        }
+
+        return rgba;
+    }
+
+    /// <summary>
     /// Saves the NSBTX file to disk
     /// </summary>
     public void SaveToFile(string path)
@@ -498,7 +708,8 @@ public class NsbtxFile
             RawData = (byte[])RawData.Clone(),
             FilePath = FilePath,
             Tex0Offset = Tex0Offset,
-            TextureDataOffset = TextureDataOffset
+            TextureDataOffset = TextureDataOffset,
+            PaletteDataOffset = PaletteDataOffset
         };
     }
 }
